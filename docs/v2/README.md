@@ -1,7 +1,7 @@
 # BDLMiner V2
 
-The stable firmware version is **2.5.3**. See the release notes in
-[English](../releases/v2.5.3.md) or [French](../releases/v2.5.3.fr.md).
+The stable firmware version is **2.5.4**. See the release notes in
+[English](../releases/v2.5.4.md) or [French](../releases/v2.5.4.fr.md).
 The seven V2 features were developed on `v2/development`; the owner-operated
 acceptance results below identify the beta versions actually measured.
 The [previous stable V1 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v1.9.15)
@@ -9,7 +9,7 @@ remains available.
 
 ## M5 / Gamma test kit
 
-Download the [2.5.3 Linux kit](https://github.com/bdlglua/BDLMinerV2/releases/download/v2.5.3/BDLMiner-2.5.3-Linux-kit.zip)
+Download the [2.5.4 Linux kit](https://github.com/bdlglua/BDLMinerV2/releases/download/v2.5.4/BDLMiner-2.5.4-Linux-kit.zip)
 and extract the complete ZIP. It contains the optional fleet hub, host tools,
 M5StickC Plus2 and Gamma 601
 firmware/factory images, their checksums and the read-only
@@ -87,7 +87,7 @@ pending actual board availability.
 
 Extract the new kit into a separate directory, retaining configuration/settings
 backups. The readiness launcher expects the firmware version of the extracted
-kit (2.5.3 for the current stable kit). A card running an older version reports
+kit (2.5.4 for the current stable kit). A card running an older version reports
 `review` until its update completes.
 Stop the old hub before starting the new one
 on port 8787. Use only `*-firmware.bin` through the local dashboard; factory images

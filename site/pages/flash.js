@@ -8,7 +8,7 @@ export default function FlashPage(){
  <div className="wrap">
   <h1 data-t="installTitle">Flash your board</h1>
   <p className="lead" data-t="installLead">No software to install: Chrome or Edge on a computer flashes the board over USB.</p>
-  <p className="lead">Open-source firmware · <a href="https://github.com/bdlglua/BDLMinerV2">View BDLMinerV2 on GitHub ↗</a> · <a href="https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.3">Stable v2.5.3</a></p>
+  <p className="lead">Open-source firmware · <a href="https://github.com/bdlglua/BDLMinerV2">View BDLMinerV2 on GitHub ↗</a> · <a href="https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.4">Stable v2.5.4</a></p>
   <div className="install">
    <div className="card">
     <label htmlFor="board" data-t="board">Your board</label>
