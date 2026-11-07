@@ -109,8 +109,8 @@ inline const char *settingsError(JsonObjectConst values) {
         }
     }
     if ((values["remote"] | settings.remoteEnabled) &&
-        !remote_data::validKey(values["remotekey"] | settings.remoteKey.c_str()))
-        return "Add a personal access key before enabling remote monitoring";
+        !remote_data::canReport(values["remotekey"] | settings.remoteKey.c_str(), values["addr"] | settings.btcAddress.c_str()))
+        return "Set a payout address before enabling remote monitoring";
     unsigned selectedCoin = values["coin"] | unsigned(settings.miningCoin);
     const char *user = values["addr"] | settings.btcAddress.c_str();
     if (!coin::addressCompatible(selectedCoin, stratum::trimIdentity(user))) return "Use an address for the selected cryptocurrency";

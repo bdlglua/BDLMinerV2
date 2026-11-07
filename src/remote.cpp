@@ -24,7 +24,10 @@ uint32_t remoteNext = 60000;
 }
 
 void remotePoll() {
-    if (!settings.remoteEnabled || !remote_data::validKey(settings.remoteKey.c_str()) ||
+    // A private key keeps its secret space; otherwise the payout address names it.
+    const bool keyed = remote_data::validKey(settings.remoteKey.c_str());
+    char address[101];
+    if (!settings.remoteEnabled || (!keyed && !remote_data::payoutAddress(settings.btcAddress.c_str(), address)) ||
         int32_t(millis() - remoteNext) < 0) return;
     // Verified TLS needs a synchronized clock. Missing trust/time/heap never
     // downgrades transport and does not stop the miner or its public reporting.
@@ -37,7 +40,8 @@ void remotePoll() {
     {
         const MinerStats stats = minerStats();
         char id[17];
-        remote_data::deviceId(settings.remoteKey.c_str(), ESP.getEfuseMac(), id);
+        if (keyed) remote_data::deviceId(settings.remoteKey.c_str(), ESP.getEfuseMac(), id);
+        else remote_data::addressDeviceId(address, ESP.getEfuseMac(), id);
         JsonDocument doc;
         doc["id"] = id;
         doc["name"] = settings.remoteName.length() ? settings.remoteName.c_str() : board::modelName();
@@ -70,11 +74,11 @@ void remotePoll() {
     if (http.begin(tls, kRemoteURL) && tlsConnectVerified(tls, kRemoteHost, kExplorerRootCA)) {
         http.setUserAgent(DEFAULT_USER_AGENT);
         http.addHeader("Content-Type", "application/json");
-        http.addHeader("Authorization", String("Bearer ") + settings.remoteKey);
+        http.addHeader("Authorization", keyed ? String("Bearer ") + settings.remoteKey : String("Address ") + address);
         code = http.POST(reinterpret_cast<uint8_t *>(body), strlen(body));
     }
     http.end();
-    // Never print the key, report body, server response or miner pseudonym.
-    if (code == 204) logf("[remote] private readings sent\n");
-    else logf("[remote] private readings not sent (%d)\n", code);
+    // Never print the key, address, report body, server response or miner pseudonym.
+    if (code == 204) logf("[remote] readings sent (%s)\n", keyed ? "private key" : "payout address");
+    else logf("[remote] readings not sent (%d)\n", code);
 }

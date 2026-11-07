@@ -98,9 +98,9 @@ const SettingInfo kSettings[] = {
       "Share my hashrate anonymously: every 5 minutes, send the version, the board, the cryptocurrency and the hashrate"),
     S("sharepool", Bool, sharePool, "Network",
       "Share my pool anonymously: optional public pool group, only with hashrate sharing"),
-    S("remote", Bool, remoteEnabled, "Network", "Private remote monitoring (optional)"),
-    S("remotekey", Secret, remoteKey, "Network", "Personal remote access key (64 lowercase hexadecimal characters)"),
-    S("rname", Text, remoteName, "Network", "Name in my private remote dashboard"),
+    S("remote", Bool, remoteEnabled, "Network", "Private remote monitoring (optional, by payout address)"),
+    S("remotekey", Secret, remoteKey, "Network", "Optional private remote access key (64 lowercase hexadecimal characters)"),
+    S("rname", Text, remoteName, "Network", "Name in my remote dashboard"),
 };
 const size_t kSettingCount = sizeof(kSettings) / sizeof(kSettings[0]);
 
@@ -142,7 +142,7 @@ static void poolURL(String &host, uint8_t &protocol, String &authority) {
 }
 
 void settingsSanitize(Settings &settings) {
-    if (!remote_data::validKey(settings.remoteKey.c_str())) settings.remoteEnabled = false;
+    if (!remote_data::canReport(settings.remoteKey.c_str(), settings.btcAddress.c_str())) settings.remoteEnabled = false;
     if (settings.remoteName.length() > 48) settings.remoteName.remove(48);
     if (!coin::valid(settings.miningCoin)) settings.miningCoin = coin::BTC;
     for (size_t i = 0; i < kSettingCount; i++)

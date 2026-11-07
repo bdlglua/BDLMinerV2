@@ -56,9 +56,10 @@ Both projects make solo Bitcoin mining approachable on small ESP32 devices. Choo
 - Eight physical screens, English/French, themes, rotation and night mode.
 - Signed stable/beta updates with trial boot and automatic rollback.
 - Notifications, Home Assistant/MQTT, JSON API and Prometheus metrics.
-- Optional, read-only [private remote monitoring](docs/remote-access.md), off by
-  default and independent of public statistics. Paired miners report about every
-  five minutes over verified HTTPS, with seven days of history and no local hub.
+- Optional, read-only [remote monitoring](docs/remote-access.md), off by default
+  and independent of public statistics. Miners report under their payout address
+  about every five minutes over verified HTTPS, with seven days of history and no
+  local hub; a private key remains available.
 - Outbound HTTPS verifies the server certificate chain and hostname. Signed
   GitHub updates have a limited transport exception. See [Security](SECURITY.md).
 
@@ -102,7 +103,7 @@ Solo mining is educational: a payout requires finding a valid block.
 ## Documentation
 
 - [User guide](docs/guide.md) · [V2 hub and setup](docs/v2/README.md)
-- [My miners remotely](https://bdlglua.github.io/remote/) · [Private setup](docs/remote-access.md) / [Français](docs/remote-access.fr.md)
+- [My miners remotely](https://bdlglua.github.io/remote/) · [Setup](docs/remote-access.md) / [Français](docs/remote-access.fr.md)
 - [Troubleshooting FAQ](https://bdlglua.github.io/faq.html) · [Shares explained](docs/guide.md#pool-shares-and-local-records)
 - [Coin and pool setup](docs/mining-coins.md)
 - [Stable v2.5.4 release notes](docs/releases/v2.5.4.md) / [Français](docs/releases/v2.5.4.fr.md) · [All releases](https://github.com/bdlglua/BDLMinerV2/releases)

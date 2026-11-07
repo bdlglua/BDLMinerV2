@@ -32,7 +32,7 @@ struct String:std::string {
  String(uint32_t n,int){char b[16];snprintf(b,sizeof(b),"%x",n);assign(b);}
  size_t length()const{return size();}
 };
-struct {bool remoteEnabled=false;String remoteKey,remoteName;unsigned miningCoin=0;} settings;
+struct {bool remoteEnabled=false;String remoteKey,remoteName,btcAddress;unsigned miningCoin=0;} settings;
 uint32_t now=0;uint32_t millis(){return now;}
 struct {bool connected=true;bool isConnected(){return connected;}} WiFi;
 bool memoryOk=true,verified=true;bool tlsMemoryOk(){return memoryOk;}
@@ -66,6 +66,7 @@ struct HTTPClient {
 '''
 key='0123456789abcdef'*4
 expected=hashlib.sha256(key.encode()+(0x112233445566).to_bytes(8,'little')).hexdigest()[:16]
+address_id=hashlib.sha256(b'address:bc1qexample0address'+(0x112233445566).to_bytes(8,'little')).hexdigest()[:16]
 tests=r'''
 int main(){
  const char *key="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -91,9 +92,24 @@ int main(){
  assert(!deserializeJson(report,sent.back()));assert(report["hashrate"]==0 && report["temp_c"].isNull() && report["pool"]=="unknown");
  settings.remoteEnabled=false;now+=300000;remotePoll();assert(sent.size()==3);
  for(const auto &line:logs){assert(line.find(key)==std::string::npos);assert(line.find(id)==std::string::npos);}
- puts("private remote reporter: opt-in, verified TLS, secret isolation, identifiers, schedule, pause/offline: OK");
+ // Without a key, the payout address (before any .worker) names the space.
+ char address[101];
+ assert(remote_data::payoutAddress(" bc1qExample0address.rig1",address)&&!strcmp(address,"bc1qExample0address"));
+ assert(!remote_data::payoutAddress("",address)&&!address[0]);assert(!remote_data::payoutAddress("ab.c",address));
+ assert(!remote_data::payoutAddress("bad/address",address));assert(!remote_data::payoutAddress(std::string(101,'a').c_str(),address));
+ assert(remote_data::payoutAddress(std::string(100,'a').c_str(),address));
+ assert(remote_data::canReport("", "bc1qexample0address")&&remote_data::canReport(key,"")&&!remote_data::canReport("short","x"));
+ char upper[17],lower[17];remote_data::addressDeviceId("BC1QEXAMPLE0ADDRESS",0x112233445566ULL,upper);remote_data::addressDeviceId("bc1qexample0address",0x112233445566ULL,lower);
+ assert(!strcmp(upper,lower)&&!strcmp(lower,"ADDRESS_ID")&&strcmp(lower,id));
+ settings.remoteKey="";settings.remoteEnabled=true;settings.btcAddress="bc1qexample0address.rig1";now=remoteNext;remotePoll();assert(sent.size()==4);
+ assert(headers["Authorization"]=="Address bc1qexample0address");
+ assert(!deserializeJson(report,sent.back()));assert(report["id"]==std::string(lower));
+ assert(sent.back().find("bc1q")==std::string::npos&&sent.back().find("rig1")==std::string::npos);
+ settings.btcAddress="";now=remoteNext;remotePoll();assert(sent.size()==4);
+ for(const auto &line:logs){assert(line.find("bc1q")==std::string::npos);assert(line.find(lower)==std::string::npos);}
+ puts("remote reporter: opt-in, verified TLS, key or payout address, secret isolation, identifiers, schedule, pause/offline: OK");
 }
-'''.replace('EXPECTED_ID',expected)
+'''.replace('EXPECTED_ID',expected).replace('ADDRESS_ID',address_id)
 with tempfile.TemporaryDirectory() as tmp:
     src=Path(tmp)/'remote.cpp';exe=Path(tmp)/'remote'
     src.write_text(prefix+source+tests)

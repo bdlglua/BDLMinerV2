@@ -59,6 +59,10 @@ int main() {
         Settings disabled=settings;settingsApply(disabled,value.as<JsonObjectConst>());
         assert(settingsCompare(disabled,settings).live && !disabled.remoteEnabled);
         settings=original;
+        // Without a key, a usable payout address is enough for remote monitoring.
+        JsonDocument byAddress;byAddress["remote"]=true;byAddress["addr"]="bc1qexample0address.rig1";
+        assert(!settingsError(byAddress.as<JsonObjectConst>()));
+        byAddress["addr"]="ab";assert(settingsError(byAddress.as<JsonObjectConst>()));
     }
 
     assert(settings.miningCoin == coin::BTC);
