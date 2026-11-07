@@ -171,11 +171,11 @@ void onCandidate(uint32_t nonce, const uint8_t hash[32], void *ctx) {
         stats.bestDiff = d;
         bestDirty = true;
     }
-    if (d >= 1.0) stats.over32bits++;
+    if (d >= 1.0) stats.over32bits = stats.over32bits + 1;
     // Bitcoin interprets the digest as little-endian. Inspect the exact bits
     // of fully verified candidates, avoiding floating-point boundary rounding.
     if (!(hash[24] | hash[25] | hash[26] | hash[27] | hash[28] | hash[29] | hash[30] | hash[31]))
-        ++stats.over64bits;
+        stats.over64bits = stats.over64bits + 1;
     for (auto &b : blockBests) {
         if (b.height == w.height && w.height && d > b.best) b.best = d;
     }
@@ -217,7 +217,8 @@ void onCandidate(uint32_t nonce, const uint8_t hash[32], void *ctx) {
                 if (enqueued) blockQueue[blockQueueCount++] = queued;
                 CandidateRecord &record = candidates[candidateHead];
                 record = {};
-                record.info.number = ++stats.blocksFound;
+                stats.blocksFound = stats.blocksFound + 1;
+                record.info.number = stats.blocksFound;
                 record.info.height = w.height;
                 record.info.coin = activeMiningCoin;
                 memcpy(record.info.hash, hash, 32);
@@ -226,7 +227,7 @@ void onCandidate(uint32_t nonce, const uint8_t hash[32], void *ctx) {
                 candidateHead = (candidateHead + 1) % 4;
                 if (candidateCount < 4) ++candidateCount;
                 stats.lifetimeBlocks = baseBlocks + stats.blocksFound;
-                if (enqueued) ++stats.sharesFound;
+                if (enqueued) stats.sharesFound = stats.sharesFound + 1;
             }
             portEXIT_CRITICAL(&statsMux);
             xSemaphoreGive(jobMutex);
@@ -239,7 +240,7 @@ void onCandidate(uint32_t nonce, const uint8_t hash[32], void *ctx) {
             }
         } else if (shareQueue && xQueueSend(shareQueue, &queued, 0) == pdTRUE) {
             portENTER_CRITICAL(&statsMux);
-            stats.sharesFound++;
+            stats.sharesFound = stats.sharesFound + 1;
             portEXIT_CRITICAL(&statsMux);
         }
     }
@@ -680,12 +681,12 @@ void minerShareResult(bool accepted, const stratum::ShareAck &ack) {
     portENTER_CRITICAL(&statsMux);
     settleShare(ack.id, accepted ? ShareAccepted : ShareRejected);
     if (accepted) {
-        stats.accepted++;
+        stats.accepted = stats.accepted + 1;
         // A delayed reply may arrive after vardiff or a new job. Credit the
         // submitted target, never the candidate's luck or the latest target.
         stats.acceptedWork += ack.difficulty;
     } else {
-        stats.rejected++;
+        stats.rejected = stats.rejected + 1;
         unsigned reason=unsigned(ack.reason);
         stats.rejectedReasons[reason<unsigned(stratum::RejectReason::Count)?reason:0]++;
     }

@@ -78,7 +78,7 @@ nav .wrap{display:flex;align-items:center;gap:20px;height:70px}
 .text-links a{color:var(--text);text-decoration:none;font-weight:600}
 .text-links a:hover{color:var(--fg)}
 .text-links .s{margin:0}
-.hero-art{position:relative;padding:28px 10px 56px 24px}
+.hero-art{position:relative;padding:28px 10px 104px 24px}
 .device{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:16px}
 .device img{display:block;width:100%;height:auto;border-radius:10px;image-rendering:pixelated;background:#000}
 .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
@@ -86,14 +86,14 @@ nav .wrap{display:flex;align-items:center;gap:20px;height:70px}
 .thumbs button{padding:0;border:0;background:none;cursor:pointer}
 .thumbs button:hover img{opacity:.85}
 .thumbs button[aria-pressed=true] img{opacity:1;border-color:var(--accent)}
-.float-card{position:absolute;left:-44px;bottom:-34px;z-index:2;min-width:230px;display:grid;gap:2px;padding:16px 18px 12px;background:var(--panel2);border:1px solid var(--border-strong);border-radius:16px}
+.float-card{position:absolute;left:-44px;bottom:-62px;z-index:2;pointer-events:none;min-width:230px;display:grid;gap:2px;padding:16px 18px 12px;background:var(--panel2);border:1px solid var(--border-strong);border-radius:16px}
 .float-card .label{color:var(--label);font-size:13px;font-weight:600}
 .float-card strong{color:var(--fg);font-size:26px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .float-card .sub{color:var(--text);font-size:13px}.float-card .sub b{color:var(--good)}
 .spark{display:block;width:100%;height:36px;margin-top:6px}
 .spark .spark-line{fill:none;stroke:var(--good);stroke-width:2;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .spark .spark-area{fill:var(--good);fill-opacity:.12}
-@media (max-width:560px){.float-card{position:relative;left:auto;bottom:auto;margin-top:-28px;margin-inline:12px}}
+@media (max-width:560px){.hero-art{padding-bottom:24px}.float-card{position:relative;left:auto;bottom:auto;margin:12px 0 0}}
 /* Decorative coins, drawn in CSS */
 .coin{position:absolute;z-index:3;display:grid;place-items:center;width:var(--s,64px);height:var(--s,64px);border-radius:50%;
  background:radial-gradient(circle at 32% 28%,#fff1b8 0,#ffc94d 18%,#f7931a 46%,#c76a00 78%,#8a4500 100%);

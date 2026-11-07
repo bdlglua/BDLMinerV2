@@ -6,7 +6,7 @@ let poolNames={},poolLinks={};try{const data=JSON.parse(document.getElementById(
 const FR={skip:'Aller au contenu',navFeatures:'Fonctions',navBoards:'Cartes',navInstall:'Flasher',navStats:'Statistiques',navCommunity:'Communauté',
 navHome:'Accueil',navStart:'Bien démarrer',navDemo:'Démo',navMore:'Explorer',navFAQ:'FAQ',navNews:'Nouveautés',navSupport:'Soutenir',navPages:'Toutes les pages',
 navRemote:'Mes mineurs',
-heroPill:'Open source · mises à jour signées',famAll:'Toutes les cartes',famEsp32:'ESP32',famS3:'ESP32-S3',famS2c3:'S2 / C3',famAsic:'ASIC',famGroup:'Famille de cartes',searchLabel:'Rechercher une carte',searchBoard:'Rechercher une carte',cardMiners:'{n} miners',cardMiner:'{n} miner',check1:'SHA-256 matériel sur ESP32, S2, S3 et C3',check2:'Stratum V1 et V2 chiffré (Noise)',check3:'Bitaxe Gamma jusqu’à 800 MHz',
+heroPill:'Open source · mises à jour signées',famAll:'Toutes les cartes',famEsp32:'ESP32',famS3:'ESP32-S3',famS2c3:'S2 / C3',famAsic:'ASIC',famGroup:'Famille de cartes',searchLabel:'Rechercher une carte',searchBoard:'Rechercher une carte',noMatch:'Aucune carte ne correspond.',cardMiners:'{n} miners',cardMiner:'{n} miner',check1:'SHA-256 matériel sur ESP32, S2, S3 et C3',check2:'Stratum V1 et V2 chiffré (Noise)',check3:'Bitaxe Gamma jusqu’à 800 MHz',
 worksWith:'Fonctionne avec les pools solo',marketTitle:'Le parc BDLMiner en direct',marketLead:'Les miners qui partagent anonymement leur hashrate, par carte. Mis à jour toutes les 20 secondes.',
 marketAll:'Toutes les statistiques',colShare:'Part des miners',liveFleet:'Parc en direct',heroMiners:'miners en ligne',heroRecord:'Meilleure heure',
 exploreTitle:'Découvrir BDLMiner',exploreLead:'Choisis ta carte, essaie l’interface ou trouve de l’aide pour la prochaine étape.',
@@ -68,7 +68,7 @@ altMining:'L\'écran du miner : 1,005 MH/s, 10827 shares, meilleure difficulté 
 altGlobal:'Écran du prix du Bitcoin et du réseau',altClock:'Écran de l\'horloge',screens:'Écrans',
 noStats:'Pas encore de rapport : les miners partagent leur hashrate à partir de la version 1.9.0.',statsDown:'Statistiques indisponibles pour le moment.',
 experimental:'expérimental',chartDay:'Hashrate total toutes les 5 minutes, 24 dernières heures',chartWeek:'Hashrate total par heure, 7 derniers jours',noChart:'La courbe se remplit au fil des rapports.'};
-const EN={cardMiners:'{n} miners',cardMiner:'{n} miner',colCoin:'Cryptocurrency',coinsTitle:'By cryptocurrency',poolOther:'Other / private pool',poolUnknown:'Not shared',colPool:'Pool',chatUnread:'unread',devMore:'Show the {n} other supported boards',devFewer:'Hide the boards without a miner',chatYou:'(you)',chatGuests:'+ {n} visitor(s) without a name',chatNobody:'Nobody with a name yet.',chatWhen:'Changeable on {d}',chatNow:'Changeable now',chatNeedName:'Choose your name first.',chatSaved:'Name registered.',
+const EN={noMatch:'No board matches.',cardMiners:'{n} miners',cardMiner:'{n} miner',colCoin:'Cryptocurrency',coinsTitle:'By cryptocurrency',poolOther:'Other / private pool',poolUnknown:'Not shared',colPool:'Pool',chatUnread:'unread',devMore:'Show the {n} other supported boards',devFewer:'Hide the boards without a miner',chatYou:'(you)',chatGuests:'+ {n} visitor(s) without a name',chatNobody:'Nobody with a name yet.',chatWhen:'Changeable on {d}',chatNow:'Changeable now',chatNeedName:'Choose your name first.',chatSaved:'Name registered.',
 chatEmpty:'No message yet: say hello!',chatTeam:'team',chatEdited:'edited',chatEdit:'Edit',chatDelete:'Delete',chatSure:'Sure?',chatBan:'Ban',chatSaveEdit:'Save',chatCancel:'Cancel',
 chatOffline:'Connecting to the chat…',chatUploading:'Sending the file…',chatRecording:'Recording… {s} s (click 🎤 to stop)',chatVoice:'Voice message ({s} s)',chatPlay:'Play',chatPause:'Pause',chatPosition:'Position in the voice message',chatPhoto:'Photo',chatVideo:'Video',
 chatNoMic:'Microphone unavailable or refused.',chatQrHide:'Hide the QR code',chatLinkCopied:'Link copied: open it on your other device. Share it with no one.',chatQrFailed:'The QR code cannot be shown for now: use “Copy the link”.',chatCodeSet:'Your name followed you to this device.',
@@ -224,7 +224,7 @@ function homeMarket(){const table=document.getElementById('home-market');if(!tab
  // Cards: the four busiest boards of the chosen family.
  const cards=document.getElementById('hm-cards');
  if(cards){cards.innerHTML='';const list=all.filter(r=>homeFilter.cards==='all'||r.family===homeFilter.cards).slice(0,4);
-  if(!list.length){const p=document.createElement('p');p.className='ticker-empty';p.textContent=summary?T('noneNow'):'–';cards.appendChild(p)}
+  if(!list.length){const p=document.createElement('p');p.className='ticker-empty';p.textContent=!summary?'–':all.length?T('noMatch'):T('noneNow');cards.appendChild(p)}
   list.forEach((r,i)=>{const a=document.createElement('a'),head=document.createElement('span'),title=document.createElement('span'),tag=document.createElement('span');
    a.className='ticker'+(i===1?' active':'');a.href=BOARDS.some(b=>b.env===r.name)?'flash.html?board='+encodeURIComponent(r.name):'stats.html';
    head.className='ticker-head';title.className='ticker-name';title.textContent=r.label;tag.className='ticker-tag';tag.textContent=famLabel(r.family);
@@ -237,7 +237,7 @@ function homeMarket(){const table=document.getElementById('home-market');if(!tab
  const q=homeFilter.query.trim().toLowerCase();
  const rows=all.filter(r=>(homeFilter.table==='all'||r.family===homeFilter.table)&&(!q||r.label.toLowerCase().includes(q)||r.name.includes(q)));
  const body=table.tBodies[0];body.innerHTML='';
- if(!rows.length){const td=body.insertRow().insertCell();td.colSpan=6;td.className='empty';td.textContent=summary?T('noneNow'):'–';return}
+ if(!rows.length){const td=body.insertRow().insertCell();td.colSpan=6;td.className='empty';td.textContent=!summary?'–':all.length&&(q||homeFilter.table!=='all')?T('noMatch'):T('noneNow');return}
  rows.forEach((r,i)=>{const tr=body.insertRow(),share=minerTotal?r.miners/minerTotal:0;
   const rank=tr.insertCell();rank.className='rank';rank.textContent=i+1;
   const cell=tr.insertCell(),wrap=document.createElement('span'),label=document.createElement('span'),tag=document.createElement('small');

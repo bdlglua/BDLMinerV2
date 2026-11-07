@@ -48,7 +48,8 @@
  ];
  function showFAQ(){
   $('discovery-help').innerHTML=heading('faqKicker','faqTitle','faqLead')+`<label class="faq-search"><span class="s">${escape(t('search'))}</span><input type="search" id="faq-search" autocomplete="off" value="${escape(faqQuery)}" placeholder="USB, Wi-Fi, shares…"></label><div class="faq-list" id="faq-list"></div><p id="faq-empty" class="s" role="status" hidden>${escape(t('noFaq'))}</p>`;
-  const render=()=>{const needle=faqQuery.toLocaleLowerCase(language),entries=faq.filter(entry=>entry[language].join(' ').toLocaleLowerCase(language).includes(needle));$('faq-list').innerHTML=entries.map(entry=>`<details><summary>${escape(entry[language][0])}</summary><p>${escape(entry[language][1])}</p>${link(entry.url||'https://github.com/bdlglua/BDLMinerV2/blob/main/docs/guide.md#'+entry.anchor,t('guide'))}</details>`).join('');$('faq-empty').hidden=entries.length>0};render();$('faq-search').oninput=event=>{faqQuery=event.target.value;render()};
+  const fold=text=>String(text).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase(language).replace(/[^\p{L}\p{N}]+/gu,'');
+  const render=()=>{const needle=fold(faqQuery),entries=faq.filter(entry=>fold(entry[language].join(' ')).includes(needle));$('faq-list').innerHTML=entries.map(entry=>`<details><summary>${escape(entry[language][0])}</summary><p>${escape(entry[language][1])}</p>${link(entry.url||'https://github.com/bdlglua/BDLMinerV2/blob/main/docs/guide.md#'+entry.anchor,t('guide'))}</details>`).join('');$('faq-empty').hidden=entries.length>0};render();$('faq-search').oninput=event=>{faqQuery=event.target.value;render()};
  }
  function showNews(){
   const stable=data.channels.stable,beta=data.channels.beta,same=stable.version===beta.version,root=data.channel==='beta'?'../':'./',betaPath=data.channel==='beta'?'./':'beta/';

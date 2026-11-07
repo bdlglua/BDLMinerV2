@@ -259,10 +259,11 @@ def handler(fleet, token, allowed_hosts, require_token=False):
                 elif route.path == '/api/history':
                     q = parse_qs(route.query)
                     self.reply(200, fleet.history(q.get('miner', [''])[0], int(q.get('hours', ['24'])[0])))
-                elif route.path in ('/', '/app.js', '/style.css'):
+                elif route.path in ('/', '/app.js', '/style.css', '/icon.svg'):
                     name = 'index.html' if route.path == '/' else route.path[1:]
                     self.reply(200, (ASSETS / name).read_bytes(),
-                               {'index.html': 'text/html; charset=utf-8', 'app.js': 'text/javascript', 'style.css': 'text/css'}[name])
+                               {'index.html': 'text/html; charset=utf-8', 'app.js': 'text/javascript', 'style.css': 'text/css',
+                                'icon.svg': 'image/svg+xml'}[name])
                 else:
                     self.reply(404, {'error': 'Not found'})
             except (ValueError, KeyError):
