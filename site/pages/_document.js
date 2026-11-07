@@ -12,7 +12,8 @@ export default function Document(){
    <meta property="og:title" content="BDLMinerV2 | ESP32 Solo Bitcoin Miner for M5StickC Plus2"/>
    <meta property="og:description" content="Open-source ESP32 solo Bitcoin miner firmware for M5StickC Plus2 and other supported boards. Browser installation, live dashboard and stable updates."/>
    <meta property="og:image" content="assets/screen-mining.png"/>
-   <meta name="theme-color" content="#0b0e1a"/>
+   <meta name="theme-color" content="#141416"/>
+   <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
    <script dangerouslySetInnerHTML={{__html:themeBoot}}/>
    <link rel="stylesheet" href="assets/site.css"/>
    <link rel="stylesheet" href="assets/discovery.css"/>

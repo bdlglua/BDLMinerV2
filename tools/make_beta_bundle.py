@@ -20,7 +20,7 @@ DEFAULT_BOARDS=('m5stickc-plus2','bitaxe-gamma-601')
 TOOLS=('bdlhub.py','calibrate_gamma.py','check_fleet.py','check_hardware.py',
        'hardware_suite.py','trace_hardware.py','monitor_network.py','reset_serial.py','firmware_image.py','release_version.py')
 PACKAGE=('__init__.py','client.py','hub.py','calibration.py','example.json',
-         'web/index.html','web/app.js','web/style.css')
+         'web/index.html','web/app.js','web/style.css','web/icon.svg')
 DOCS=('v2/README.md','v2/implementation.md','audits/2026-11-02-v2-beta-readiness.md',
       'remote-access.md','remote-access.fr.md',
       'v2/hardware-validation.md','v2/hardware-validation.fr.md',

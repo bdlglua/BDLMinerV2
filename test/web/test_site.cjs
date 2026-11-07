@@ -40,6 +40,8 @@ async function main(){
   await page.goto(url+'/faq.html');await page.locator('#faq-search').fill('USB');
   assert.ok(await page.locator('#faq-list details').count()>0);
   await page.locator('#faq-list summary').first().click();assert.equal(await page.locator('#faq-list details').first().getAttribute('open'),'');
+  // Case, accents, hyphens and spaces do not matter: "wifi" finds "Wi-Fi".
+  await page.locator('#faq-search').fill('wifi');assert.ok(await page.locator('#faq-list details').count()>0,'wifi must find the Wi-Fi answers');
   await page.locator('#faq-search').fill('zzzz-no-match');assert.equal(await page.locator('#faq-empty').isVisible(),true);
   await page.goto(url+'/gallery.html');await page.locator('.gallery-invite').waitFor();
   assert.equal(await page.locator('#gallery .gallery-card').count(),0);

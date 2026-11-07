@@ -63,7 +63,11 @@ public:
                     if ((int32_t)(since[i] - since[slot]) < 0) slot = i;
                 }
                 waiting[slot].stop();
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+                waiting[slot] = _server.accept();  // available() was renamed in 3.x
+#else
                 waiting[slot] = _server.available();
+#endif
                 since[slot] = now;
             }
             for (int i = 0; i < kWaiting; i++) {

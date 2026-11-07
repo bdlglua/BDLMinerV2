@@ -75,7 +75,7 @@ void throttle() {
     if (thermal.hot != wasHot) {
         if (thermal.hot) {
             char msg[64];
-            snprintf(msg, sizeof(msg), "%.0f C, mining paused until %u C", t, settings.maxTemp - 5);
+            snprintf(msg, sizeof(msg), "%.0f C, mining paused until %u C", t, (unsigned)(settings.maxTemp - 5));
             logf("[watch] too hot: %s\n", msg);
             notify("Miner too hot", msg, 4, "thermometer");
         } else {

@@ -2,6 +2,10 @@
 
 #include <esp_core_dump.h>
 #include <esp_ota_ops.h>
+#include <esp_idf_version.h>
+#if ESP_IDF_VERSION_MAJOR >= 5
+#include <esp_app_desc.h>
+#endif
 #include <esp_flash.h>
 #include <Preferences.h>
 
@@ -108,7 +112,11 @@ void crashBegin() {
         char line[220];
         // The dump survives updates: addresses only mean something to its own build.
         char running[65];
+#if ESP_IDF_VERSION_MAJOR >= 5
+        bool earlier = esp_app_get_elf_sha256(running, sizeof(running)) > 0 &&
+#else
         bool earlier = esp_ota_get_app_elf_sha256(running, sizeof(running)) > 0 &&
+#endif
                        strncmp(running, (const char *)s.app_elf_sha256, 16) != 0;
         uintptr_t abortAt = (uintptr_t)&panic_abort;
         bool aborted = !earlier && s.exc_pc >= abortAt && s.exc_pc < abortAt + 0x40;
