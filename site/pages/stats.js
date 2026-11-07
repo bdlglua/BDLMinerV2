@@ -21,16 +21,20 @@ export default function StatsPage(){
   </div>
   <ul className="fleet" id="st-fleet"></ul>
   <button type="button" className="fleet-more" id="st-more" aria-expanded="false" aria-controls="st-fleet" hidden></button>
-  <div className="card">
-   <div className="chart-head">
-    <span className="live"><span className="dot on" aria-hidden="true"></span><span data-t="live">Live</span></span>
-    <span className="s" id="st-updated" aria-live="off"></span>
-    <div className="range" role="group" aria-label="Period" data-al="period">
-     <button type="button" data-range="day" aria-pressed="true">24 h</button>
-     <button type="button" data-range="week" aria-pressed="false" data-t="week">7 days</button>
-    </div>
+  <div className="card public-performance" id="st-performance">
+   <div className="performance-head"><div><p className="performance-kicker" data-t="sPerformance">COMMUNITY PERFORMANCE</p><h2 data-t="sHistory">Mining statistics</h2><p className="s performance-dates" id="st-period-dates"></p></div>
+    <div className="performance-actions"><div className="range" role="group" aria-label="Period" data-al="period"><button type="button" data-range="hour" aria-pressed="false">1 h</button><button type="button" data-range="six" aria-pressed="false">6 h</button><button type="button" data-range="day" aria-pressed="true">24 h</button><button type="button" data-range="week" aria-pressed="false" data-t="week">7 days</button></div></div>
    </div>
-   <svg className="chart" id="st-chart" viewBox="0 0 960 200" role="img" aria-label="Total hashrate, last 24 hours"></svg>
+   <div className="period-statistics" aria-live="polite">
+    <div><span data-t="sAverage">Average hashrate</span><strong id="st-period-average">—</strong><small id="st-period-variation">—</small></div>
+    <div><span data-t="sMaximum">Peak hashrate</span><strong id="st-period-maximum">—</strong><small id="st-period-minimum">—</small></div>
+    <div><span data-t="sMiners">Average active miners</span><strong id="st-period-miners">—</strong><small id="st-period-peak-miners">—</small></div>
+    <div><span data-t="sSamples">Available measurements</span><strong id="st-period-samples">—</strong><small id="st-period-coverage">—</small></div>
+   </div>
+   <div className="chart-head"><div className="metric-tabs" role="group" aria-label="Chart metric" data-al="sMetric"><button type="button" data-st-metric="hashrate" aria-pressed="true" data-t="sHashrate">Hashrate</button><button type="button" data-st-metric="miners" aria-pressed="false" data-t="tMiners">Miners</button></div><span className="period-legend" data-t="sMean">Period average</span><span className="live" id="st-live"><span className="dot on" aria-hidden="true"></span><span id="st-live-label" data-t="live">Live</span></span><span className="s" id="st-updated" aria-live="off"></span></div>
+   <div className="public-chart-wrap"><svg className="chart" id="st-chart" viewBox="0 0 960 320" role="img" tabIndex="0" aria-label="Mining history. Use left and right arrows to inspect measurements." aria-describedby="st-chart-note"></svg><div id="st-tooltip" className="public-chart-tooltip" role="status" hidden><time></time><strong></strong><small></small></div><p id="st-chart-empty" className="public-chart-empty" hidden></p></div>
+   <p className="s chart-note" id="st-chart-note" data-t="sNote">Statistics use five-minute aggregate measurements. Missing periods are left empty; the live reading is excluded from period averages.</p>
+   <details className="public-readings"><summary data-t="sRecent">Recent measurements</summary><div className="stats-table-scroll"><table><thead><tr><th data-t="sTime">Time</th><th data-t="sAverage">Average hashrate</th><th data-t="sMiners">Average active miners</th><th data-t="sSourceSamples">Source measurements</th></tr></thead><tbody id="st-readings"></tbody></table></div></details>
   </div>
   <div className="split">
    <div className="card"><h3 data-t="byBoard">By board</h3><table className="by" id="st-boards"></table></div>

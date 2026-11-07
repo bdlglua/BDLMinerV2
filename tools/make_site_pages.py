@@ -1,5 +1,6 @@
 """Fill the public pages exported by the React/Next.js site (installer/site/) for one release channel."""
 import html
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -28,6 +29,8 @@ LEGACY_SECTIONS = {
 
 def build_pages(root, output, version, boards, content):
     root, output = Path(root), Path(output)
+    asset_versions = {name: hashlib.sha256((root / 'installer/assets' / name).read_bytes()).hexdigest()[:12]
+                      for name in ('site.js', 'site.css')}
     titles = {key: {'en': page[1], 'fr': page[2]} for key, page in PAGES.items()}
     for key, (filename, title, _) in PAGES.items():
         # Complete pages rendered by the React/Next.js site (site/, `npm run build`).
@@ -37,6 +40,8 @@ def build_pages(root, output, version, boards, content):
         page = page.replace('__PAGE_TITLE__', html.escape('BDLMiner V2: ' + title))
         page = page.replace('__BOARDS__', json.dumps(boards).replace('<', '\\u003c')).replace('__VERSION__', version)
         page = page.replace('__SITE_DATA__', json.dumps(data, ensure_ascii=False).replace('<', '\\u003c'))
+        for name, digest in asset_versions.items():
+            page = page.replace('"assets/' + name + '"', '"assets/' + name + '?v=' + digest + '"')
         page = re.sub(r'href="#([a-z-]+)"', lambda match: 'href="' + LEGACY_SECTIONS.get(match[1], '#' + match[1]) + '"', page)
         if key != 'flash':
             page = re.sub(r'<script type="module" src="https://unpkg.com/esp-web-tools[^>]+></script>\n?', '', page)

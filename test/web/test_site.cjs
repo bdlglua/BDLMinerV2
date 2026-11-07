@@ -113,6 +113,33 @@ async function main(){
    await page.goto(base+'/#demo');await page.waitForURL(base+'/demo.html');await page.frameLocator('#demo-frame').locator('#m .hero').waitFor();
    assert.ok(page.frames().some(frame=>frame.url().startsWith(base+'/demo/miner/')));
   }
+  // Public period statistics: anonymous totals, not private miner telemetry.
+  const originalStats=structuredClone(communityStats);
+  const stamp=Date.now(),measured=[.9,1,1.1,1.1,1,.9].map((value,i)=>({at:stamp-(30-i*5)*60000,hashrate:value*1e12,miners:6+i%3,average_miners:6+i%3,samples:1,interval_ms:300000}));
+  const period={from:stamp-3600000,to:stamp,samples:6,expected_samples:12,average_hashrate:1e12,minimum_hashrate:.9e12,maximum_hashrate:1.1e12,variation_percent:8.16496580927726,average_miners:7,minimum_miners:6,maximum_miners:8,first_at:measured[0].at,last_at:measured.at(-1).at};
+  Object.assign(communityStats,{at:stamp,hashrate:1.05e12,miners:7,recent:[...measured,{at:stamp,hashrate:1.05e12,miners:7,live:true}],history:[],periods:{1:period,6:{...period,expected_samples:72},24:{...period,expected_samples:288},168:{...period,expected_samples:2016}}});
+  await page.goto(url+'/stats.html');await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();
+  await page.locator('[data-range=hour]').click();assert.equal(await page.locator('#st-export').count(),0);
+  assert.equal(await page.locator('#st-period-maximum').textContent(),'1,1 TH/s');assert.match(await page.locator('#st-period-minimum').textContent(),/900 GH\/s/);
+  assert.equal(await page.locator('#st-period-miners').textContent(),'7');assert.equal(await page.locator('#st-period-samples').textContent(),'6');assert.match(await page.locator('#st-period-coverage').textContent(),/50 %/);
+  assert.equal(await page.locator('#st-hashrate').textContent(),'1,05 TH/s','keep the live value separate from the period average');
+  const origin=await page.locator('#st-chart').evaluate(svg=>({grid:Number(svg.querySelector('.grid-h').getAttribute('x1')),line:Number(svg.querySelector('.line').getAttribute('d').match(/^M([\d.]+)/)[1])}));
+  assert.ok(Math.abs(origin.grid-origin.line)<1,'the first observed measurement starts at the plot origin');
+  await page.locator('#st-chart').focus();await page.keyboard.press('Home');assert.equal(await page.locator('#st-tooltip').isVisible(),true);assert.match(await page.locator('#st-tooltip strong').textContent(),/900 GH\/s/);
+  await page.locator('[data-st-metric=miners]').click();await page.locator('#st-chart').focus();await page.keyboard.press('End');assert.match(await page.locator('#st-tooltip strong').textContent(),/^7 miners/);
+  await page.locator('[data-st-metric=hashrate]').click();await page.locator('#st-chart').scrollIntoViewIfNeeded();const chartBox=await page.locator('#st-chart').boundingBox();await page.mouse.move(chartBox.x+chartBox.width/2,chartBox.y+60);assert.equal(await page.locator('#st-tooltip').isVisible(),true);
+  await page.locator('.public-readings summary').click();assert.equal(await page.locator('#st-readings tr').count(),7);
+  await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await page.locator('#theme').click();
+  if(process.env.BDL_SCREENSHOT_DIR){
+   fs.mkdirSync(process.env.BDL_SCREENSHOT_DIR,{recursive:true});await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-desktop.png'),style:'nav,#chat-bubble{visibility:hidden}'});
+   await page.setViewportSize({width:375,height:812});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-mobile.png'),style:'nav,#chat-bubble{visibility:hidden}'});await page.setViewportSize({width:1440,height:1000});
+  }
+  communityStats.history=[{at:stamp-2*3600000,end_at:stamp-3600000,hashrate:1e12,miners:7,samples:12,interval_ms:3600000},{at:stamp-3600000,end_at:stamp-600000,hashrate:1.1e12,miners:8,samples:10,missing:true,interval_ms:3600000}];
+  await page.goto(url+'/stats.html');await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();await page.locator('[data-range=week]').click();assert.equal(await page.locator('[data-range=week]').getAttribute('aria-pressed'),'true');assert.match(await page.locator('#st-period-coverage').textContent(),/2.?016/);
+  assert.equal(await page.locator('#st-chart .line').count(),0,'do not join hourly averages across a partially missing hour');
+  communityStats.periods={24:{samples:0,expected_samples:288}};communityStats.recent=[];communityStats.history=[];
+  await page.goto(url+'/stats.html');await page.locator('#st-chart-empty').filter({hasText:/Aucune mesure/}).waitFor();assert.equal(await page.locator('#st-export').count(),0);assert.equal(await page.locator('#st-period-average').textContent(),'—');
+  communityStats=originalStats;
   communityStats.coins=[{name:'BSV',miners:1,hashrate:1e6},{name:'XEC',miners:1,hashrate:1e6},{name:'DGB',miners:1,hashrate:5e5},{name:'PPC',miners:1,hashrate:1e6}];
   await page.goto(url+'/stats.html');await page.locator('#st-coins tbody tr').first().waitFor();
   assert.equal(await page.locator('#st-coins tbody tr').count(),4);

@@ -34,6 +34,8 @@ class SiteBuilderTests(unittest.TestCase):
                 self.assertIn('data-page="' + key + '"', document)
                 self.assertNotIn('__PAGE_CONTENT__', document)
                 self.assertEqual('src="https://unpkg.com/esp-web-tools@' in document, key == 'flash')
+                self.assertRegex(document, r'src="assets/site\.js\?v=[a-f0-9]{12}"')
+                self.assertRegex(document, r'href="assets/site\.css\?v=[a-f0-9]{12}"')
             self.assertIn('href="flash.html"', home)
             payload = json.loads(re.search(r'<script id="site-data" type="application/json">(.*?)</script>', page, re.S)[1])
             self.assertEqual(payload['channels']['beta']['version'], '2.1.0-beta.1')

@@ -81,6 +81,8 @@ chatErrors:{taken:'This name is already taken.',wait:'You can change your name o
 chatAdminOn:'Team mode on.',chatAdminOff:'Key refused.',chatAdminSlow:'Too many tries: try again in an hour.',colBoard:'Board',colVersion:'Version',colMiners:'Miners',colHashrate:'Hashrate',noneNow:'No miner right now.',devOnline:'online',devOffline:'offline',devNone:'none yet',noStats:'No reports yet: miners share their hashrate from version 1.9.0 on.',statsDown:'Statistics unavailable for now.',
 experimental:'experimental',chartDay:'Total hashrate every 5 minutes, last 24 hours',chartWeek:'Total hashrate per hour, last 7 days',noChart:'The chart fills up as the reports come.',
 updated:'updated {s} s ago',now:'now'};
+Object.assign(FR,{"sPerformance": "PERFORMANCES DU PARC", "sHistory": "Statistiques de minage", "sAverage": "Hashrate moyen", "sMaximum": "Hashrate maximal", "sMiners": "Mineurs actifs moyens", "sSamples": "Mesures disponibles", "sMetric": "Mesure affichée", "sHashrate": "Hashrate", "sMean": "Moyenne de la période", "sNote": "Statistiques issues des mesures agrégées de cinq minutes. Les périodes manquantes restent vides ; la valeur instantanée est exclue des moyennes.", "sRecent": "Dernières mesures", "sTime": "Heure", "sSourceSamples": "Mesures sources", "sMinimum": "Minimum", "sPeakMiners": "Maximum", "sVariation": "Écart-type relatif", "sCoverage": "{n} % · {total} attendues", "sNoMeasurements": "Aucune mesure disponible sur cette période.", "sChartAria": "{metric}. Utilisez les flèches gauche et droite pour consulter les mesures.", "sInstant": "Valeur instantanée", "sHourMean": "Moyenne horaire", "sFiveMinute": "Moyenne sur 5 min"});
+Object.assign(EN,{"sMinimum": "Minimum", "sPeakMiners": "Peak", "sVariation": "Relative deviation", "sCoverage": "{n}% · {total} expected", "sNoMeasurements": "No measurements available in this period.", "sChartAria": "{metric}. Use left and right arrows to inspect measurements.", "sInstant": "Instantaneous value", "sHourMean": "Hourly average", "sFiveMinute": "Five-minute average"});
 document.querySelectorAll('[data-t]').forEach(e=>EN[e.dataset.t]=e.textContent);
 document.querySelectorAll('[data-h]').forEach(e=>EN[e.dataset.h]=e.innerHTML);
 document.querySelectorAll('[data-alt]').forEach(e=>EN[e.dataset.alt]=e.alt);
@@ -105,39 +107,119 @@ function boards(){const ul=document.getElementById('board-list');if(!ul)return;u
  for(const b of BOARDS){const li=document.createElement('li');const exp=/experimental/i.test(b.name);li.className=exp?'exp':'';
   li.textContent=exp?b.name.replace(/\s*\(experimental[^)]*\)/i,'')+' ('+T('experimental')+')':b.name;ul.appendChild(li)}}
 
-// The last 24 hours, one point every 5 minutes, or 7 days, one per hour;
-// both end with the total right now. Drawn at the chart's real width, so the
-// text and the live dot keep their shape on every screen.
-let range='day';
-function chart(){const svg=document.getElementById('st-chart');if(!svg)return;
- svg.setAttribute('aria-label',T(range=='day'?'chartDay':'chartWeek'));
- const W=Math.max(280,Math.round(svg.clientWidth||960)),H=200,top=12,bottom=22,right=10;svg.setAttribute('viewBox','0 0 '+W+' '+H);
- const now=summary?.recent?.at(-1);
- const points=summary?(range=='day'?summary.recent||[]:[...(summary.history||[]),...(now?[now]:[])]):[];
- if(points.length<2){svg.innerHTML='<text x="12" y="100">'+T('noChart')+'</text>';return}
- const span=range=='day'?864e5:7*864e5,t1=points.at(-1).at,t0=t1-span;
- const max=Math.max(...points.map(p=>p.hashrate))*1.15||1;
- const x=t=>(W-right)*Math.max(0,t-t0)/span,y=v=>top+(H-top-bottom)*(1-v/max);
- const line=points.filter(p=>p.at>=t0).map((p,i)=>(i?'L':'M')+x(p.at).toFixed(1)+' '+y(p.hashrate).toFixed(1)).join(' ');
- let grid='';for(let i=1;i<=3;i++){const v=max*i/4;grid+='<line x1="0" x2="'+W+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" class="grid-h"/><text x="4" y="'+(y(v)-4).toFixed(1)+'">'+rate(v)+'</text>'}
- // Time marks: every 6 hours over a day, every day over a week.
- const step=range=='day'?6*36e5:864e5,locale=lang=='fr'?'fr-FR':'en-US';
- for(let t=Math.ceil(t0/step)*step;t<t1-step/3;t+=step){const d=new Date(t);
-  const label=range=='day'?d.toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString(locale,{weekday:'short',day:'numeric'});
-  // Centred under its line; none too close to the edge or to "now".
-  const px=x(t);if(px<30||px>W-right-90)continue;
-  grid+='<line x1="'+px.toFixed(1)+'" x2="'+px.toFixed(1)+'" y1="'+top+'" y2="'+(H-bottom)+'" class="grid-v"/><text x="'+px.toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+label+'</text>'}
- grid+='<text x="'+(W-right)+'" y="'+(H-6)+'" text-anchor="end">'+T('now')+'</text>';
- const last=points.at(-1),lx=x(last.at).toFixed(1),ly=y(last.hashrate).toFixed(1);
- svg.innerHTML=grid+'<path d="'+line+' L'+lx+' '+(H-bottom)+' L'+x(Math.max(points[0].at,t0)).toFixed(1)+' '+(H-bottom)+' Z" class="area"/>'+
-  '<path d="'+line+'" class="line"/>'+
-  '<circle cx="'+lx+'" cy="'+ly+'" r="3.5" class="last"/>'}
-document.querySelectorAll('[data-range]').forEach(b=>b.onclick=()=>{range=b.dataset.range;
- document.querySelectorAll('[data-range]').forEach(o=>o.setAttribute('aria-pressed',o==b));chart()});
-addEventListener('resize',()=>chart());
+// Public totals: historical period indicators exclude the instantaneous live value.
+let range='day',statsMetric='hashrate',statsHover=null,statsPlot=null;
+const statsHours={hour:1,six:6,day:24,week:168};
+const statsNumber=n=>Number.isFinite(n)?n.toLocaleString(lang==='fr'?'fr-FR':'en-US',{maximumFractionDigits:1}):'—';
+const statsRate=n=>Number.isFinite(n)?rate(n):'—';
+const statsStamp=t=>new Date(t).toLocaleString(lang==='fr'?'fr-FR':'en-US',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+function statsSeries(){
+ if(!summary)return[];
+ const hours=statsHours[range],end=summary.at,from=end-hours*3600000;
+ const hourly=p=>({...p,at:p.end_at??p.at+3600000,interval_ms:3600000});
+ const source=hours===168?[...(summary.history||[]).map(hourly),...(summary.current_hour?[hourly(summary.current_hour)]:[]),...(summary.recent||[]).filter(p=>p.live)]:summary.recent||[];
+ return source.filter(p=>Number.isFinite(p.at)&&p.at>from&&p.at<=end&&Number.isFinite(p.hashrate)&&p.hashrate>=0&&Number.isFinite(p.average_miners??p.miners)&&(p.average_miners??p.miners)>=0)
+  .map(p=>({...p,miners:p.average_miners??p.miners,interval_ms:p.interval_ms||(hours===168?3600000:300000),samples:p.live?0:p.samples??1})).sort((a,b)=>a.at-b.at);
+}
+function statsPeriod(points){
+ const p=summary?.periods?.[statsHours[range]],set=(id,value)=>document.getElementById(id).textContent=value;
+ set('st-period-average',statsRate(p?.average_hashrate));set('st-period-maximum',statsRate(p?.maximum_hashrate));
+ set('st-period-minimum',T('sMinimum')+' · '+statsRate(p?.minimum_hashrate));
+ set('st-period-variation',T('sVariation')+' · '+(Number.isFinite(p?.variation_percent)?statsNumber(p.variation_percent)+' %':'—'));
+ set('st-period-miners',statsNumber(p?.average_miners));set('st-period-peak-miners',T('sPeakMiners')+' · '+statsNumber(p?.maximum_miners));
+ set('st-period-samples',statsNumber(p?.samples));
+ const coverage=p?.expected_samples?Math.min(100,p.samples/p.expected_samples*100):null;
+ set('st-period-coverage',Number.isFinite(coverage)?T('sCoverage').replace('{n}',statsNumber(coverage)).replace('{total}',statsNumber(p.expected_samples)):'—');
+ set('st-period-dates',p?.samples?statsStamp(p.first_at)+' → '+statsStamp(p.last_at):points.length?statsStamp(points[0].at)+' → '+statsStamp(points.at(-1).at):T('sNoMeasurements'));
+ const rows=points.slice(-8).reverse().map(point=>{
+  const row=document.createElement('tr');
+  for(const text of [statsStamp(point.at)+(point.live?' · '+T('live'):''),statsRate(point.hashrate),statsNumber(point.miners),point.live?'—':statsNumber(point.samples)]){
+   const cell=document.createElement('td');cell.textContent=text;row.appendChild(cell);
+  }return row;
+ });document.getElementById('st-readings').replaceChildren(...rows);
+}
+function chart(update=true){
+ const svg=document.getElementById('st-chart');if(!svg)return;
+ const points=statsSeries(),period=summary?.periods?.[statsHours[range]],tip=document.getElementById('st-tooltip'),empty=document.getElementById('st-chart-empty');
+ if(update)statsPeriod(points);
+ const W=Math.max(280,Math.round(svg.clientWidth||960)),H=svg.clientWidth<500?280:320,left=W<500?70:86,right=W-12,top=16,bottom=H-34;
+ svg.setAttribute('viewBox','0 0 '+W+' '+H);tip.hidden=true;empty.hidden=!!points.length;
+ svg.setAttribute('aria-label',T('sChartAria').replace('{metric}',T(statsMetric==='hashrate'?'sHashrate':'tMiners')));
+ if(!points.length){svg.replaceChildren();empty.textContent=T('sNoMeasurements');statsPlot=null;return}
+ const color=statsMetric==='hashrate'?'#f7931a':'#58bd7d';svg.style.setProperty('--plot-color',color);
+ const start=Math.max(summary.at-statsHours[range]*3600000,points[0].at),end=Math.max(summary.at,start+1),values=points.map(p=>p[statsMetric]);
+ const extrema=statsMetric==='hashrate'?[period?.minimum_hashrate,period?.maximum_hashrate]:[period?.minimum_miners,period?.maximum_miners];
+ const low=Math.min(...values,...extrema.filter(Number.isFinite)),high=Math.max(...values,...extrema.filter(Number.isFinite));
+ const padding=Math.max((high-low)*.15,high*.035,high?0.01:1),min=Math.max(0,low-padding),max=high+padding;
+ const x=p=>left+(right-left)*(p.at-start)/(end-start),y=value=>bottom-(bottom-top)*(value-min)/(max-min),xy=p=>x(p).toFixed(2)+' '+y(p[statsMetric]).toFixed(2);
+ let unit=0;const units=['H/s','kH/s','MH/s','GH/s','TH/s','PH/s','EH/s'];while(statsMetric==='hashrate'&&high/1000**unit>=1000&&unit<units.length-1)unit++;
+ const scale=statsMetric==='hashrate'?1000**unit:1,precision=Math.min(6,Math.max(0,Math.ceil(-Math.log10((max-min)/4/scale))));
+ const axisNumber=new Intl.NumberFormat(lang==='fr'?'fr-FR':'en-US',{maximumFractionDigits:precision});
+ let grid='';
+ for(let i=0;i<5;i++){
+  const value=min+(max-min)*i/4,py=y(value).toFixed(2),label=axisNumber.format(value/scale)+(statsMetric==='hashrate'?' '+units[unit]:'');
+  grid+='<line class="grid-h" x1="'+left+'" x2="'+right+'" y1="'+py+'" y2="'+py+'"/><text x="0" y="'+(Number(py)+4)+'">'+label+'</text>';
+ }
+ const ticks=W<500?3:6,locale=lang==='fr'?'fr-FR':'en-US';
+ for(let i=0;i<ticks;i++){
+  const at=start+(end-start)*i/(ticks-1),px=left+(right-left)*i/(ticks-1);
+  const label=new Date(at).toLocaleString(locale,end-start>86400000?{day:'2-digit',month:'short',hour:'2-digit'}:{hour:'2-digit',minute:'2-digit'});
+  grid+='<text x="'+px.toFixed(2)+'" y="'+(H-9)+'" text-anchor="'+(!i?'start':i===ticks-1?'end':'middle')+'">'+label+'</text>';
+ }
+ const groups=[];let group=[];
+ for(const p of points.filter(p=>!p.live)){
+  const previous=group.at(-1);
+  if(previous&&(p.missing||previous.missing||p.at-previous.at>Math.max(p.interval_ms,previous.interval_ms)*2.5)){groups.push(group);group=[]}
+  group.push(p);
+ }if(group.length)groups.push(group);
+ let shapes='';
+ for(const run of groups){
+  if(run.length===1){const p=run[0],py=y(p[statsMetric]);shapes+='<rect x="'+(x(p)-4).toFixed(2)+'" y="'+Math.min(py,bottom-3).toFixed(2)+'" width="8" height="'+Math.max(3,bottom-py).toFixed(2)+'" fill="'+color+'"/>';continue}
+  const line=run.map((p,i)=>(i?'L':'M')+xy(p)).join(' ');
+  shapes+='<path d="'+line+' L'+x(run.at(-1)).toFixed(2)+' '+bottom+' L'+x(run[0]).toFixed(2)+' '+bottom+' Z" fill="'+color+'" fill-opacity=".18"/><path class="line" d="'+line+'"/>';
+ }
+ const mean=statsMetric==='hashrate'?period?.average_hashrate:period?.average_miners;
+ if(Number.isFinite(mean))shapes+='<line class="mean" x1="'+left+'" x2="'+right+'" y1="'+y(mean).toFixed(2)+'" y2="'+y(mean).toFixed(2)+'"/>';
+ const live=points.find(p=>p.live),last=points.filter(p=>!p.live).at(-1);
+ if(live){
+  if(last&&!last.missing&&live.at-last.at<=last.interval_ms*2.5)shapes+='<path class="live-tail" d="M'+xy(last)+' L'+xy(live)+'"/>';
+  shapes+='<circle class="point" cx="'+x(live).toFixed(2)+'" cy="'+y(live[statsMetric]).toFixed(2)+'" r="4"/>';
+ }
+ const chosen=points[statsHover];
+ if(chosen)shapes+='<line class="crosshair" x1="'+x(chosen).toFixed(2)+'" x2="'+x(chosen).toFixed(2)+'" y1="'+top+'" y2="'+bottom+'"/><circle class="point" cx="'+x(chosen).toFixed(2)+'" cy="'+y(chosen[statsMetric]).toFixed(2)+'" r="4"/>';
+ svg.innerHTML='<defs><clipPath id="st-plot-clip"><rect x="'+left+'" y="'+(top-4)+'" width="'+(right-left)+'" height="'+(bottom-top+8)+'"/></clipPath></defs>'+grid+'<g clip-path="url(#st-plot-clip)">'+shapes+'</g>';
+ statsPlot={points,x,left,right,W};
+ if(chosen){
+  tip.hidden=false;tip.querySelector('time').textContent=statsStamp(chosen.at)+(chosen.live?' · '+T('live'):'');
+  tip.querySelector('strong').textContent=statsMetric==='hashrate'?statsRate(chosen.hashrate):statsNumber(chosen.miners)+' '+T('tMiners').toLowerCase();
+  tip.querySelector('small').textContent=(chosen.live?T('sInstant'):T(chosen.interval_ms===3600000?'sHourMean':'sFiveMinute'))+' · '+(statsMetric==='hashrate'?statsNumber(chosen.miners)+' '+T('tMiners').toLowerCase():statsRate(chosen.hashrate));
+  tip.style.left=Math.max(0,Math.min(W-tip.offsetWidth,x(chosen)+12))+'px';tip.style.top=Math.max(0,y(chosen[statsMetric])-tip.offsetHeight-12)+'px';
+ }
+}
+document.querySelectorAll('[data-range]').forEach(button=>button.onclick=()=>{
+ range=button.dataset.range;statsHover=null;document.querySelectorAll('[data-range]').forEach(other=>other.setAttribute('aria-pressed',String(other===button)));chart();
+});
+document.querySelectorAll('[data-st-metric]').forEach(button=>button.onclick=()=>{
+ statsMetric=button.dataset.stMetric;statsHover=null;document.querySelectorAll('[data-st-metric]').forEach(other=>other.setAttribute('aria-pressed',String(other===button)));chart(false);
+});
+const statsChart=document.getElementById('st-chart');
+if(statsChart){
+ const inspect=event=>{
+  if(!statsPlot)return;const rect=statsChart.getBoundingClientRect(),px=(event.clientX-rect.left)*statsPlot.W/rect.width;
+  const next=px<statsPlot.left||px>statsPlot.right?null:statsPlot.points.reduce((best,p,i)=>Math.abs(statsPlot.x(p)-px)<Math.abs(statsPlot.x(statsPlot.points[best])-px)?i:best,0);
+  if(next!==statsHover){statsHover=next;chart(false)}
+ };
+ statsChart.addEventListener('pointermove',inspect);statsChart.addEventListener('pointerdown',inspect);
+ for(const name of ['pointerleave','blur'])statsChart.addEventListener(name,()=>{statsHover=null;chart(false)});
+ statsChart.addEventListener('keydown',event=>{
+  if(!statsPlot||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();
+  statsHover=event.key==='Home'?0:event.key==='End'?statsPlot.points.length-1:statsHover===null?statsPlot.points.length-1:Math.max(0,Math.min(statsPlot.points.length-1,statsHover+(event.key==='ArrowRight'?1:-1)));chart(false);
+ });
+
+}
+addEventListener('resize',()=>chart(false));
 let fetchedAt=0;
-setInterval(()=>{const el=document.getElementById('st-updated');if(!fetchedAt||!el)return;const s=Math.round((Date.now()-fetchedAt)/1000);
- el.textContent=T('updated').replace('{s}',s)},1000);
+setInterval(()=>{const el=document.getElementById('st-updated');if(!fetchedAt||!el)return;const s=Math.round((Date.now()-fetchedAt)/1000);el.textContent=T('updated').replace('{s}',s)},1000);
 
 // Every supported board: green when some are online now, red when the only
 // ones seen went offline (the service estimates them: reports carry no
@@ -257,7 +339,7 @@ function stats(){homeMarket();if(!document.getElementById('stats'))return;const 
  set('st-average',summary.miners?rate(summary.hashrate/summary.miners):'–');set('st-record',summary.record?rate(summary.record.hashrate):'–');
  chart();
  if(!summary.miners&&!summary.history?.length)document.getElementById('st-status').textContent=T('noStats')}
-async function refresh(){if(!document.getElementById('stats')&&!document.getElementById('home-market'))return;try{const r=await fetch(STATS,{cache:'no-store'});if(!r.ok)throw 0;summary=await r.json();fetchedAt=Date.now();stats()}
+async function refresh(){if(!document.getElementById('stats')&&!document.getElementById('home-market'))return;try{const r=await fetch(STATS,{cache:'no-store'});if(!r.ok)throw 0;summary=await r.json();statsHover=null;fetchedAt=Date.now();stats()}
  catch(e){if(!summary&&document.getElementById('stats')){chart();document.getElementById('st-status').textContent=T('statsDown')}}}
 
 function apply(){document.documentElement.lang=lang;
