@@ -245,7 +245,7 @@ function homeMarket(){const table=document.getElementById('home-market');if(!tab
   const hash=tr.insertCell();hash.className='num strong';hash.textContent=rate(r.hashrate);
   const miners=tr.insertCell();miners.className='num col-miners';miners.textContent=r.miners.toLocaleString(locale);
   const part=tr.insertCell(),bar=document.createElement('span'),fill=document.createElement('i'),value=document.createElement('span');
-  part.className='share col-share';bar.className='bar';fill.style.width=Math.max(2,share*100).toFixed(1)+'%';bar.appendChild(fill);value.textContent=pct(share);part.append(bar,value);
+  const shareBox=document.createElement('div');part.className='col-share';shareBox.className='share';bar.className='bar';fill.style.width=Math.max(2,share*100).toFixed(1)+'%';bar.appendChild(fill);value.textContent=pct(share);shareBox.append(bar,value);part.appendChild(shareBox);
   const act=tr.insertCell();act.className='act';
   if(BOARDS.some(b=>b.env===r.name)){const a=document.createElement('a');a.className='btn-sm';a.href='flash.html?board='+encodeURIComponent(r.name);a.textContent=T('navInstall');act.appendChild(a)}})}
 document.querySelectorAll('.family-tabs').forEach(group=>group.addEventListener('click',e=>{const b=e.target.closest('button[data-family]');if(!b)return;
