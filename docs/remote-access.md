@@ -1,30 +1,47 @@
-# Private remote monitoring
+# Remote monitoring
 
 [Français](remote-access.fr.md)
 
-View your miners from a phone or another network at the
-**[private remote dashboard](https://bdlglua.github.io/remote/)**.
+View your miners from a phone or another network at
+**[My miners](https://bdlglua.github.io/remote/)**.
 The boards send readings directly over verified HTTPS: no computer, Raspberry Pi,
 VPN, port forwarding or local hub needs to stay running. The miners need Wi-Fi
-with Internet access and **BDLMiner 2.3.0 or newer**.
+with Internet access and **BDLMiner 2.5.4 or newer** (2.3.0 with a private key,
+see below).
 
-## Pair your miners
+## Set up
 
 1. Use the [latest stable release](https://github.com/bdlglua/BDLMinerV2/releases/latest).
    Install the signed update from the local dashboard or upload the matching
    board firmware.
-2. Open the remote dashboard and choose **Create my key**. Keep a copy in your
-   password manager. **Copy key** copies the 64-character monitoring key.
-3. Open each miner's local page. In **Settings → Network → Private remote
-   monitoring**, paste the same key, choose a name such as `M5 bureau` or
-   `Gamma atelier`, and enable monitoring. **Save and restart** once.
-4. On the remote page, paste your key and choose **Connect**. The first report
-   is due about one minute after boot; later reports arrive every five minutes.
-   A missing clock synchronization, Wi-Fi connection or TLS memory delays an
-   attempt. See the miner's log for `[remote]` messages.
+2. Open each miner's local page. In **Settings → Network → Private remote monitoring**,
+   choose a name such as `M5 bureau` or `Gamma atelier` and enable monitoring.
+   **Save and restart** once. Nothing to copy: the miner uses the payout address
+   set in **Settings → Pool** (the part before any `.worker`).
+3. Open **[My miners](https://bdlglua.github.io/remote/)**, enter the same wallet
+   address and choose **View my miners**. Every miner using that address appears,
+   whatever its worker name. Tick **Remember this address on this device** to
+   open the page directly next time.
 
-Pairing is optional and disabled by default. It works independently of anonymous
-hashrate/pool sharing: turning one service off does not change the other.
+The first report is due about one minute after boot; later reports arrive every
+five minutes. A missing clock synchronization, Wi-Fi connection or TLS memory
+delays an attempt. See the miner's log for `[remote]` messages.
+
+Remote monitoring is optional and disabled by default. It works independently of
+anonymous hashrate/pool sharing: turning one service off does not change the other.
+
+## Address or private key
+
+- **Payout address (default).** Like your pool's address page, **anyone who knows
+  the address can see these readings**. A payout address is already public on the
+  blockchain and on most pools; the page only adds the miners' names and readings.
+  An address space cannot be erased through the page; readings expire after seven
+  days once miners stop reporting.
+- **Private access key (optional).** To keep the readings secret, a 64-character
+  key created before 2.5.4 still works: paste it in **Private access key** on every
+  miner, and type the key instead of the address on **My miners**. Anyone with the
+  key can view and erase that space; the service cannot recover a lost key. When a
+  key is set, the miner uses it instead of the address.
 
 ## What you can see
 
@@ -43,50 +60,46 @@ not a continuous connection or a confirmation of pool payment/block discovery.
 The viewer has no commands to change settings, restart, calibrate or update a
 miner. Those operations stay on the local miner page.
 
-## Keys, privacy and removal
+## Privacy and removal
 
-- The browser creates a random **256-bit** key. Anyone with the key can view and
-  erase that private space. Use **Copy my key** while connected to keep a copy;
-  the service cannot recover a lost key.
-- The browser keeps the key in memory only, sends it in an authorization header,
-  and clears readings on **Disconnect**. It is never put in links, browser
-  storage, analytics or the public statistics. Reloading asks for it again.
-- On the miner, the key uses the existing secret-setting storage and masking.
-  As with other secrets, protected backups can contain it. Naming or pairing a
-  miner requires a restart; the enable/disable switch applies immediately.
-- Personal reports contain a keyed pseudonymous device ID and the chosen name.
-  They never contain a payout address, worker, raw MAC, LAN address, Wi-Fi
-  credentials, web password or configured private pool host. A recognized public
-  pool is represented by a fixed group; other pools are `other`.
+- Report bodies contain a pseudonymous device ID (derived from the address or key
+  and the board) and the chosen name. They never contain the payout address,
+  worker, raw MAC, LAN address, Wi-Fi credentials, web password or configured
+  private pool host. The address or key only travels in the authorization header.
+  A recognized public pool is represented by a fixed group; other pools are `other`.
+- The page keeps a key in memory only and never stores it. It stores the address
+  in this browser only when **Remember this address** is ticked; **Sign out**
+  forgets it. Nothing is put in links, analytics or the public statistics.
+- On the miner, a key uses the existing secret-setting storage and masking. As with
+  other secrets, protected backups can contain it. Naming a miner or adding a key
+  requires a restart; the enable/disable switch applies immediately.
 - Reports use CA and hostname verification, with no insecure fallback and no
   redirects. A failed report waits for the next attempt; it does not restart the
   miner or stop mining. The public statistics retain their existing behavior.
-- The Cloudflare-hosted service isolates each key's data in its own Durable
-  Object using a SHA-256 digest as its name. The raw key is not persisted. The
-  hosting operator can access stored readings; this is authenticated private
-  storage, not end-to-end encryption. Request addresses are used only for
+- The Cloudflare-hosted service isolates each address or key in its own Durable
+  Object named by a SHA-256 digest. The hosting operator can access stored
+  readings; this is not end-to-end encryption. Request addresses are used only for
   temporary in-memory rate limits.
 - To stop sending, disable monitoring on each miner. Existing readings expire
-  after seven days. To remove them immediately, choose **Manage my private data →
-  Erase data and revoke key** on the remote page. This permanently revokes the
-  old key; a minimal revocation marker remains so reports cannot recreate it.
-  Create a new key and change it on every miner if you want to resume.
+  after seven days. With a key, **Manage my private data → Erase data and revoke
+  key** removes them immediately and permanently revokes the key.
 
-A private space supports **32 miners**. The backend accepts at most one report
-per miner per minute; the firmware normally sends one every five minutes. A
-temporary admission limit also bounds requests from one Internet address.
+A space supports **32 miners**. The backend accepts at most one report per miner
+per minute; the firmware normally sends one every five minutes. A temporary
+admission limit also bounds requests from one Internet address.
 
-## Private API
+## API
 
-The same key can be used as `Authorization: Bearer <personal-key>` on:
+On `https://bdlminer-stats.bdlminer-bot.workers.dev`, with
+`Authorization: Address <payout-address>` or `Authorization: Bearer <private-key>`:
 
 - `GET /api/remote`: your latest readings and their age.
 - `GET /api/remote/history?miner=<id>&hours=24`: up to about 480 chart buckets;
   `hours` accepts `1`, `6`, `24` or `168`.
-- `DELETE /api/remote`: erase your space and permanently revoke its key.
+- `DELETE /api/remote` (key only): erase the space and permanently revoke its key.
 
-These endpoints are on `https://bdlminer-stats.bdlminer-bot.workers.dev`,
-require the key even when public statistics are open, and use `Cache-Control:
-no-store`. Browser reads are allowed only from the GitHub Pages viewer origin
-(and the legacy service origin); no credentials are sent automatically. `POST /api/remote/report` is used only by paired miners and is
-strictly separated from the anonymous `/report` endpoint.
+These endpoints require authorization even when public statistics are open and use
+`Cache-Control: no-store`. Browser reads are allowed only from the GitHub Pages
+viewer origin (and the legacy service origin); no credentials are sent
+automatically. `POST /api/remote/report` is used only by miners and is strictly
+separated from the anonymous `/report` endpoint.

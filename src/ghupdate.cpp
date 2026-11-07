@@ -80,34 +80,60 @@ bool findVersion(const char *s, char *out, size_t size) {
 // GET `url` over HTTPS, following redirects (GitHub sends release files to
 // another host) with one tlsConnect() per host. On success `http` holds the
 // response, with the body to read.
+//
+// GitHub's release file host takes a link that is only valid for a few
+// minutes (a JWT, refused with the non-standard status 618: expired, not yet
+// valid, altered). A refused link is not retried as is: the whole chain is
+// asked again, for a fresh one, a little later.
+constexpr int kStatusLinkRefused = 618;  // release-assets.githubusercontent.com
+constexpr int kFreshLinkAttempts = 3;
 bool httpsGet(String url, WiFiClientSecure &tls, HTTPClient &http, int *code) {
     static const char *kHeaders[] = {"Location"};
-    for (int hop = 0; hop < 5; hop++) {
-        if (!url.startsWith("https://")) return false;
-        int slash = url.indexOf('/', 8);
-        String host = url.substring(8, slash < 0 ? url.length() : slash);
-        http.end();
-        tls.stop();
-        http.setReuse(false);
-        http.setTimeout(15000);
-        http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
-        if (!http.begin(tls, url)) return false;
-        // begin() may close the client when its host changes, including on
-        // the first request. Connect afterwards so GET() reuses the guarded
-        // handshake instead of starting another one with the miner running.
-        // Releases are trusted by their signature: an unverifiable certificate
-        // must not stop updates (tlsConnectSignedContent()).
-        if (!tlsConnectSignedContent(tls, host.c_str())) return false;
-        // Retain the legacy binary version marker required by existing offline OTA validators.
-        http.setUserAgent("BDLMinerV1/" FW_VERSION);
-        http.addHeader("Accept", "application/vnd.github+json");
-        http.collectHeaders(kHeaders, 1);
-        *code = http.GET();
-        if (*code >= 300 && *code < 400 && http.hasHeader("Location")) {
-            url = http.header("Location");
-            continue;
+    const String first = url;
+    for (int attempt = 1; attempt <= kFreshLinkAttempts; attempt++) {
+        url = first;
+        bool redirected = false, fresh = false;
+        for (int hop = 0; hop < 5 && !fresh; hop++) {
+            if (!url.startsWith("https://")) return false;
+            int slash = url.indexOf('/', 8);
+            String host = url.substring(8, slash < 0 ? url.length() : slash);
+            http.end();
+            tls.stop();
+            // Reuse: HTTPClient (Arduino-ESP32 3.x) closes a connection it may not
+            // reuse and opens its own, unguarded handshake in GET(); the one
+            // tlsConnectSignedContent() made below must be the one used.
+            http.setReuse(true);
+            http.setTimeout(15000);
+            http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
+            if (!http.begin(tls, url)) return false;
+            // begin() may close the client when its host changes, including on
+            // the first request. Connect afterwards so GET() reuses the guarded
+            // handshake instead of starting another one with the miner running.
+            // Releases are trusted by their signature: an unverifiable certificate
+            // must not stop updates (tlsConnectSignedContent()).
+            if (!tlsConnectSignedContent(tls, host.c_str())) return false;
+            // Retain the legacy binary version marker required by existing offline OTA validators.
+            http.setUserAgent("BDLMinerV1/" FW_VERSION);
+            http.addHeader("Accept", "application/vnd.github+json");
+            http.collectHeaders(kHeaders, 1);
+            *code = http.GET();
+            if (*code >= 300 && *code < 400 && http.hasHeader("Location")) {
+                url = http.header("Location");
+                redirected = true;
+                continue;
+            }
+            if (*code == HTTP_CODE_OK) return true;
+            // Only a link GitHub handed out (after a redirect) can be refreshed.
+            bool refused = redirected && (*code == kStatusLinkRefused || *code == 403 || *code == 404 || *code == 410);
+            if (!refused || attempt == kFreshLinkAttempts) return false;
+            logf("[update] %s refused the download link (HTTP %d%s); asking GitHub for a fresh one\n", host.c_str(), *code,
+                 *code == kStatusLinkRefused ? ": expired or not yet valid" : "");
+            http.end();
+            tls.stop();
+            delay(2000);
+            fresh = true;
         }
-        return *code == HTTP_CODE_OK;
+        if (!fresh) return false;  // too many redirects
     }
     return false;
 }
@@ -237,7 +263,8 @@ GithubInstallResult install() {
     mbedtls_sha256_init(&sha);
     do {
         if (!httpsGet(signatureUrl, tls, http, &code)) {
-            setError("cannot download the signature (HTTP %s)", String(code).c_str());
+            setError("cannot download the signature (HTTP %s)",
+                     (String(code) + (code == kStatusLinkRefused ? ": GitHub refused its download link" : "")).c_str());
             break;
         }
         int signatureSize = http.getSize();
@@ -252,7 +279,8 @@ GithubInstallResult install() {
             break;
         }
         if (!httpsGet(firmwareUrl, tls, http, &code)) {
-            setError("cannot download the firmware (HTTP %s)", String(code).c_str());
+            setError("cannot download the firmware (HTTP %s)",
+                     (String(code) + (code == kStatusLinkRefused ? ": GitHub refused its download link" : "")).c_str());
             break;
         }
         int size = http.getSize();

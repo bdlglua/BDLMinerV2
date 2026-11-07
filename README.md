@@ -1,9 +1,9 @@
 # BDLMiner V2
 
 [![Install BDLMinerV2](https://img.shields.io/badge/INSTALL-BDLMinerV2-f7931a?style=for-the-badge&logo=espressif&logoColor=white)](https://bdlglua.github.io/flash.html)
-[![Stable v2.5.3](https://img.shields.io/badge/STABLE-v2.5.3-2ea44f?style=for-the-badge)](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.3)
+[![Stable v2.5.4](https://img.shields.io/badge/STABLE-v2.5.4-2ea44f?style=for-the-badge)](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.4)
 
-**[Install in your browser (Chrome / Edge)](https://bdlglua.github.io/flash.html)** · **[Stable v2.5.3 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.3)** · [Installation guide](docs/guide.md#install-a-release-no-build-tools)
+**[Install in your browser (Chrome / Edge)](https://bdlglua.github.io/flash.html)** · **[Stable v2.5.4 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.4)** · [Installation guide](docs/guide.md#install-a-release-no-build-tools)
 
 Solo SHA-256d mining firmware for ESP32 boards and experimental ASIC boards,
 with a local dashboard and a Linux/Raspberry Pi fleet hub.
@@ -12,7 +12,7 @@ with a local dashboard and a Linux/Raspberry Pi fleet hub.
 [Website](https://bdlglua.github.io/) ·
 [Interactive demos](https://bdlglua.github.io/demo.html) ·
 [Statistics](https://bdlglua.github.io/stats.html) ·
-**[Stable v2.5.3](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.3)**
+**[Stable v2.5.4](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.4)**
 
 Mine **BTC, BCH, BSV, eCash (XEC), DigiByte SHA-256d (DGB) or Peercoin (PPC, PoW)** with a matching
 pool and payout address or account. BTC supports Stratum V1 and native Stratum V2.
@@ -56,15 +56,16 @@ Both projects make solo Bitcoin mining approachable on small ESP32 devices. Choo
 - Eight physical screens, English/French, themes, rotation and night mode.
 - Signed stable/beta updates with trial boot and automatic rollback.
 - Notifications, Home Assistant/MQTT, JSON API and Prometheus metrics.
-- Optional, read-only [private remote monitoring](docs/remote-access.md), off by
-  default and independent of public statistics. Paired miners report about every
-  five minutes over verified HTTPS, with seven days of history and no local hub.
+- Optional, read-only [remote monitoring](docs/remote-access.md), off by default
+  and independent of public statistics. Miners report under their payout address
+  about every five minutes over verified HTTPS, with seven days of history and no
+  local hub; a private key remains available.
 - Outbound HTTPS verifies the server certificate chain and hostname. Signed
   GitHub updates have a limited transport exception. See [Security](SECURITY.md).
 
 ## Install and update
 
-**Recommended: [Install BDLMinerV2 stable v2.5.3 with the Web Flasher](https://bdlglua.github.io/flash.html).** Do not use older v1.x releases for a new V2 installation.
+**Recommended: [Install BDLMinerV2 stable v2.5.4 with the Web Flasher](https://bdlglua.github.io/flash.html).** Do not use older v1.x releases for a new V2 installation.
 
 
 1. Open the **[Flasher](https://bdlglua.github.io/flash.html)** in Chrome or Edge
@@ -102,10 +103,10 @@ Solo mining is educational: a payout requires finding a valid block.
 ## Documentation
 
 - [User guide](docs/guide.md) · [V2 hub and setup](docs/v2/README.md)
-- [My miners remotely](https://bdlglua.github.io/remote/) · [Private setup](docs/remote-access.md) / [Français](docs/remote-access.fr.md)
+- [My miners remotely](https://bdlglua.github.io/remote/) · [Setup](docs/remote-access.md) / [Français](docs/remote-access.fr.md)
 - [Troubleshooting FAQ](https://bdlglua.github.io/faq.html) · [Shares explained](docs/guide.md#pool-shares-and-local-records)
 - [Coin and pool setup](docs/mining-coins.md)
-- [Stable v2.5.3 release notes](docs/releases/v2.5.3.md) / [Français](docs/releases/v2.5.3.fr.md) · [All releases](https://github.com/bdlglua/BDLMinerV2/releases)
+- [Stable v2.5.4 release notes](docs/releases/v2.5.4.md) / [Français](docs/releases/v2.5.4.fr.md) · [All releases](https://github.com/bdlglua/BDLMinerV2/releases)
 - [Build from source](docs/development.md) · [Contribute](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ### Pools for ESP32
