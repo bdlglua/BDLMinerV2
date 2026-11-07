@@ -291,6 +291,8 @@ check('dashboard polls once per ten seconds without accelerated test timers',()=
   f.state.stats.hashrate=800000;
   await f.page.clock.runFor(2500);
   await f.page.waitForFunction(()=>document.querySelector('#m .hero .v').textContent==='800 kH/s');
+  // The history request follows the rendered statistics; on a busy runner it can reach the fixture a moment later.
+  for(let i=0;i<100&&!f.state.historyCalls;i++)await new Promise(r=>setTimeout(r,10));
   assert.equal(calls(),2);assert.equal(f.state.historyCalls,1);assert.equal(f.state.peak,1);
 }));
 
