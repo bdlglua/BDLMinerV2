@@ -1,12 +1,16 @@
 // Shared page frame: navigation, footer and chat. Page content goes in <main>.
 import Head from 'next/head';
 
-export default function Layout({children,flasher=false}){
+export default function Layout({children,flasher=false,remote=false}){
  return <>
   <Head>
    <title>__PAGE_TITLE__</title>
    <meta name="viewport" content="width=device-width,initial-scale=1"/>
    {flasher&&<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"/>}
+   {remote&&<meta name="referrer" content="no-referrer"/>}
+   {remote&&<meta name="bdl-remote-api" content="https://bdlminer-stats.bdlminer-bot.workers.dev"/>}
+   {remote&&<link rel="stylesheet" href="assets/remote.css"/>}
+   {remote&&<script defer src="assets/remote.js"/>}
   </Head>
 
 <a className="skip" href="#main" data-t="skip">Skip to content</a>
@@ -26,7 +30,7 @@ export default function Layout({children,flasher=false}){
     <a href="faq.html" data-t="navFAQ">FAQ</a>
     <a href="releases.html" data-t="navNews">Releases</a>
     <a href="stats.html" data-t="navStats">Statistics</a>
-    <a href="https://miner.bdl-pool.com/remote/" data-t="navRemote">My miners</a>
+    <a href="remote.html" data-t="navRemote">My miners</a>
     <a href="gallery.html" data-t="navCommunity">Community</a>
    </div></details>
    <a href="support.html" id="nav-support" data-t="navSupport">Support</a>
@@ -47,7 +51,7 @@ export default function Layout({children,flasher=false}){
   <a href="boards.html" data-t="navBoards">Boards</a><a href="flash.html" data-t="navInstall">Flash</a>
   <a href="demo.html" data-t="navDemo">Demo</a><a href="faq.html" data-t="navFAQ">FAQ</a>
   <a href="releases.html" data-t="navNews">Releases</a><a href="stats.html" data-t="navStats">Statistics</a>
-  <a href="https://miner.bdl-pool.com/remote/" data-t="navRemote">My miners</a>
+  <a href="remote.html" data-t="navRemote">My miners</a>
   <a href="https://bdl-pool.com/">BDL Pool</a>
   <a href="gallery.html" data-t="navCommunity">Community</a><a href="support.html" data-t="navSupport">Support</a>
  </nav>

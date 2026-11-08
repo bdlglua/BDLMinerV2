@@ -173,18 +173,6 @@ jobs:
       # takes it from Settings > Pages; the file records it with the site.
       - name: Custom domain
         run: echo miner.bdl-pool.com > site/CNAME
-      # The private "My miners" viewer, from the statistics service's source
-      # (it only accepts requests from its configured viewer origins).
-      - uses: actions/checkout@v7
-        with:
-          repository: bdlglua/BDLMiner-stats
-          ref: main
-          path: collector
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-      - name: Private viewer at /remote/
-        run: node collector/scripts/build-remote-site.js site/remote
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site

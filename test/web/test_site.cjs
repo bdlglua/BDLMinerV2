@@ -79,7 +79,7 @@ async function main(){
   await gammaPage.close();
   assert.equal(requests.some(u=>new URL(u).origin===url&&new URL(u).pathname.startsWith('/api/')),false,'demo calls must stay in memory');
   assert.equal(requests.some(u=>/^http:\/\/192\./.test(u)),false,'the demo must never contact a LAN miner');
-  const pages={home:'index.html',start:'start.html',boards:'boards.html',flash:'flash.html',demo:'demo.html',faq:'faq.html',releases:'releases.html',stats:'stats.html',gallery:'gallery.html',support:'support.html'};
+  const pages={home:'index.html',start:'start.html',boards:'boards.html',flash:'flash.html',demo:'demo.html',faq:'faq.html',releases:'releases.html',stats:'stats.html',gallery:'gallery.html',support:'support.html',remote:'remote.html'};
   for(const prefix of ['', '/beta', '/BDLMinerV2', '/BDLMinerV2/beta']){
    const base=url+prefix;
    for(const [key,name]of Object.entries(pages)){
@@ -178,6 +178,43 @@ async function main(){
   assert.equal(await page.locator('#board').inputValue(),'esp32c3-headless');
   const manifest=await (await page.request.get(url+'/beta/'+await page.locator('#installer').getAttribute('manifest'))).json();
   assert.equal(manifest.version,'2.0.2-beta.1');
+  // "My miners" is a site page: shared navigation, site language and theme, and
+  // readings fetched from the statistics service by payout address only.
+  await page.setViewportSize({width:1440,height:1000});
+  const remoteAPI='https://bdlminer-stats.bdlminer-bot.workers.dev',remoteCalls=[],now=Date.now();
+  const remoteMiner={id:'0123456789abcdef',name:'M5 bureau',board:'m5stickc-plus2',v:'2.5.4',coin:'BTC',online:true,age_s:42,hashrate:1.2e6,temp_c:47.5,accepted:12,rejected:1,uptime_s:7200,power_percent:100,best:4096,pool_connected:true,pool:'public-pool.io'};
+  await page.route(remoteAPI+'/api/remote**',async route=>{
+   const request=route.request(),target=new URL(request.url());remoteCalls.push({path:target.pathname,auth:request.headers().authorization,referer:request.headers().referer});
+   if(target.pathname==='/api/remote/history')return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({interval_ms:300000,window_start:now-86400000,window_end:now,
+    points:[0,1,2,3].map(i=>({t:now-(4-i)*300000,rate:1.1e6+i*5e4,temp:46+i/2,samples:1,boot:'aabbccdd'})),
+    summary:{average:1.2e6,minimum:1.1e6,maximum:1.25e6,variation_percent:4,temperature_average:46.8,temperature_maximum:47.5,reports:4,restarts:0,first_at:now-1200000,last_at:now-300000}})});
+   return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({hashrate:1.2e6,recorded_at:now,miners:[remoteMiner]})});
+  });
+  await page.goto(url+'/remote.html');await page.evaluate(()=>{localStorage.setItem('lang','en');localStorage.removeItem('bdl-remote-address')});await page.reload();
+  await page.locator('#rm-login-form').waitFor();
+  assert.equal(await page.locator('body').getAttribute('data-page'),'remote');
+  assert.equal(await page.locator('#nav-more a[href="remote.html"]').count(),1,'My miners is in the shared navigation');
+  assert.equal(await page.locator('meta[name="referrer"]').getAttribute('content'),'no-referrer');
+  assert.equal(await page.locator('#rm-login h2').textContent(),'See your miners');
+  await page.locator('#rm-key').fill('bc1qremotetest.worker1');await page.locator('#rm-login-form button[type=submit]').click();
+  await page.locator('#rm-miners .miner h2').filter({hasText:'M5 bureau'}).waitFor();
+  await page.locator('#rm-stat-reports').filter({hasText:'4'}).waitFor();
+  assert.ok(remoteCalls.length>=2&&remoteCalls.every(c=>c.auth==='Address bc1qremotetest'),'the payout address (without worker) is the only credential');
+  assert.ok(remoteCalls.every(c=>!c.referer),'no referrer is sent to the statistics service');
+  assert.equal(await page.locator('#rm-login').isVisible(),false);assert.equal(await page.locator('#rm-logout').isVisible(),true);
+  assert.equal(await page.locator('#rm-manage').isVisible(),false,'an address space cannot be erased');
+  assert.match(await page.locator('#rm-total').textContent(),/1\.2 MH\/s/);
+  await page.locator('#lang').click();await page.locator('#rm-miners .state').filter({hasText:'En ligne'}).waitFor();
+  assert.equal(await page.locator('#rm-login h2').textContent(),'Voir vos mineurs');
+  assert.equal(await page.locator('#rm-chart').evaluate(c=>c.width>0),true);
+  await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+  assert.notEqual(await page.locator('.remote-panel.remote-performance').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(28, 29, 34)','the page follows the light theme');
+  await page.locator('#theme').click();
+  await page.locator('#rm-logout').click();await page.locator('#rm-login').waitFor();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('bdl-remote-address')),null);
+  await page.goto(url+'/remote/');await page.waitForURL(url+'/remote.html');
+  await page.goto(url+'/beta/remote/');await page.waitForURL(url+'/beta/remote.html');
+  await page.unroute(remoteAPI+'/api/remote**');
   assert.deepEqual(errors,[],'uncaught site/demo browser errors');
   if(process.env.BDL_SCREENSHOT_DIR){fs.mkdirSync(process.env.BDL_SCREENSHOT_DIR,{recursive:true});await page.setViewportSize({width:1440,height:1000});await page.goto(url);await page.locator('[data-t=ctaInstall]').waitFor();await page.screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'site-discovery.png'),fullPage:true})}
   console.log('PASS site: separate pages, Flasher label, shared navigation, board transfer, old-link redirects, both hosting prefixes/channels, mobile layouts and isolated interactive demos');
