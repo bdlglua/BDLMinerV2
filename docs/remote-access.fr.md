@@ -1,6 +1,6 @@
 # Consulter ses mineurs à distance
 
-Ouvre **[Mes mineurs](https://bdlglua.github.io/remote/)** depuis
+Ouvre **[Mes mineurs](https://miner.bdl-pool.com/remote/)** depuis
 ton téléphone, même hors du Wi-Fi de la maison. Les cartes envoient directement
 leurs mesures en HTTPS vérifié. Aucun PC ou Raspberry Pi à laisser allumé,
 aucun port de la box à ouvrir. Chaque carte doit utiliser **BDLMiner 2.5.4 ou
@@ -15,7 +15,7 @@ ultérieur** (2.3.0 avec une clé privée, voir plus bas) et avoir accès à Int
    un nom puis active le suivi. Clique sur **Enregistrer et redémarrer**.
    Rien à copier : le mineur utilise l'adresse de paiement de **Réglages → Pool**
    (la partie avant un éventuel `.worker`).
-3. Sur **[Mes mineurs](https://bdlglua.github.io/remote/)**, saisis la même adresse
+3. Sur **[Mes mineurs](https://miner.bdl-pool.com/remote/)**, saisis la même adresse
    de portefeuille puis clique sur **Voir mes mineurs**. Tous les mineurs qui
    utilisent cette adresse apparaissent, quel que soit leur nom de worker. Coche
    **Retenir cette adresse sur cet appareil** pour ouvrir la page directement la

@@ -26,7 +26,7 @@ export default function Layout({children,flasher=false}){
     <a href="faq.html" data-t="navFAQ">FAQ</a>
     <a href="releases.html" data-t="navNews">Releases</a>
     <a href="stats.html" data-t="navStats">Statistics</a>
-    <a href="https://bdlglua.github.io/remote/" data-t="navRemote">My miners</a>
+    <a href="https://miner.bdl-pool.com/remote/" data-t="navRemote">My miners</a>
     <a href="gallery.html" data-t="navCommunity">Community</a>
    </div></details>
    <a href="support.html" id="nav-support" data-t="navSupport">Support</a>
@@ -47,7 +47,7 @@ export default function Layout({children,flasher=false}){
   <a href="boards.html" data-t="navBoards">Boards</a><a href="flash.html" data-t="navInstall">Flash</a>
   <a href="demo.html" data-t="navDemo">Demo</a><a href="faq.html" data-t="navFAQ">FAQ</a>
   <a href="releases.html" data-t="navNews">Releases</a><a href="stats.html" data-t="navStats">Statistics</a>
-  <a href="https://bdlglua.github.io/remote/" data-t="navRemote">My miners</a>
+  <a href="https://miner.bdl-pool.com/remote/" data-t="navRemote">My miners</a>
   <a href="https://bdl-pool.com/">BDL Pool</a>
   <a href="gallery.html" data-t="navCommunity">Community</a><a href="support.html" data-t="navSupport">Support</a>
  </nav>
