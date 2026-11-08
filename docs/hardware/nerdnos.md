@@ -70,7 +70,7 @@ Use a USB supply rated for at least **2 A** (the ASIC draws about 8 W).
 
 1. Download **`nerdnos-factory.bin`** from the latest
    [release](https://github.com/bdlglua/BDLMinerV2/releases/latest) and flash it at
-   **0x0**, or select **NerdNOS** in the [web flasher](https://bdlglua.github.io/flash.html).
+   **0x0**, or select **NerdNOS** in the [web flasher](https://miner.bdl-pool.com/flash.html).
    To build it yourself:
 
    ```sh
