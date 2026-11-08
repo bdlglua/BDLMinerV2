@@ -17,6 +17,7 @@ PAGES = {
     'stats': ('stats.html', 'Live statistics', 'Statistiques en direct'),
     'gallery': ('gallery.html', 'Community', 'Communauté'),
     'support': ('support.html', 'Support BDLMiner', 'Soutenir BDLMiner'),
+    'remote': ('remote.html', 'My miners', 'Mes mineurs'),
 }
 
 LEGACY_SECTIONS = {
@@ -27,10 +28,18 @@ LEGACY_SECTIONS = {
 }
 
 
+REMOTE_REDIRECT = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex">
+<meta http-equiv="refresh" content="0; url=../remote.html"><link rel="canonical" href="../remote.html">
+<title>BDLMiner V2: My miners</title></head>
+<body><p><a href="../remote.html">My miners / Mes mineurs</a></p></body></html>
+"""
+
+
 def build_pages(root, output, version, boards, content):
     root, output = Path(root), Path(output)
     asset_versions = {name: hashlib.sha256((root / 'installer/assets' / name).read_bytes()).hexdigest()[:12]
-                      for name in ('site.js', 'site.css')}
+                      for name in ('site.js', 'site.css', 'remote.js', 'remote.css')}
     titles = {key: {'en': page[1], 'fr': page[2]} for key, page in PAGES.items()}
     for key, (filename, title, _) in PAGES.items():
         # Complete pages rendered by the React/Next.js site (site/, `npm run build`).
@@ -46,3 +55,7 @@ def build_pages(root, output, version, boards, content):
         if key != 'flash':
             page = re.sub(r'<script type="module" src="https://unpkg.com/esp-web-tools[^>]+></script>\n?', '', page)
         (output / filename).write_text(page, encoding='utf-8')
+    # Old "My miners" address (/remote/), still used by bookmarks and the
+    # statistics service: open the site page, keeping no query string.
+    (output / 'remote').mkdir(exist_ok=True)
+    (output / 'remote' / 'index.html').write_text(REMOTE_REDIRECT, encoding='utf-8')

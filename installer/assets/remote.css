@@ -1,0 +1,101 @@
+/* "My miners" (remote.html): the statistics service's viewer in the site's own
+   frame, colours and light/dark themes. Everything is scoped to #remote. */
+.remote{border-top:0;padding-top:48px}
+.remote [hidden]{display:none!important}
+.remote h1{font-size:clamp(32px,4vw,52px);margin:12px 0}
+.remote h2{font-size:18px;margin:0 0 8px;font-weight:650;letter-spacing:-.01em}
+.remote .lead{margin:0}
+.remote-intro{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid var(--border)}
+.remote-pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);padding:4px 12px;border-radius:999px;background:var(--panel2);margin:0}
+.remote-pill:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--good)}
+.remote-total{display:grid;gap:2px;text-align:right;min-width:220px;justify-items:end}
+.remote:not(.on) .remote-total>span,.remote:not(.on) .remote-total>strong,.remote:not(.on) .remote-total>small{visibility:hidden}
+.remote-total>span{color:var(--label);font-size:13px}
+.remote-total strong{font-size:40px;font-weight:700;color:var(--fg);letter-spacing:-.03em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.remote-total small{color:var(--label)}
+.remote-panel,.remote .miner{border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--panel);padding:24px;min-width:0}
+.remote-panel{margin-bottom:16px}
+.remote-panel>p{max-width:820px}
+.remote-muted,.remote small,.remote-foot{color:var(--label)}
+.remote button,.remote input,.remote select{font:inherit;font-size:14px;color:var(--fg);border:1px solid var(--border-strong);border-radius:10px;background:transparent;padding:8px 12px;min-height:40px;min-width:0;margin:0;display:inline-block}
+.remote input[type=text]{background:var(--panel2);border-color:var(--panel2);font-family:var(--mono)}
+.remote input[type=text]:focus{border-color:var(--primary)}
+.remote select{background:var(--panel)}
+.remote button{cursor:pointer;white-space:nowrap;font-weight:600;border-width:2px;border-radius:90px;padding:8px 18px}
+.remote button:hover{border-color:var(--fg)}
+.remote button:disabled{opacity:.45;cursor:wait}
+.remote button.remote-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.remote button.remote-primary:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
+.remote button.remote-danger{border-color:color-mix(in srgb,var(--bad) 45%,transparent);color:var(--bad)}
+.remote button.remote-danger:hover{border-color:var(--bad)}
+.remote-logout{margin-top:10px!important}
+.remote label{display:block;margin:18px 0 8px;font-size:13px;font-weight:600;color:var(--text)}
+.remote-row{display:flex;gap:10px;flex-wrap:wrap}
+.remote-row input{flex:1;min-width:200px}
+.remote label.remote-check{display:flex;align-items:center;gap:8px;margin:14px 0 0;font-weight:500;color:var(--label)}
+.remote-check input{min-height:auto!important;width:16px;height:16px;accent-color:var(--primary)}
+.remote-note{font-size:13px;color:var(--label);margin:18px 0 0;padding-top:16px;border-top:1px solid var(--border)}
+.remote-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+@media(min-width:641px){.remote-performance .remote-heading>div:first-child{flex:1 1 280px}.remote-performance .remote-actions{flex:none;flex-wrap:nowrap}.remote-performance .remote-actions>*{flex:none}}
+.remote-notice{min-height:24px;overflow-wrap:anywhere;color:var(--bad);margin:0 0 8px}
+.remote-miners{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px;margin-bottom:16px}
+.remote .miner.offline{border-color:color-mix(in srgb,var(--bad) 40%,var(--border))}
+.remote .heading,.remote-heading{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.remote .miner h2{overflow-wrap:anywhere;margin:0}
+.remote .state{font-size:12px;font-weight:600;white-space:nowrap;padding:2px 10px;border-radius:999px;color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent)}
+.remote .offline .state{color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent)}
+.remote .rate{font-size:34px;font-weight:800;color:var(--fg);letter-spacing:-.03em;margin:20px 0 0;font-variant-numeric:tabular-nums}
+.remote .metrics{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.remote .metric{display:grid;gap:2px;min-width:0}
+.remote .metric span{color:var(--label);font-size:12px}
+.remote .metric strong{font-size:16px;font-weight:600;color:var(--fg);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.remote-heading select{max-width:180px}
+.remote canvas{display:block;width:100%;height:260px}
+.remote summary{cursor:pointer;font-weight:650;color:var(--fg)}
+.remote-foot{font-size:13px;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+.remote-foot p{margin:6px 0}
+.remote-performance{padding:28px}
+.remote-performance .remote-heading{align-items:flex-start;flex-wrap:wrap;margin-bottom:22px}
+.remote-performance h2{font-size:24px;margin:0}
+.remote-eyebrow{margin:0 0 4px;color:var(--accent-ink);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.remote-performance #rm-history-range{margin:6px 0 0;font-size:13px}
+.remote-statistics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:22px}
+.remote-stat{display:grid;gap:4px;padding:18px 20px;min-width:0}
+.remote-stat+.remote-stat{border-left:1px solid var(--border)}
+.remote-stat span{color:var(--label);font-size:12px;font-weight:600}
+.remote-stat strong{color:var(--fg);font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.remote-stat small{font-size:12px;overflow-wrap:anywhere}
+.remote-chart-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.remote-metric-switch{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--panel2)}
+.remote .remote-metric-switch button{border:0;min-height:34px;padding:6px 16px;color:var(--label)}
+.remote .remote-metric-switch button[aria-pressed=true]{background:var(--panel);color:var(--fg)}
+.remote-average-legend{display:flex;align-items:center;gap:8px;color:var(--label);font-size:12px}
+.remote-average-legend:before{content:"";width:24px;border-top:1px dashed var(--label)}
+.remote-chart-wrap{position:relative;margin-top:14px}
+.remote-chart-wrap canvas{height:310px;margin:0;border-radius:12px;cursor:crosshair}
+.remote-chart-tooltip{position:absolute;z-index:2;display:grid;gap:2px;min-width:150px;padding:10px 12px;border:1px solid var(--border-strong);border-radius:10px;background:var(--panel2);box-shadow:0 12px 32px rgba(0,0,0,.2);pointer-events:none}
+.remote-chart-tooltip time,.remote-chart-tooltip small{font-size:11px;color:var(--label)}
+.remote-chart-tooltip strong{font-size:16px;color:var(--fg)}
+.remote-chart-empty{position:absolute;inset:0;display:grid;place-items:center;margin:0;color:var(--label)}
+.remote-performance #rm-history-note{font-size:12px;margin:12px 0 18px}
+.remote-readings{border-top:1px solid var(--border);padding-top:16px}
+.remote-table-scroll{overflow-x:auto;margin-top:14px}
+.remote table{width:100%;min-width:560px;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.remote th{text-align:left;color:var(--label);font-weight:600}
+.remote th,.remote td{padding:10px 8px;border-bottom:1px solid var(--border)}
+.remote td{color:var(--fg)}
+@media(max-width:900px){.remote-statistics{grid-template-columns:1fr 1fr}.remote-stat:nth-child(3){border-left:0}.remote-stat:nth-child(n+3){border-top:1px solid var(--border)}}
+@media(max-width:640px){
+ .remote{padding-top:32px}
+ .remote-intro{display:block}
+ .remote-total{text-align:left;justify-items:start;margin-top:20px}
+ .remote-total strong{font-size:32px}
+ .remote-panel,.remote .miner{padding:18px}
+ .remote .heading,.remote-heading{align-items:flex-start;flex-wrap:wrap}
+ .remote-heading select{max-width:100%}
+ .remote-row input,.remote-row button{flex-basis:100%}
+ .remote-performance{padding:18px}
+ .remote-statistics{grid-template-columns:1fr}
+ .remote-stat+.remote-stat{border-left:0;border-top:1px solid var(--border)}
+ .remote-chart-wrap canvas{height:240px}
+}
