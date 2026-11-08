@@ -47,7 +47,8 @@ In scope:
   (ntfy, webhook), MQTT / Home Assistant, the anonymous usage count and hashrate
   sharing;
 - the release pipeline: release signing, `update.json`, the published files, and the
-  web installer at <https://bdlglua.github.io/BDLMinerV2/>.
+  web installer at <https://miner.bdl-pool.com/> (also served at
+  <https://bdlglua.github.io/BDLMinerV2/>).
 
 Out of scope:
 

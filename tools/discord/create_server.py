@@ -26,7 +26,7 @@ import urllib.error
 import urllib.request
 
 API = "https://discord.com/api/v10"
-FLASHER = "https://bdlglua.github.io/BDLMinerV2/"
+FLASHER = "https://miner.bdl-pool.com/"
 REPO = "https://github.com/bdlglua/BDLMinerV2"
 
 # Discord permission bits.

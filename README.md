@@ -1,17 +1,17 @@
 # BDLMiner V2
 
-[![Install BDLMinerV2](https://img.shields.io/badge/INSTALL-BDLMinerV2-f7931a?style=for-the-badge&logo=espressif&logoColor=white)](https://bdlglua.github.io/flash.html)
+[![Install BDLMinerV2](https://img.shields.io/badge/INSTALL-BDLMinerV2-f7931a?style=for-the-badge&logo=espressif&logoColor=white)](https://miner.bdl-pool.com/flash.html)
 [![Stable v2.5.4](https://img.shields.io/badge/STABLE-v2.5.4-2ea44f?style=for-the-badge)](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.4)
 
-**[Install in your browser (Chrome / Edge)](https://bdlglua.github.io/flash.html)** · **[Stable v2.5.4 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.4)** · [Installation guide](docs/guide.md#install-a-release-no-build-tools)
+**[Install in your browser (Chrome / Edge)](https://miner.bdl-pool.com/flash.html)** · **[Stable v2.5.4 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.4)** · [Installation guide](docs/guide.md#install-a-release-no-build-tools)
 
 Solo SHA-256d mining firmware for ESP32 boards and experimental ASIC boards,
 with a local dashboard and a Linux/Raspberry Pi fleet hub.
 
-**[Flasher](https://bdlglua.github.io/flash.html)** ·
-[Website](https://bdlglua.github.io/) ·
-[Interactive demos](https://bdlglua.github.io/demo.html) ·
-[Statistics](https://bdlglua.github.io/stats.html) ·
+**[Flasher](https://miner.bdl-pool.com/flash.html)** ·
+[Website](https://miner.bdl-pool.com/) ·
+[Interactive demos](https://miner.bdl-pool.com/demo.html) ·
+[Statistics](https://miner.bdl-pool.com/stats.html) ·
 **[Stable v2.5.4](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.4)**
 
 Mine **BTC, BCH, BSV, eCash (XEC), DigiByte SHA-256d (DGB) or Peercoin (PPC, PoW)** with a matching
@@ -65,10 +65,10 @@ Both projects make solo Bitcoin mining approachable on small ESP32 devices. Choo
 
 ## Install and update
 
-**Recommended: [Install BDLMinerV2 stable v2.5.4 with the Web Flasher](https://bdlglua.github.io/flash.html).** Do not use older v1.x releases for a new V2 installation.
+**Recommended: [Install BDLMinerV2 stable v2.5.4 with the Web Flasher](https://miner.bdl-pool.com/flash.html).** Do not use older v1.x releases for a new V2 installation.
 
 
-1. Open the **[Flasher](https://bdlglua.github.io/flash.html)** in Chrome or Edge
+1. Open the **[Flasher](https://miner.bdl-pool.com/flash.html)** in Chrome or Edge
    on a computer. Connect your board with a data USB cable and select **Flash**.
    **First installation erases the board.** Read the ASIC board guide first.
 2. Join **`BDLMinerV2-XXXX`**, password **`MineYourCoins`**, then open
@@ -92,7 +92,7 @@ Already installed? Use automatic signed updates or upload the matching
 | ASIC — experimental | [Bitaxe Gamma 601 (BM1370)](docs/hardware/bitaxe-gamma-601.md), [NerdNOS (BM1397)](docs/hardware/nerdnos.md) |
 
 [Full board/environment list](docs/hardware/supported-boards.md) ·
-[Measured comparison](https://bdlglua.github.io/boards.html) ·
+[Measured comparison](https://miner.bdl-pool.com/boards.html) ·
 [Hardware validation and limits](docs/v2/hardware-validation.md)
 
 **Physically measured with BDLMinerV2:** M5StickC Plus2 and Bitaxe Gamma 601 (owner-operated tests). Physical V2
@@ -104,7 +104,7 @@ Solo mining is educational: a payout requires finding a valid block.
 
 - [User guide](docs/guide.md) · [V2 hub and setup](docs/v2/README.md)
 - [My miners remotely](https://bdlglua.github.io/remote/) · [Setup](docs/remote-access.md) / [Français](docs/remote-access.fr.md)
-- [Troubleshooting FAQ](https://bdlglua.github.io/faq.html) · [Shares explained](docs/guide.md#pool-shares-and-local-records)
+- [Troubleshooting FAQ](https://miner.bdl-pool.com/faq.html) · [Shares explained](docs/guide.md#pool-shares-and-local-records)
 - [Coin and pool setup](docs/mining-coins.md)
 - [Stable v2.5.4 release notes](docs/releases/v2.5.4.md) / [Français](docs/releases/v2.5.4.fr.md) · [All releases](https://github.com/bdlglua/BDLMinerV2/releases)
 - [Build from source](docs/development.md) · [Contribute](CONTRIBUTING.md) · [Security](SECURITY.md)

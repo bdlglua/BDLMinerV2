@@ -6,7 +6,7 @@ the code.
 
 ## Install a release (no build tools)
 
-**Easiest:** open **https://bdlglua.github.io/flash.html** in Chrome or Edge on a
+**Easiest:** open **https://miner.bdl-pool.com/flash.html** in Chrome or Edge on a
 computer, plug the board in with a data USB cable, pick it in the list and click
 *Install* (it flashes the latest release; the first install erases the board).
 
