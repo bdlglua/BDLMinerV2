@@ -3,7 +3,7 @@
 [Français](remote-access.fr.md)
 
 View your miners from a phone or another network at
-**[My miners](https://bdlglua.github.io/remote/)**.
+**[My miners](https://miner.bdl-pool.com/remote/)**.
 The boards send readings directly over verified HTTPS: no computer, Raspberry Pi,
 VPN, port forwarding or local hub needs to stay running. The miners need Wi-Fi
 with Internet access and **BDLMiner 2.5.4 or newer** (2.3.0 with a private key,
@@ -18,7 +18,7 @@ see below).
    choose a name such as `M5 bureau` or `Gamma atelier` and enable monitoring.
    **Save and restart** once. Nothing to copy: the miner uses the payout address
    set in **Settings → Pool** (the part before any `.worker`).
-3. Open **[My miners](https://bdlglua.github.io/remote/)**, enter the same wallet
+3. Open **[My miners](https://miner.bdl-pool.com/remote/)**, enter the same wallet
    address and choose **View my miners**. Every miner using that address appears,
    whatever its worker name. Tick **Remember this address on this device** to
    open the page directly next time.
