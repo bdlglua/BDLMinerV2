@@ -3,11 +3,22 @@
   "private": true,
   "description": "BDLMiner V2 public website, written in React with Next.js and exported as static pages",
   "scripts": {
+    "stats:test": "cargo test --manifest-path stats-wasm/Cargo.toml",
+    "stats:benchmark": "cargo build --manifest-path stats-wasm/Cargo.toml --release --target wasm32-unknown-unknown && node stats-wasm/benchmark.mjs",
+    "typecheck": "tsc --noEmit",
     "build": "next build && node scripts/export.mjs"
   },
   "dependencies": {
-    "next": "15.5.28",
-    "react": "19.1.10",
-    "react-dom": "19.1.10"
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "overrides": {
+    "postcss": "8.5.32"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "typescript": "5.9.3"
   }
 }

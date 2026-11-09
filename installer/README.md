@@ -4,9 +4,11 @@
 update pointers. The same files are published at both the project Pages address
 and the account root. No firmware release is needed for website changes.
 
-The pages are written in React with Next.js, in `site/` (pages router, static
-export). `site/components/Layout.js` holds the shared navigation, footer and chat;
-`site/pages/` holds one component per page. The pages ship no Next.js runtime
+The pages are written in React with Next.js and TypeScript (`.tsx`), in `site/`
+(pages router, static export). `site/components/Layout.tsx` holds the shared
+navigation, footer and chat; `site/pages/` holds one typed component per page.
+Run `npm run typecheck --prefix site` for strict TypeScript validation. The
+standalone scripts in `installer/assets/` remain JavaScript. The pages ship no Next.js runtime
 (`unstable_runtimeJS:false`): the behaviour stays in `assets/site.js` (language,
 flasher, live statistics and the home page's fleet table, chat) and
 `assets/discovery.js`, and the styles in `assets/site.css` and

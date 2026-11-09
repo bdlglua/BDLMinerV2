@@ -1,7 +1,14 @@
 // Shared page frame: navigation, footer and chat. Page content goes in <main>.
 import Head from 'next/head';
+import type {ReactNode} from 'react';
 
-export default function Layout({children,flasher=false,remote=false}){
+interface LayoutProps {
+ children: ReactNode;
+ flasher?: boolean;
+ remote?: boolean;
+}
+
+export default function Layout({children,flasher=false,remote=false}:LayoutProps){
  return <>
   <Head>
    <title>__PAGE_TITLE__</title>
@@ -35,7 +42,7 @@ export default function Layout({children,flasher=false,remote=false}){
    </div></details>
    <a href="support.html" id="nav-support" data-t="navSupport">Support</a>
   </div>
-  <button id="theme" type="button" aria-pressed="false" data-al="themeLight" aria-label="Light theme"><svg className="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg><svg className="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg></button>
+  <button id="theme" type="button" aria-pressed="false" data-al="themeDark" aria-label="Dark theme"><svg className="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg><svg className="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg></button>
   <button id="lang" type="button">Français</button>
   <button id="menu" type="button" aria-expanded="false" aria-controls="site-links" data-al="menu" aria-label="Menu">☰</button>
  </div>
@@ -47,13 +54,9 @@ export default function Layout({children,flasher=false,remote=false}){
 
 <footer>
  <nav className="footer-nav wrap" aria-label="All pages" data-al="navPages">
-  <a href="index.html" data-t="navHome">Home</a><a href="start.html" data-t="navStart">Get started</a>
-  <a href="boards.html" data-t="navBoards">Boards</a><a href="flash.html" data-t="navInstall">Flash</a>
-  <a href="demo.html" data-t="navDemo">Demo</a><a href="faq.html" data-t="navFAQ">FAQ</a>
-  <a href="releases.html" data-t="navNews">Releases</a><a href="stats.html" data-t="navStats">Statistics</a>
-  <a href="remote.html" data-t="navRemote">My miners</a>
-  <a href="https://bdl-pool.com/">BDL Pool</a>
-  <a href="gallery.html" data-t="navCommunity">Community</a><a href="support.html" data-t="navSupport">Support</a>
+  <a href="index.html" data-t="navHome">Home</a><a href="boards.html" data-t="navBoards">Boards</a>
+  <a href="flash.html" data-t="navInstall">Flash</a><a href="stats.html" data-t="navStats">Statistics</a>
+  <a href="remote.html" data-t="navRemote">My miners</a><a href="https://github.com/bdlglua/BDLMinerV2">GitHub</a>
  </nav>
  <div className="wrap">
   <span data-t="license">BDLMiner V2 is free software under the GNU GPL v3.0.</span>
@@ -79,7 +82,7 @@ export default function Layout({children,flasher=false,remote=false}){
   <h3 data-t="chatSettings">Settings</h3>
   <div className="field">
    <label htmlFor="chat-name" data-t="chatName">Name</label>
-   <div className="row"><input id="chat-name" maxLength="24" autoComplete="nickname" data-ph="chatNamePh" placeholder="Your name" />
+   <div className="row"><input id="chat-name" maxLength={24} autoComplete="nickname" data-ph="chatNamePh" placeholder="Your name" />
     <button type="button" className="btn-s" id="chat-save" data-t="chatSave">Save</button></div>
    <p className="hint" id="chat-when" data-t="chatNameHint">Changeable every 30 days</p>
   </div>
@@ -109,7 +112,7 @@ export default function Layout({children,flasher=false,remote=false}){
    <input type="file" id="chat-file-input" accept="image/*,video/*" hidden />
    <button type="button" className="chat-icon rec" id="chat-rec" aria-pressed="false" data-al="chatRecord" aria-label="Voice message">🎤</button>
    <label className="skip" htmlFor="chat-text" data-t="chatMessage">Message</label>
-   <textarea id="chat-text" rows="1" maxLength="500" data-ph="chatTextPh" placeholder="Message…"></textarea>
+   <textarea id="chat-text" rows={1} maxLength={500} data-ph="chatTextPh" placeholder="Message…"></textarea>
    <button type="submit" className="send" id="chat-send" data-al="chatSend" aria-label="Send">➤</button>
   </div>
  </form>

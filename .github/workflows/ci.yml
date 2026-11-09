@@ -12,11 +12,24 @@ permissions:
   contents: read
 
 jobs:
+  stats-api-prototype:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.23"
+      - run: go test -C tools/stats-api-go ./...
+      - run: go vet -C tools/stats-api-go ./...
+
   web:
-    # Playwright 1.56.1 supports this image; ubuntu-latest moved to 26.04.
+    # Keep browser tests on a known image; ubuntu-latest moved to 26.04.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          targets: wasm32-unknown-unknown
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -27,6 +40,9 @@ jobs:
       # The public pages are React components (site/) exported to installer/site/:
       # the committed export must match the sources.
       - run: npm ci --prefix site
+      - run: npm run typecheck --prefix site
+      - run: npm run stats:test --prefix site
+      - run: npm run stats:benchmark --prefix site
       - run: npm run build --prefix site
         env:
           NEXT_TELEMETRY_DISABLED: "1"

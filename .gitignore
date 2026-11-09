@@ -25,3 +25,4 @@ site/node_modules/
 site/.next/
 site/out/
 site/next-env.d.ts
+site/stats-wasm/target/

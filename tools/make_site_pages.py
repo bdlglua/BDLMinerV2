@@ -7,7 +7,7 @@ import re
 
 
 PAGES = {
-    'home': ('index.html', 'Solo Bitcoin mining on ESP32', 'Minage Bitcoin solo sur ESP32'),
+    'home': ('index.html', 'Bitcoin solo mining firmware', 'Firmware de minage solo Bitcoin'),
     'start': ('start.html', 'Get started', 'Bien démarrer'),
     'boards': ('boards.html', 'Supported boards', 'Cartes compatibles'),
     'flash': ('flash.html', 'Flash your board', 'Flasher ta carte'),
@@ -39,7 +39,7 @@ REMOTE_REDIRECT = """<!doctype html>
 def build_pages(root, output, version, boards, content):
     root, output = Path(root), Path(output)
     asset_versions = {name: hashlib.sha256((root / 'installer/assets' / name).read_bytes()).hexdigest()[:12]
-                      for name in ('site.js', 'site.css', 'remote.js', 'remote.css')}
+                      for name in ('site.js', 'site.css', 'discovery.js', 'discovery.css', 'remote.js', 'remote.css')}
     titles = {key: {'en': page[1], 'fr': page[2]} for key, page in PAGES.items()}
     for key, (filename, title, _) in PAGES.items():
         # Complete pages rendered by the React/Next.js site (site/, `npm run build`).

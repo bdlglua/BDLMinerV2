@@ -2,31 +2,23 @@
 // window.BDL_BOARDS and window.BDL_VERSION (filled in by tools/make_site_pages.py).
 const BOARDS=window.BDL_BOARDS||[],VERSION=window.BDL_VERSION||'';
 const STATS='https://bdlminer-stats.bdlminer-bot.workers.dev/api/summary';
+const localStatsPreview=new URLSearchParams(location.search).get('statsApi')==='go'&&
+ (location.protocol==='file:'||['localhost','127.0.0.1','[::1]'].includes(location.hostname));
+const statsEndpoint=localStatsPreview?'http://127.0.0.1:8787/api/summary':STATS;
 let poolNames={},poolLinks={};try{const data=JSON.parse(document.getElementById('site-data').textContent);poolNames=data.pool_names||{};poolLinks=data.pool_links||{}}catch{}
 const FR={skip:'Aller au contenu',navFeatures:'Fonctions',navBoards:'Cartes',navInstall:'Flasher',navStats:'Statistiques',navCommunity:'Communauté',
 navHome:'Accueil',navStart:'Bien démarrer',navDemo:'Démo',navMore:'Explorer',navFAQ:'FAQ',navNews:'Nouveautés',navSupport:'Soutenir',navPages:'Toutes les pages',
 navRemote:'Mes mineurs',
-heroPill:'Open source · mises à jour signées',famAll:'Toutes les cartes',famEsp32:'ESP32',famS3:'ESP32-S3',famS2c3:'S2 / C3',famAsic:'ASIC',famGroup:'Famille de cartes',searchLabel:'Rechercher une carte',searchBoard:'Rechercher une carte',noMatch:'Aucune carte ne correspond.',cardMiners:'{n} miners',cardMiner:'{n} miner',check1:'SHA-256 matériel sur ESP32, S2, S3 et C3',check2:'Stratum V1 et V2 chiffré (Noise)',check3:'Bitaxe Gamma jusqu’à 800 MHz',
-worksWith:'Fonctionne avec les pools solo',marketTitle:'Le parc BDLMiner en direct',marketLead:'Les miners qui partagent anonymement leur hashrate, par carte. Mis à jour toutes les 20 secondes.',
+heroPill:'Logiciel libre · mises à jour signées',famAll:'Toutes',famEsp32:'ESP32',famS3:'ESP32-S3',famS2c3:'S2 / C3',famAsic:'ASIC',famGroup:'Famille de cartes',searchLabel:'Rechercher une carte',searchBoard:'Rechercher une carte',noMatch:'Aucune carte ne correspond.',cardMiners:'{n} miners',cardMiner:'{n} miner',check1:'SHA-256 matériel sur ESP32, S2, S3 et C3',check2:'Stratum V1 et V2 chiffré (Noise)',check3:'Bitaxe Gamma jusqu’à 800 MHz',
+heroKicker:'Firmware libre · ESP32 et ASIC',deviceCaption:'Statistiques sur l’écran du mineur',
+worksWith:'Pools solo compatibles',marketTitle:'Réseau en direct',marketLead:'Hashrate partagé par carte · actualisé toutes les 20 secondes.',
 marketAll:'Toutes les statistiques',colShare:'Part des miners',liveFleet:'Parc en direct',heroMiners:'miners en ligne',heroRecord:'Meilleure heure',
-exploreTitle:'Découvrir BDLMiner',exploreLead:'Choisis ta carte, essaie l’interface ou trouve de l’aide pour la prochaine étape.',
-exploreBoards:'Compare les puces, les écrans et les hashrates mesurés.',exploreDemo:'Essaie le dashboard et le hub sans posséder de miner.',
-exploreStart:'Première installation, mises à jour et passage depuis AxeOS.',exploreFAQ:'Dépannage USB, Wi-Fi, shares et performances.',
-exploreNews:'Derniers changements et canaux stable et bêta.',exploreCommunity:'Partage ton installation et retrouve les autres miners.',
-title:'Le minage Bitcoin solo sur un ESP32 <b>de poche</b>',
-tagline:'BDLMiner V2 est un firmware libre et gratuit qui transforme un M5StickC Plus2 ou une autre carte ESP32 en mineur Bitcoin solo « loterie », avec un écran en direct, un tableau de bord web et des mises à jour signées automatiques.',
-ctaInstall:'Flasher',ctaHub:'Hub Linux / Raspberry Pi',version:'Firmware proposé : '+VERSION+'.',
-featTitle:'Ce qu\'il fait',featLead:'Le mineur tourne sur la carte. Un hub facultatif sur Linux ou Raspberry Pi regroupe tes mineurs dans un même tableau de bord.',
-f1t:'SHA-256 matériel',f1:'Utilise le moteur SHA de l\'ESP32 : environ 1 MH/s sur un M5StickC Plus2, avec le minage logiciel en secours.',
-f2t:'Stratum V1 et V2',f2:'N\'importe quelle pool solo, Stratum V2 natif chiffré avec Noise, une pool de secours et la bascule automatique.',
-f3t:'Tableau de bord web en direct',f3:'Hashrate, shares acceptées et rejetées, historique, réglages et diagnostic du pool depuis ton navigateur.',
-f4t:'Mises à jour signées automatiques',f4:'Stable par défaut, bêta au choix. Les mises à jour signées passent par une période d\'essai avec retour arrière en cas d\'échec.',
-f5t:'Alertes',f5:'ntfy, webhooks Discord ou Telegram : meilleures shares, hashrate en baisse, résumé quotidien et, qui sait, un bloc.',
-f6t:'Home Assistant',f6:'Découverte MQTT avec commandes, et métriques Prometheus pour tes propres graphiques.',
-f7t:'Écrans configurables',f7:'Choisis tes métriques, leur ordre et les pages actives, en français ou anglais. Les cartes sans écran fonctionnent aussi.',
-f9t:'Hub multi-mineurs',f9:'Suis plusieurs mineurs, garde un historique local et lance la calibration supervisée du Gamma depuis Linux ou Raspberry Pi.',
-f8t:'Les cartes ASIC aussi',f8:'Prise en charge expérimentale du Bitaxe Gamma 601 et du NerdNOS, de quelques centaines de GH/s à environ 1 TH/s.',
-boardsTitle:'Cartes compatibles',boardsLead:'Un firmware par famille. Les cartes marquées expérimentales attendent encore des retours sur du vrai matériel : ils sont les bienvenus.',
+title:'Minage Bitcoin solo, <b>sur petite carte.</b>',
+tagline:'Firmware libre pour mineurs ESP32 et Bitaxe.',
+ctaInstall:'Installer',ctaHub:'Kit Linux',ctaBoards:'Cartes compatibles',version:'Firmware : '+VERSION,
+featTitle:'Pensé pour le minage solo',
+f1t:'SHA-256 matériel',f2t:'Stratum V1 et V2',f3t:'Dashboard web',f4t:'Mises à jour signées',
+boardsTitle:'Cartes compatibles',boardsLead:'Firmware disponible et hashrate mesuré.',
 installTitle:'Flasher ta carte',installLead:'Aucun logiciel à installer : Chrome ou Edge sur un ordinateur flashe la carte par USB.',
 board:'Ta carte',install:'Flasher',unsupported:'Ce navigateur ne peut pas installer : utilise Chrome ou Edge sur un ordinateur.',
 notallowed:'La page doit être ouverte en HTTPS.',erase:'Version '+VERSION+'. La première installation efface la carte (réglages et statistiques).',
@@ -34,12 +26,12 @@ s1:'Branche la carte à cet ordinateur avec un câble USB qui transmet les donn�
 s2:'Choisis la carte, clique sur Flasher et sélectionne son port série.',
 s3:'Au redémarrage, connecte-toi au WiFi BDLMinerV2-XXXX (mot de passe MineYourCoins) et entre ton WiFi, la pool et ton adresse BTC.',
 after:'Ouvre ensuite le tableau de bord sur <b>http://bdlminer-xxxx.local</b>. Les mises à jour arrivent toutes seules.',
-statsTitle:'BDLMiner en ce moment',statsLead:'Totaux en direct des rapports anonymes : version du firmware, carte, hashrate, cryptomonnaie et groupe de pool publique facultatif. Aucune adresse Bitcoin, aucun worker ni nom d’hôte privé.',
+statsTitle:'Statistiques réseau',statsLead:'Données anonymisées · actualisation toutes les 20 secondes.',networkTotal:'Hashrate du parc',networkMiners:'Mineurs déclarant des mesures',networkAverage:'Moyenne actuelle par mineur',networkPeak:'Meilleure heure enregistrée',
 poolOther:'Autre / pool privée',poolUnknown:'Pool non renseignée',byPool:'Par pool',colPool:'Pool',colCoin:'Cryptomonnaie',coinsTitle:'Par cryptomonnaie',
 devicesTitle:'Appareils',online:'en ligne',offline:'hors ligne',
 devOnline:'en ligne',devOffline:'hors ligne',devNone:'aucun pour l\'instant',devMore:'Voir les {n} autres cartes compatibles',devFewer:'Masquer les cartes sans miner',menu:'Menu',
-tHashrate:'Hashrate total',tMiners:'Miners',tAverage:'Moyenne par miner',tRecord:'Meilleure heure',
-chatTitle:'Discussion',chatOpen:'Ouvrir la discussion',themeLight:'Thème clair',chatUnread:'non lus',chatClose:'Fermer la discussion',chatSettings:'Réglages',chatName:'Pseudo',chatNamePh:'Ton pseudo',
+tHashrate:'Hashrate total',tMiners:'Mineurs',tAverage:'Moyenne / mineur',tRecord:'Pic horaire',
+chatTitle:'Discussion',chatOpen:'Ouvrir la discussion',themeDark:'Thème sombre',chatUnread:'non lus',chatClose:'Fermer la discussion',chatSettings:'Réglages',chatName:'Pseudo',chatNamePh:'Ton pseudo',
 chatSave:'Enregistrer',chatNameHint:'Modifiable tous les 30 jours',chatWhen:'Modifiable le {d}',chatNow:'Modifiable maintenant',
 chatCodeTitle:'Autre appareil',chatQrShow:'📱 Mon QR code',chatQrHide:'Masquer le QR code',chatQrAlt:'QR code pour ouvrir la discussion avec ton pseudo',chatLink:'Copier le lien',chatLinkCopied:'Lien copié : ouvre-le sur ton autre appareil. Ne le partage avec personne.',chatQrFailed:'Impossible d\'afficher le QR code pour l\'instant : utilise « Copier le lien ».',chatCodeHint:'🔒 Scanne-le avec ton téléphone. Ne le montre à personne.',
 chatBack:'Retour à la discussion',chatMembers:'Membres en ligne',chatYou:'(toi)',chatGuests:'+ {n} visiteur(s) sans pseudo',chatNobody:'Personne avec un pseudo pour l\'instant.',chatNeedName:'Choisis d\'abord ton pseudo.',chatSaved:'Pseudo enregistré.',
@@ -58,8 +50,8 @@ chatErrors:{taken:'Ce pseudo est déjà pris.',wait:'Tu pourras changer de pseud
 chatAdminOn:'Mode équipe activé.',chatAdminOff:'Clé refusée.',chatAdminSlow:'Trop d\'essais : réessaie dans une heure.',
 live:'En direct',week:'7 jours',byBoard:'Par carte',byVersion:'Par version',colBoard:'Carte',colVersion:'Version',colMiners:'Miners',colHashrate:'Hashrate',noneNow:'Aucun miner en ce moment.',period:'Période',updated:'mis à jour il y a {s} s',now:'maintenant',
 statsMore:'Données brutes : <a href="https://bdlminer-stats.bdlminer-bot.workers.dev/api/summary">JSON</a> · <a href="https://bdlminer-stats.bdlminer-bot.workers.dev/">page des statistiques</a>.',
-lotteryTitle:'Un billet de loterie, pas un revenu',
-lottery:'Un bloc rapporte 3,125 BTC plus les frais sur ta propre adresse, mais à 1 MH/s il faut en moyenne des milliards d\'années pour en trouver un. Chaque hash a la même minuscule chance, sans progression entre eux : le plaisir est dans le montage, les statistiques et la course à la meilleure difficulté. N\'y dépense que ce que tu mettrais dans un gadget.',
+lotteryTitle:'Le minage solo est un loisir, pas un revenu.',
+lottery:'À la vitesse d’un ESP32, trouver un bloc est extrêmement improbable.',
 communityTitle:'Communauté',communityLead:'Questions, installations, meilleures shares et idées : viens dire bonjour.',
 cDiscord:'Aide en direct, annonces et tickets de support.',cReddit:'r/bdlminer : montre ton installation et partage tes records.',
 cGithub:'Code source, documentation, versions, signalement de bugs et idées.',
@@ -146,7 +138,9 @@ function chart(update=true){
  svg.setAttribute('viewBox','0 0 '+W+' '+H);tip.hidden=true;empty.hidden=!!points.length;
  svg.setAttribute('aria-label',T('sChartAria').replace('{metric}',T(statsMetric==='hashrate'?'sHashrate':'tMiners')));
  if(!points.length){svg.replaceChildren();empty.textContent=T('sNoMeasurements');statsPlot=null;return}
- const color=statsMetric==='hashrate'?'#f7931a':'#58bd7d';svg.style.setProperty('--plot-color',color);
+ const palette=getComputedStyle(document.documentElement);
+ const color=palette.getPropertyValue(statsMetric==='hashrate'?'--accent':'--blue').trim();
+ svg.style.setProperty('--plot-color',color);
  const start=Math.max(summary.at-statsHours[range]*3600000,points[0].at),end=Math.max(summary.at,start+1),values=points.map(p=>p[statsMetric]);
  const extrema=statsMetric==='hashrate'?[period?.minimum_hashrate,period?.maximum_hashrate]:[period?.minimum_miners,period?.maximum_miners];
  const low=Math.min(...values,...extrema.filter(Number.isFinite)),high=Math.max(...values,...extrema.filter(Number.isFinite));
@@ -339,7 +333,7 @@ function stats(){homeMarket();if(!document.getElementById('stats'))return;const 
  set('st-average',summary.miners?rate(summary.hashrate/summary.miners):'–');set('st-record',summary.record?rate(summary.record.hashrate):'–');
  chart();
  if(!summary.miners&&!summary.history?.length)document.getElementById('st-status').textContent=T('noStats')}
-async function refresh(){if(!document.getElementById('stats')&&!document.getElementById('home-market'))return;try{const r=await fetch(STATS,{cache:'no-store'});if(!r.ok)throw 0;summary=await r.json();statsHover=null;fetchedAt=Date.now();stats()}
+async function refresh(){if(!document.getElementById('stats')&&!document.getElementById('home-market'))return;try{const r=await fetch(statsEndpoint,{cache:'no-store'});if(!r.ok)throw 0;summary=await r.json();statsHover=null;fetchedAt=Date.now();stats()}
  catch(e){if(!summary&&document.getElementById('stats')){chart();document.getElementById('st-status').textContent=T('statsDown')}}}
 
 function apply(){document.documentElement.lang=lang;
@@ -359,9 +353,9 @@ function apply(){document.documentElement.lang=lang;
  document.addEventListener('click',e=>{if(!e.target.closest('nav'))set(false);if(more&&!more.contains(e.target))more.open=false});
  document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(more?.open){more.open=false;more.querySelector('summary').focus();return}if(links.classList.contains('open')){set(false);menu.focus()}})}
 if(document.getElementById('st-more'))document.getElementById('st-more').onclick=()=>{fleetAll=!fleetAll;fleet()};
-{const theme=document.getElementById('theme'),root=document.documentElement;theme.setAttribute('aria-pressed',root.dataset.theme==='light');
- theme.onclick=()=>{const light=root.dataset.theme!=='light';if(light)root.dataset.theme='light';else delete root.dataset.theme;theme.setAttribute('aria-pressed',light);
-  try{light?localStorage.setItem('theme','light'):localStorage.removeItem('theme')}catch(e){}}}
+{const theme=document.getElementById('theme'),root=document.documentElement;theme.setAttribute('aria-pressed',root.dataset.theme!=='dark');
+ theme.onclick=()=>{const light=root.dataset.theme==='dark';if(light)delete root.dataset.theme;else root.dataset.theme='dark';theme.setAttribute('aria-pressed',light);
+  try{localStorage.setItem('theme',light?'light':'dark')}catch(e){}}}
 document.getElementById('lang').onclick=()=>{lang=lang=='fr'?'en':'fr';try{localStorage.setItem('lang',lang)}catch(e){}apply()};
 
 const sel=document.getElementById('board'),btn=document.getElementById('installer');

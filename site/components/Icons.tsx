@@ -12,6 +12,13 @@ const paths={
  check:'M5 12l5 5 9-10',
  arrow:'M5 12h14M13 6l6 6-6 6',
 };
-export default function Icon({name,size=22}){
+type IconName=keyof typeof paths;
+
+interface IconProps {
+ name: IconName;
+ size?: number;
+}
+
+export default function Icon({name,size=22}:IconProps){
  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>;
 }

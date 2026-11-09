@@ -1,6 +1,6 @@
 import Layout from '../components/Layout';
 
-export const config={unstable_runtimeJS:false};
+export const config:StaticExportPageConfig={unstable_runtimeJS:false};
 
 export default function SupportPage(){
  return <Layout>

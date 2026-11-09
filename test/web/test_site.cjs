@@ -9,7 +9,7 @@ async function main(){
  let browser;
  try{
   browser=await chromium.launch({headless:true,executablePath:process.env.BDL_CHROMIUM_PATH||(fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox']});
-  const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage(),errors=[],requests=[];
+  const context=await browser.newContext({viewport:{width:1440,height:1000},locale:'en-US'}),page=await context.newPage(),errors=[],requests=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
   if(process.env.BDL_VERBOSE)page.on('console',message=>{if(message.type()==='error')console.error('BROWSER:',message.text())});
   await page.route('https://**/*',route=>route.fulfill({status:200,contentType:'text/javascript',body:''}));
@@ -18,7 +18,7 @@ async function main(){
   await page.route('https://bdlminer-stats.bdlminer-bot.workers.dev/api/summary',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(communityStats)}));
   await page.addInitScript(()=>{window.WebSocket=class{constructor(){this.readyState=1;setTimeout(()=>this.onopen?.(),0)}send(){}close(){}}});
   await page.goto(url);await page.locator('[data-t="ctaInstall"]').waitFor();
-  assert.equal(await page.locator('[data-t="ctaInstall"]').textContent(),'Flash');
+  assert.equal(await page.locator('[data-t="ctaInstall"]').textContent(),'Install');
   assert.equal(await page.locator('#board-comparison,#demo-frame,#faq-search,#support').count(),0,'home must contain only home content');
   assert.equal(await page.locator('main h1').count(),1);
   await page.locator('#site-links a[href="boards.html"]').click();await page.waitForURL(url+'/boards.html');
@@ -52,7 +52,7 @@ async function main(){
   assert.match(await page.locator('#support').textContent(),/Cartes de test/);
   await page.locator('#site-links a[href="flash.html"]').click();await page.waitForURL(url+'/flash.html');
   assert.equal(await page.locator('#installer [data-t="install"]').textContent(),'Flasher');
-  await page.goto(url);assert.equal(await page.locator('[data-t="ctaInstall"]').textContent(),'Flasher');
+  await page.goto(url);assert.equal(await page.locator('[data-t="ctaInstall"]').textContent(),'Installer');
   await page.goto(url+'/start.html');await page.locator('#route-axeos').click();
   assert.match(await page.locator('#discovery-start').textContent(),/Alimentation régulée 5 V/);
   await page.locator('#site-links a[href="demo.html"]').click();await page.waitForURL(url+'/demo.html');
@@ -94,9 +94,10 @@ async function main(){
    const breakdownStyle=await page.evaluate(()=>{
     const board=document.querySelector('#st-boards').closest('.card'),pool=document.querySelector('#st-pools').closest('.card');
     const heading=card=>{const s=getComputedStyle(card.querySelector('h3'));return[s.fontSize,s.fontWeight,s.color,s.textTransform]};
-    return{gap:pool.getBoundingClientRect().top-board.parentElement.getBoundingClientRect().bottom,board:heading(board),pool:heading(pool)};
+    return{sameGrid:board.parentElement===pool.parentElement,rowGap:parseFloat(getComputedStyle(board.parentElement).rowGap),board:heading(board),pool:heading(pool)};
    });
-   assert.ok(breakdownStyle.gap>=12,'separate the pool card from the other breakdowns');
+   assert.equal(breakdownStyle.sameGrid,true,'all breakdown cards should share the same grid');
+   assert.ok(breakdownStyle.rowGap>=12,'statistics cards should have clear separation');
    assert.deepEqual(breakdownStyle.pool,breakdownStyle.board,'all breakdown headings should have the same appearance');
    assert.equal(await page.locator('#st-pools a').count(),1);
    assert.equal(await page.locator('#st-pools a').getAttribute('href'),'https://web.public-pool.io/');
@@ -126,10 +127,12 @@ async function main(){
   const origin=await page.locator('#st-chart').evaluate(svg=>({grid:Number(svg.querySelector('.grid-h').getAttribute('x1')),line:Number(svg.querySelector('.line').getAttribute('d').match(/^M([\d.]+)/)[1])}));
   assert.ok(Math.abs(origin.grid-origin.line)<1,'the first observed measurement starts at the plot origin');
   await page.locator('#st-chart').focus();await page.keyboard.press('Home');assert.equal(await page.locator('#st-tooltip').isVisible(),true);assert.match(await page.locator('#st-tooltip strong').textContent(),/900 GH\/s/);
-  await page.locator('[data-st-metric=miners]').click();await page.locator('#st-chart').focus();await page.keyboard.press('End');assert.match(await page.locator('#st-tooltip strong').textContent(),/^7 miners/);
+  await page.locator('[data-st-metric=miners]').click();await page.locator('#st-chart').focus();await page.keyboard.press('End');assert.match(await page.locator('#st-tooltip strong').textContent(),/^7 mineurs/);
   await page.locator('[data-st-metric=hashrate]').click();await page.locator('#st-chart').scrollIntoViewIfNeeded();const chartBox=await page.locator('#st-chart').boundingBox();await page.mouse.move(chartBox.x+chartBox.width/2,chartBox.y+60);assert.equal(await page.locator('#st-tooltip').isVisible(),true);
   await page.locator('.public-readings summary').click();assert.equal(await page.locator('#st-readings tr').count(),7);
-  await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');await page.locator('#theme').click();
+  const initialTheme=await page.locator('html').getAttribute('data-theme')||'light';await page.locator('#theme').click();
+  const toggledTheme=await page.locator('html').getAttribute('data-theme')||'light';assert.notEqual(toggledTheme,initialTheme);
+  await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme')||'light',initialTheme);
   if(process.env.BDL_SCREENSHOT_DIR){
    fs.mkdirSync(process.env.BDL_SCREENSHOT_DIR,{recursive:true});await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-desktop.png'),style:'nav,#chat-bubble{visibility:hidden}'});
    await page.setViewportSize({width:375,height:812});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-mobile.png'),style:'nav,#chat-bubble{visibility:hidden}'});await page.setViewportSize({width:1440,height:1000});
@@ -207,9 +210,11 @@ async function main(){
   await page.locator('#lang').click();await page.locator('#rm-miners .state').filter({hasText:'En ligne'}).waitFor();
   assert.equal(await page.locator('#rm-login h2').textContent(),'Voir vos mineurs');
   assert.equal(await page.locator('#rm-chart').evaluate(c=>c.width>0),true);
-  await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
+  const initialRemoteTheme=await page.locator('html').getAttribute('data-theme')||'light';
+  if(initialRemoteTheme!=='dark')await page.locator('#theme').click();
+  await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme')||'light','light');
   assert.notEqual(await page.locator('.remote-panel.remote-performance').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(28, 29, 34)','the page follows the light theme');
-  await page.locator('#theme').click();
+  if(initialRemoteTheme==='dark')await page.locator('#theme').click();
   await page.locator('#rm-logout').click();await page.locator('#rm-login').waitFor();
   assert.equal(await page.evaluate(()=>localStorage.getItem('bdl-remote-address')),null);
   await page.goto(url+'/remote/');await page.waitForURL(url+'/remote.html');
@@ -217,7 +222,7 @@ async function main(){
   await page.unroute(remoteAPI+'/api/remote**');
   assert.deepEqual(errors,[],'uncaught site/demo browser errors');
   if(process.env.BDL_SCREENSHOT_DIR){fs.mkdirSync(process.env.BDL_SCREENSHOT_DIR,{recursive:true});await page.setViewportSize({width:1440,height:1000});await page.goto(url);await page.locator('[data-t=ctaInstall]').waitFor();await page.screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'site-discovery.png'),fullPage:true})}
-  console.log('PASS site: separate pages, Flasher label, shared navigation, board transfer, old-link redirects, both hosting prefixes/channels, mobile layouts and isolated interactive demos');
+  console.log('PASS site: separate pages, localized install labels, shared navigation, board transfer, old-link redirects, both hosting prefixes/channels, mobile layouts and isolated interactive demos');
  }finally{if(browser)await browser.close();child.kill('SIGTERM')}
 }
 main().catch(error=>{console.error(error);process.exitCode=1});

@@ -1,6 +1,10 @@
 {
   "name": "bdlminer-web-tests",
   "private": true,
-  "scripts": { "test": "node test_pages.cjs && node test_site.cjs" },
-  "devDependencies": { "playwright": "1.56.1" }
+  "scripts": {
+    "test": "node test_pages.cjs && node test_site.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.0"
+  }
 }
