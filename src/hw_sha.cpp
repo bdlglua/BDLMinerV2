@@ -137,7 +137,7 @@ static __attribute__((noinline)) uint32_t scanWithPadding(
         }
         if (sparse) REG_WRITE(text + 15, job.tail[15]);
         sha_ll_continue_block(SHA2_256);
-        waitIdle();
+        waitHashWord7(h7);
         if (direct) {
             digestToText(text, digest);
         } else {
@@ -148,10 +148,10 @@ static __attribute__((noinline)) uint32_t scanWithPadding(
         if (!sparse) for (int i = 9; i < 15; ++i) REG_WRITE(text + i, 0);
         REG_WRITE(text + 15, 0x00010000);  // 256 bits, big-endian length
         sha_ll_start_block(SHA2_256);
-        waitIdle();
+        uint32_t hashTop = waitHashWord7(h7);
         // Bytes 28..31 of the digest, read as a little-endian word, are the
         // most significant 32 bits of the hash as a 256-bit number.
-        if (*h7 <= limit) {
+        if (hashTop <= limit) {
             uint8_t hash[32];
             sha_ll_read_digest(SHA2_256, hash, 8);
             hit(nonce, hash, ctx);
@@ -185,7 +185,7 @@ static __attribute__((noinline)) uint32_t scanOverlapped(
     for (uint32_t i = 0; i < count; i++, nonce++) {
         writeWords<8>(digest, job.mid);
         sha_ll_continue_block(SHA2_256);
-        waitIdle();
+        waitHashWord7(h7);
         digestToText(text, digest);
         REG_WRITE(text + 8, 0x00000080);   // padding byte 0x80
         REG_WRITE(text + 15, 0x00010000);  // 256 bits, big-endian length
@@ -194,8 +194,8 @@ static __attribute__((noinline)) uint32_t scanOverlapped(
         job.tail[3] = nonce + 1;
         writeWords<9>(text, job.tail);
         REG_WRITE(text + 15, job.tail[15]);
-        waitIdle();
-        if (*h7 <= limit) {
+        uint32_t hashTop = waitHashWord7(h7);
+        if (hashTop <= limit) {
             uint8_t hash[32];
             sha_ll_read_digest(SHA2_256, hash, 8);
             hit(nonce, hash, ctx);
