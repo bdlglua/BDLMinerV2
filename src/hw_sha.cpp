@@ -63,6 +63,17 @@ static inline void waitIdle() {
     }
 }
 
+static inline uint32_t waitHashWord7(volatile uint32_t *word7) {
+    for (;;) {
+        for (unsigned probe = 0; probe < 32; ++probe) {
+            uint32_t value = *word7;
+            if (value != 0) return value;
+        }
+        // A completed hash can legitimately have a zero most-significant word.
+        if (!sha_ll_busy()) return *word7;
+    }
+}
+
 void prepare(Job &job, const uint8_t header[80]) {
     // The engine works on raw message bytes, so the header is copied as-is.
     memcpy(job.tail, header + 64, 16);
