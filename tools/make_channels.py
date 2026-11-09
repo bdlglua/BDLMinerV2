@@ -5,11 +5,36 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
+import time
 from urllib.parse import quote
 from build_output import staged_directory
 from make_installer import build_installer
 from release_version import Version, select_release
+
+
+def download_release_assets(tag, folder, repository, run=None, sleep=None):
+    run = subprocess.run if run is None else run
+    sleep = time.sleep if sleep is None else sleep
+    command = ['gh', 'release', 'download', tag, '--repo', repository, '--dir', str(folder),
+               '--pattern', '*-factory.bin', '--pattern', 'boards.json', '--pattern', 'update.json',
+               '--clobber']
+    for attempt in range(4):
+        result = run(command, capture_output=True, text=True)
+        if result.returncode == 0:
+            return
+        error = subprocess.CalledProcessError(result.returncode, command,
+                                              output=result.stdout, stderr=result.stderr)
+        transient = re.search(r'\bHTTP 5\d\d\b', result.stderr or '')
+        if not transient or attempt == 3:
+            if result.stderr:
+                print(result.stderr, end='', file=sys.stderr)
+            raise error
+        delay = 2 ** attempt
+        print(f"GitHub asset download returned {transient.group()}; retrying in {delay}s "
+              f"({attempt + 1}/3)", file=sys.stderr)
+        sleep(delay)
 
 
 def validate_manifest(manifest, repository, tag, boards):
@@ -75,8 +100,7 @@ def main():
                               '--jq', '.[] | {tag_name,draft,prerelease,published_at}'], check=True, capture_output=True, text=True)
     releases = [json.loads(line) for line in listing.stdout.splitlines() if line.strip()]
     def fetch(tag, folder):
-        subprocess.run(['gh', 'release', 'download', tag, '--repo', args.repository, '--dir', str(folder),
-                        '--pattern', '*-factory.bin', '--pattern', 'boards.json', '--pattern', 'update.json'], check=True)
+        download_release_assets(tag, folder, args.repository)
     with staged_directory(args.output) as staged:
         stable, beta = build_channels(releases, fetch, staged, args.repository)
     print(f'Installer stable: {stable}; opt-in beta: {beta}')
