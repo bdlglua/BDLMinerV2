@@ -19,6 +19,7 @@ prefix = r'''
 #include "core/work.h"
 #define SOC_SHA_SUPPORT_RESUME 1
 uint32_t textRegisters[16], digestRegisters[8];
+uint32_t pendingDigest[8];
 size_t textWrites = 0, digestWrites = 0, directReads = 0, bufferedReads = 0;
 int locks = 0;
 int busyPolls = 0;
@@ -59,7 +60,12 @@ uint32_t readRegister(volatile uint32_t *address) {
 #define REG_READ(address) readRegister(address)
 void esp_sha_acquire_hardware() { ++locks; modeRegister = 0; }
 void esp_sha_release_hardware() { assert(locks > 0); --locks; }
-bool sha_ll_busy() { if (busyPolls) { --busyPolls; return true; } return false; }
+bool sha_ll_busy() {
+    if (!busyPolls) return false;
+    if (--busyPolls) return true;
+    memcpy(digestRegisters, pendingDigest, sizeof(digestRegisters));
+    return false;
+}
 void sha_ll_fill_text_block(const void *data, size_t words) {
     for (size_t i = 0; i < words; ++i) writeRegister(textRegisters + i, ((const uint32_t *)data)[i]);
 }
@@ -79,7 +85,8 @@ void compress(bool start) {
     sha::transform(state, (const uint8_t *)textRegisters);
     if (badEngine) state[0] ^= 1;
     if (modeRegister != SHA2_256) state[0] ^= 0x5a5a5a5a;  // another algorithm
-    for (int i = 0; i < 8; ++i) digestRegisters[i] = __builtin_bswap32(state[i]);
+    for (int i = 0; i < 8; ++i) pendingDigest[i] = __builtin_bswap32(state[i]);
+    digestRegisters[7] = 0;  // the peripheral exposes no word 7 while BUSY
     if (clobberText) for (int i = 9; i < 15; ++i) textRegisters[i] = 0xdeadbeef;
     busyPolls = 1;
 }

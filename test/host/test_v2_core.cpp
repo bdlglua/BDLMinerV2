@@ -32,6 +32,7 @@ int main(){
     display_config::Snapshot s;s.hashrate=1.093e12;s.temperature=53;s.fanRpm=8667;
     char value[32];display_config::value(1,s,value,sizeof(value),false);assert(strstr(value,"TH/s"));
     display_config::value(8,s,value,sizeof(value),true);assert(!strcmp(value,"8667 RPM"));
-    char guard[3]={'x','x','z'};display_config::value(1,s,guard,2,false);assert(guard[1]==0&&guard[2]=='z');
+    char guard[3]={'x','x','z'};volatile size_t shortSize=2;
+    display_config::value(1,s,guard,shortSize,false);assert(guard[1]==0&&guard[2]=='z');
     puts("V2 core: SemVer precedence, honest share intervals/estimates, ASIC requirements, rejection reasons and bounded display configuration passed");
 }

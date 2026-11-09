@@ -25,6 +25,7 @@ size_t textWrites = 0, busyTextWrites = 0, digestWrites = 0;
 int locks = 0, busyPolls = 0, fallbacks = 0;
 bool lazyText = false;  // an engine reading TEXT when it finishes, not when it starts
 bool pending = false, pendingStart = false;
+uint32_t completedWord7 = 0;
 int64_t ticks = 0;
 int64_t esp_timer_get_time() { return ticks; }
 void logf(const char *format, ...) { if (strstr(format, "failed")) ++fallbacks; }
@@ -69,7 +70,15 @@ void compute(bool start) {
 }
 bool sha_ll_busy() {
     if (!busyPolls) return false;
-    if (--busyPolls == 0 && pending) { pending = false; compute(pendingStart); }
+    if (--busyPolls == 0) {
+        if (pending) {
+            pending = false;
+            digestRegisters[7] = completedWord7;
+            compute(pendingStart);
+        } else {
+            digestRegisters[7] = completedWord7;
+        }
+    }
     ticks += 10;
     return true;
 }
@@ -86,8 +95,16 @@ void sha_ll_write_digest(int, void *data, size_t words) {
 }
 void trigger(bool start) {
     assert(locks > 0 && busyPolls == 0);
-    if (lazyText) { pending = true; pendingStart = start; }
-    else compute(start);  // TEXT latched when the block starts
+    if (lazyText) {
+        completedWord7 = digestRegisters[7];
+        pending = true;
+        pendingStart = start;
+    }
+    else {
+        compute(start);  // TEXT latched when the block starts
+        completedWord7 = digestRegisters[7];
+    }
+    digestRegisters[7] = 0;  // the peripheral exposes no word 7 while BUSY
     busyPolls = 3;
 }
 void sha_ll_start_block(int) { trigger(true); }
