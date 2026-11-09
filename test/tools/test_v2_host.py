@@ -4,6 +4,7 @@ import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
+import subprocess
 import struct
 import sys
 import tempfile
@@ -20,7 +21,7 @@ from bdlhost.calibration import Calibrator
 from bdlhost.hub import Fleet, handler
 from firmware_image import CHIPS, ENV_CHIPS, inspect_app
 from assemble_release import assemble
-from make_channels import build_channels
+from make_channels import build_channels, download_release_assets
 import make_release
 import hardware_suite
 
@@ -590,6 +591,29 @@ class HostTests(unittest.TestCase):
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_channel_asset_download_retries_only_transient_server_errors(self):
+        responses = iter([
+            Mock(returncode=1, stdout='', stderr='HTTP 500 (asset API)'),
+            Mock(returncode=1, stdout='', stderr='HTTP 503 (asset API)'),
+            Mock(returncode=0, stdout='', stderr=''),
+        ])
+        run = Mock(side_effect=lambda *args, **kwargs: next(responses))
+        sleep = Mock()
+        with tempfile.TemporaryDirectory() as tmp:
+            download_release_assets('v2.5.6', Path(tmp), 'bdlglua/BDLMinerV2', run, sleep)
+        self.assertEqual(run.call_count, 3)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
+        self.assertIn('--clobber', run.call_args.args[0])
+
+    def test_channel_asset_download_surfaces_permanent_errors_without_retry(self):
+        run = Mock(return_value=Mock(returncode=1, stdout='', stderr='HTTP 404 (missing asset)'))
+        sleep = Mock()
+        with tempfile.TemporaryDirectory() as tmp, patch('sys.stderr'):
+            with self.assertRaisesRegex(subprocess.CalledProcessError, 'exit status 1'):
+                download_release_assets('v2.5.6', Path(tmp), 'bdlglua/BDLMinerV2', run, sleep)
+        run.assert_called_once()
+        sleep.assert_not_called()
+
     def test_missing_board_never_enters_the_central_signing_step(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
