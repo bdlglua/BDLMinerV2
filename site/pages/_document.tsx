@@ -14,6 +14,7 @@ export default function Document(){
    <meta property="og:image" content="assets/screen-mining.png"/>
    <meta name="theme-color" content="#f4f3ef"/>
    <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
+   <link rel="preload" href="assets/fonts/dm-sans-latin.9fea608a.woff2" as="font" type="font/woff2" crossOrigin="anonymous"/>
    <script dangerouslySetInnerHTML={{__html:themeBoot}}/>
    <link rel="stylesheet" href="assets/site.css"/>
    <link rel="stylesheet" href="assets/discovery.css"/>

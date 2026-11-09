@@ -18,6 +18,8 @@ async function main(){
   await page.route('https://bdlminer-stats.bdlminer-bot.workers.dev/api/summary',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(communityStats)}));
   await page.addInitScript(()=>{window.WebSocket=class{constructor(){this.readyState=1;setTimeout(()=>this.onopen?.(),0)}send(){}close(){}}});
   await page.goto(url);await page.locator('[data-t="ctaInstall"]').waitFor();
+  const siteFont=await page.evaluate(async()=>{await document.fonts.load('400 16px "DM Sans"');return{family:getComputedStyle(document.body).fontFamily,loaded:document.fonts.check('400 16px "DM Sans"')}});
+  assert.match(siteFont.family,/^"DM Sans"/);assert.equal(siteFont.loaded,true,'the locally hosted BDL Pool font should load');
   assert.equal(await page.locator('[data-t="ctaInstall"]').textContent(),'Install');
   assert.equal(await page.locator('#board-comparison,#demo-frame,#faq-search,#support').count(),0,'home must contain only home content');
   assert.equal(await page.locator('main h1').count(),1);
