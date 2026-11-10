@@ -82,6 +82,7 @@ document.querySelectorAll('[data-al]').forEach(e=>EN[e.dataset.al]=e.getAttribut
 document.querySelectorAll('[data-ph]').forEach(e=>EN[e.dataset.ph]=e.placeholder);
 Object.assign(FR,{sourceCode:'Code source sur GitHub ↗',firmwareRelease:'Firmware '+VERSION,statsLoading:'Chargement des statistiques…',statsRetained:'Dernières mesures conservées ; actualisation en attente.',statsSaved:'Dernières mesures'});
 Object.assign(EN,{statsLoading:'Loading statistics…',statsRetained:'Showing the last readings; waiting for an update.',statsSaved:'Last readings'});
+Object.assign(FR,{hashHistoryTitle:'Évolution du hashrate',screensTitle:'L’écran du mineur'});
 let lang=(navigator.language||'').startsWith('fr')?'fr':'en';
 try{lang=localStorage.getItem('lang')||lang}catch(e){}
 const T=k=>(lang=='fr'?FR:EN)[k];
@@ -172,7 +173,7 @@ function chart(update=true){
  for(const run of groups){
   if(run.length===1){const p=run[0],py=y(p[statsMetric]);shapes+='<rect x="'+(x(p)-4).toFixed(2)+'" y="'+Math.min(py,bottom-3).toFixed(2)+'" width="8" height="'+Math.max(3,bottom-py).toFixed(2)+'" fill="'+color+'"/>';continue}
   const line=run.map((p,i)=>(i?'L':'M')+xy(p)).join(' ');
-  shapes+='<path d="'+line+' L'+x(run.at(-1)).toFixed(2)+' '+bottom+' L'+x(run[0]).toFixed(2)+' '+bottom+' Z" fill="'+color+'" fill-opacity=".18"/><path class="line" d="'+line+'"/>';
+  shapes+='<path d="'+line+' L'+x(run.at(-1)).toFixed(2)+' '+bottom+' L'+x(run[0]).toFixed(2)+' '+bottom+' Z" fill="url(#st-area-gradient)"/><path class="line" d="'+line+'"/>';
  }
  const mean=statsMetric==='hashrate'?period?.average_hashrate:period?.average_miners;
  if(Number.isFinite(mean))shapes+='<line class="mean" x1="'+left+'" x2="'+right+'" y1="'+y(mean).toFixed(2)+'" y2="'+y(mean).toFixed(2)+'"/>';
@@ -183,7 +184,7 @@ function chart(update=true){
  }
  const chosen=points[statsHover];
  if(chosen)shapes+='<line class="crosshair" x1="'+x(chosen).toFixed(2)+'" x2="'+x(chosen).toFixed(2)+'" y1="'+top+'" y2="'+bottom+'"/><circle class="point" cx="'+x(chosen).toFixed(2)+'" cy="'+y(chosen[statsMetric]).toFixed(2)+'" r="4"/>';
- svg.innerHTML='<defs><clipPath id="st-plot-clip"><rect x="'+left+'" y="'+(top-4)+'" width="'+(right-left)+'" height="'+(bottom-top+8)+'"/></clipPath></defs>'+grid+'<g clip-path="url(#st-plot-clip)">'+shapes+'</g>';
+ svg.innerHTML='<defs><linearGradient id="st-area-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".4"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient><clipPath id="st-plot-clip"><rect x="'+left+'" y="'+(top-4)+'" width="'+(right-left)+'" height="'+(bottom-top+8)+'"/></clipPath></defs>'+grid+'<g clip-path="url(#st-plot-clip)">'+shapes+'</g>';
  statsPlot={points,x,left,right,W};
  if(chosen){
   tip.hidden=false;tip.querySelector('time').textContent=statsStamp(chosen.at)+(chosen.live?' · '+T('live'):'');
@@ -318,7 +319,7 @@ function homeMarket(){const table=document.getElementById('home-market');if(!tab
  if(cards){cards.innerHTML='';const list=all.filter(r=>homeFilter.cards==='all'||r.family===homeFilter.cards).slice(0,4);
   if(!list.length){const p=document.createElement('p');p.className='ticker-empty';p.textContent=!summary?'–':all.length?T('noMatch'):T('noneNow');cards.appendChild(p)}
   list.forEach((r,i)=>{const a=document.createElement('a'),head=document.createElement('span'),title=document.createElement('span'),tag=document.createElement('span');
-   a.className='ticker'+(i===1?' active':'');a.href=BOARDS.some(b=>b.env===r.name)?'flash.html?board='+encodeURIComponent(r.name):'stats.html';
+   a.className='ticker';a.href=BOARDS.some(b=>b.env===r.name)?'flash.html?board='+encodeURIComponent(r.name):'stats.html';
    head.className='ticker-head';title.className='ticker-name';title.textContent=r.label;tag.className='ticker-tag';tag.textContent=famLabel(r.family);
    head.append(icon(r),title,tag);
    const value=document.createElement('strong');value.className='ticker-value';value.textContent=rate(r.hashrate);
@@ -343,7 +344,7 @@ function homeMarket(){const table=document.getElementById('home-market');if(!tab
 document.querySelectorAll('.family-tabs').forEach(group=>group.addEventListener('click',e=>{const b=e.target.closest('button[data-family]');if(!b)return;
  homeFilter[group.dataset.target]=b.dataset.family;group.querySelectorAll('button').forEach(o=>o.setAttribute('aria-pressed',o===b));homeMarket()}));
 if(document.getElementById('hm-search'))document.getElementById('hm-search').addEventListener('input',e=>{homeFilter.query=e.target.value;homeMarket()});
-function stats(){homeMarket();statsConnection();if(!document.getElementById('stats'))return;const set=(id,v)=>document.getElementById(id).textContent=v;fleet();breakdowns();
+function stats(){homeMarket();statsConnection();document.dispatchEvent(new Event('bdl-public-stats'));if(!document.getElementById('stats'))return;const set=(id,v)=>document.getElementById(id).textContent=v;fleet();breakdowns();
  if(!summary){chart();return}
  set('st-hashrate',rate(summary.hashrate||0));set('st-miners',(summary.miners||0).toLocaleString(lang=='fr'?'fr-FR':'en-US'));
  set('st-average',summary.miners?rate(summary.hashrate/summary.miners):'–');set('st-record',summary.record?rate(summary.record.hashrate):'–');
@@ -380,7 +381,7 @@ function apply(){document.documentElement.lang=lang;
 if(document.getElementById('st-more'))document.getElementById('st-more').onclick=()=>{fleetAll=!fleetAll;fleet()};
 {const theme=document.getElementById('theme'),root=document.documentElement;
  const update=()=>{theme.setAttribute('aria-pressed',root.dataset.theme==='dark');document.querySelector('meta[name="theme-color"]')?.setAttribute('content',getComputedStyle(root).getPropertyValue('--bg').trim())};update();
- theme.onclick=()=>{const light=root.dataset.theme==='dark';if(light)delete root.dataset.theme;else root.dataset.theme='dark';update();chart(false);
+ theme.onclick=()=>{const light=root.dataset.theme==='dark';root.dataset.theme=light?'light':'dark';update();chart(false);
   try{localStorage.setItem('theme',light?'light':'dark')}catch(e){}}}
 document.getElementById('lang').onclick=()=>{lang=lang=='fr'?'en':'fr';try{localStorage.setItem('lang',lang)}catch(e){}apply()};
 

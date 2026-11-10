@@ -86,7 +86,7 @@ async function fixture(options={}){
     }
     if(req.url.startsWith('/assets/')){
       const name=req.url.slice('/assets/'.length).split('?')[0];
-      if(['site.js','site.css','discovery.js','discovery.css'].includes(name)){
+      if(['site.js','site.css','discovery.js','discovery.css','pulse-theme.css','pulse-chart.js','home-chart.js','vendor/chart.umd.min.js'].includes(name)){
         res.writeHead(200,{'Content-Type':name.endsWith('.css')?'text/css':'text/javascript'});
         return res.end(fs.readFileSync(path.join(__dirname,'../../installer/assets',name)));
       }

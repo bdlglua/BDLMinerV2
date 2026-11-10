@@ -23,8 +23,8 @@ async function main(){
   });
   await page.addInitScript(()=>{window.WebSocket=class{constructor(){this.readyState=1;setTimeout(()=>this.onopen?.(),0)}send(){}close(){}}});
   await page.goto(url);await page.locator('[data-t="ctaInstall"]').waitFor();
-  const siteFont=await page.evaluate(async()=>{await document.fonts.load('400 16px "DM Sans"');return{family:getComputedStyle(document.body).fontFamily,loaded:document.fonts.check('400 16px "DM Sans"')}});
-  assert.match(siteFont.family,/^"DM Sans"/);assert.equal(siteFont.loaded,true,'the locally hosted BDL Pool font should load');
+  const siteFont=await page.evaluate(()=>getComputedStyle(document.body).fontFamily);
+  assert.match(siteFont,/Segoe UI.*system-ui/);
   assert.equal(await page.locator('[data-t="ctaInstall"]').textContent(),'Install');
   assert.equal(await page.locator('#board-comparison,#demo-frame,#faq-search,#support').count(),0,'home must contain only home content');
   assert.equal(await page.locator('main h1').count(),1);
@@ -130,6 +130,17 @@ async function main(){
   const stamp=Date.now(),measured=[.9,1,1.1,1.1,1,.9].map((value,i)=>({at:stamp-(30-i*5)*60000,hashrate:value*1e12,miners:6+i%3,average_miners:6+i%3,samples:1,interval_ms:300000}));
   const period={from:stamp-3600000,to:stamp,samples:6,expected_samples:12,average_hashrate:1e12,minimum_hashrate:.9e12,maximum_hashrate:1.1e12,variation_percent:8.16496580927726,average_miners:7,minimum_miners:6,maximum_miners:8,first_at:measured[0].at,last_at:measured.at(-1).at};
   Object.assign(communityStats,{at:stamp,hashrate:1.05e12,miners:7,recent:[...measured,{at:stamp,hashrate:1.05e12,miners:7,live:true}],history:[],periods:{1:period,6:{...period,expected_samples:72},24:{...period,expected_samples:288},168:{...period,expected_samples:2016}}});
+  await page.goto(url);
+  await page.waitForFunction(()=>window.Chart?.getChart(document.getElementById('cryptoChart')));
+  const chartData=await page.evaluate(()=>Chart.getChart(document.getElementById('cryptoChart')).data.datasets[0].data.map(p=>({at:p.x,hashrate:p.y})));
+  assert.deepEqual(chartData,communityStats.recent.map(p=>({at:p.at,hashrate:p.hashrate})),'the template chart must use the actual public measurements');
+  const gap=await page.evaluate(()=>{
+   const canvas=document.getElementById('cryptoChart');
+   BDLPulseChart.render(canvas,[{t:0,value:1e6},{t:300000,value:2e6},{t:1500000,value:3e6}],{gapMs:750000});
+   const dataset=Chart.getChart(canvas).data.datasets[0];
+   return {hasGap:dataset.data.some(p=>p.y===null),spanGaps:dataset.spanGaps};
+  });
+  assert.deepEqual(gap,{hasGap:true,spanGaps:false},'missing intervals must not be joined');
   await page.goto(url+'/stats.html');await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();
   await page.locator('[data-range=hour]').click();assert.equal(await page.locator('#st-export').count(),0);
   assert.equal(await page.locator('#st-period-maximum').textContent(),'1,1 TH/s');assert.match(await page.locator('#st-period-minimum').textContent(),/900 GH\/s/);

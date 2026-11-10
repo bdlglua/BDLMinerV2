@@ -13,7 +13,7 @@ const pools=['Public Pool','CKPool','OCEAN','NerdMiner.io','Braiins','ViaBTC'];
 const families=[['all','famAll','All boards'],['esp32','famEsp32','ESP32'],['s3','famS3','ESP32-S3'],['s2c3','famS2c3','S2 / C3'],['asic','famAsic','ASIC']];
 
 export default function HomePage(){
- return <Layout>
+ return <Layout chart>
 <section className="hero-band" id="top">
  <div className="wrap hero">
  <div className="hero-copy">
@@ -34,17 +34,7 @@ export default function HomePage(){
    <span className="s" data-t="version">Latest firmware: __VERSION__</span>
   </div>
  </div>
- <div className="hero-art">
-  <div className="device">
-   <img id="screen" src="assets/screen-mining.png" width="320" height="170" alt="The miner's screen: 1.005 MH/s, 10827 shares, best difficulty 7.82, 52.1 °C" data-alt="altMining"/>
-    <div className="thumbs" role="group" aria-label="Screens" data-al="screens">
-     <button type="button" data-screen="graph" aria-pressed="false"><img src="assets/screen-graph.png" width="320" height="170" alt="Hashrate chart screen" data-alt="altGraph"/></button>
-     <button type="button" data-screen="global" aria-pressed="false"><img src="assets/screen-global.png" width="320" height="170" alt="Bitcoin price and network screen" data-alt="altGlobal"/></button>
-     <button type="button" data-screen="clock" aria-pressed="false"><img src="assets/screen-clock.png" width="320" height="170" alt="Clock screen" data-alt="altClock"/></button>
-    </div>
-    <p className="device-caption" data-t="deviceCaption">Live stats on the device</p>
-   </div>
-  </div>
+
  </div>
  <div className="wrap">
   <div className="ticker-panel">
@@ -55,6 +45,15 @@ export default function HomePage(){
   </div>
  </div>
 </section>
+
+
+<section className="pulse-chart-section"><div className="wrap">
+ <article className="pulse-history-card">
+  <div className="pulse-history-heading"><h2 data-t="hashHistoryTitle">Hashrate history</h2><a href="stats.html" data-t="marketAll">Full statistics</a></div>
+  <div className="pulse-chart-frame"><canvas id="cryptoChart" role="img" aria-label="Hashrate over the last 24 hours" aria-describedby="home-history-caption" hidden></canvas><p id="home-history-empty" className="pulse-chart-empty">Waiting for hashrate measurements.</p></div>
+  <p id="home-history-caption" className="pulse-chart-caption"></p>
+ </article>
+</div></section>
 
 <section id="market"><div className="wrap">
  <div className="section-head">
@@ -82,6 +81,20 @@ export default function HomePage(){
  <div className="grid">
   {features.map(([icon,tk,title])=><div className="feature-item" key={tk}><span className="feature-icon"><Icon name={icon}/></span><h3 data-t={tk}>{title}</h3></div>)}
  </div>
+</div></section>
+
+<section className="device-section"><div className="wrap"><h2 data-t="screensTitle">On-device screens</h2>
+ <div className="hero-art">
+  <div className="device">
+   <img id="screen" src="assets/screen-mining.png" width="320" height="170" alt="The miner's screen: 1.005 MH/s, 10827 shares, best difficulty 7.82, 52.1 °C" data-alt="altMining"/>
+    <div className="thumbs" role="group" aria-label="Screens" data-al="screens">
+     <button type="button" data-screen="graph" aria-pressed="false"><img src="assets/screen-graph.png" width="320" height="170" alt="Hashrate chart screen" data-alt="altGraph"/></button>
+     <button type="button" data-screen="global" aria-pressed="false"><img src="assets/screen-global.png" width="320" height="170" alt="Bitcoin price and network screen" data-alt="altGlobal"/></button>
+     <button type="button" data-screen="clock" aria-pressed="false"><img src="assets/screen-clock.png" width="320" height="170" alt="Clock screen" data-alt="altClock"/></button>
+    </div>
+    <p className="device-caption" data-t="deviceCaption">Live stats on the device</p>
+   </div>
+  </div>
 </div></section>
 
 <section id="lottery"><div className="wrap">

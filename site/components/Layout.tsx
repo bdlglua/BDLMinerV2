@@ -6,9 +6,10 @@ interface LayoutProps {
  children: ReactNode;
  flasher?: boolean;
  remote?: boolean;
+ chart?: boolean;
 }
 
-export default function Layout({children,flasher=false,remote=false}:LayoutProps){
+export default function Layout({children,flasher=false,remote=false,chart=false}:LayoutProps){
  return <>
   <Head>
    <title>__PAGE_TITLE__</title>
@@ -18,6 +19,9 @@ export default function Layout({children,flasher=false,remote=false}:LayoutProps
    {remote&&<meta name="bdl-remote-api" content="https://api.bdl-pool.com:36018"/>}
    {remote&&<link rel="stylesheet" href="assets/remote.css"/>}
    {remote&&<script defer src="assets/remote.js"/>}
+   {chart&&<script defer src="assets/vendor/chart.umd.min.js"/>}
+   {chart&&<script defer src="assets/pulse-chart.js"/>}
+   {chart&&<script defer src="assets/home-chart.js"/>}
   </Head>
 
 <a className="skip" href="#main" data-t="skip">Skip to content</a>
