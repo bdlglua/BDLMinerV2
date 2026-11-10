@@ -1,13 +1,13 @@
 {
-  "at": 1794342700714,
+  "at": 1794343271049,
   "boards": [
     {
-      "hashrate": 1060000000000,
+      "hashrate": 1070000000000,
       "miners": 1,
       "name": "bitaxe-gamma-601"
     },
     {
-      "hashrate": 5090500,
+      "hashrate": 5067900,
       "miners": 6,
       "name": "esp32-headless"
     },
@@ -17,14 +17,14 @@
       "name": "m5stickc-plus2"
     },
     {
-      "hashrate": 217000,
+      "hashrate": 226000,
       "miners": 1,
       "name": "m5stack-s3"
     }
   ],
   "coins": [
     {
-      "hashrate": 1060005307500,
+      "hashrate": 1070005293900,
       "miners": 8,
       "name": "BTC"
     },
@@ -36,14 +36,14 @@
   ],
   "current_hour": {
     "at": 1794340800000,
-    "average_miners": 8.877293888888888,
-    "end_at": 1794342600000,
+    "average_miners": 8.85119625,
+    "end_at": 1794343200000,
     "first_at": 1794341100000,
-    "hashrate": 1065138822028.2601,
+    "hashrate": 1062095341141.8578,
     "interval_ms": 3600000,
     "miners": 9,
     "missing": false,
-    "samples": 6
+    "samples": 8
   },
   "fleet": [
     {
@@ -72,7 +72,7 @@
       "online": 0
     }
   ],
-  "hashrate": 1060006307500,
+  "hashrate": 1070006293900,
   "history": [
     {
       "at": 1793739600000,
@@ -1916,13 +1916,13 @@
   "models": [
     {
       "board": "bitaxe-gamma-601",
-      "hashrate": 1060000000000,
+      "hashrate": 1070000000000,
       "miners": 1,
       "model": null
     },
     {
       "board": "esp32-headless",
-      "hashrate": 5090500,
+      "hashrate": 5067900,
       "miners": 6,
       "model": null
     },
@@ -1934,107 +1934,91 @@
     },
     {
       "board": "m5stack-s3",
-      "hashrate": 217000,
+      "hashrate": 226000,
       "miners": 1,
       "model": "M5StickS3"
     }
   ],
   "periods": {
     "1": {
-      "average_hashrate": 1062308133516.9725,
-      "average_miners": 9.364815555555555,
+      "average_hashrate": 1063039625732.5775,
+      "average_miners": 9.152392222222222,
       "expected_samples": 12,
-      "first_at": 1794339300000,
-      "from": 1794339100714,
-      "last_at": 1794342600000,
+      "first_at": 1794339900000,
+      "from": 1794339671049,
+      "last_at": 1794343200000,
       "maximum_hashrate": 1082207456720.0636,
-      "maximum_miners": 10.574740000000002,
-      "minimum_hashrate": 1030691360119.594,
+      "maximum_miners": 10.504533333333335,
+      "minimum_hashrate": 1039996692760.3,
       "minimum_miners": 8.617879999999998,
       "samples": 12,
-      "to": 1794342700714,
-      "variation_percent": 1.3094089734739476
+      "to": 1794343271049,
+      "variation_percent": 1.1551523030523803
     },
     "168": {
-      "average_hashrate": 927941771003.9086,
-      "average_miners": 8.98680344578312,
+      "average_hashrate": 928541402310.7611,
+      "average_miners": 8.985777545963218,
       "expected_samples": 2016,
       "first_at": 1794218400000,
-      "from": 1793737900714,
-      "last_at": 1794342600000,
+      "from": 1793738471049,
+      "last_at": 1794343200000,
       "maximum_hashrate": 1137613719966.2805,
       "maximum_miners": 11.098983333333337,
       "minimum_hashrate": 0,
       "minimum_miners": 0,
-      "samples": 415,
-      "to": 1794342700714,
-      "variation_percent": 39.13727903519833
+      "samples": 417,
+      "to": 1794343271049,
+      "variation_percent": 39.02930570631799
     },
     "24": {
-      "average_hashrate": 850165131231.7999,
-      "average_miners": 8.829805127314811,
+      "average_hashrate": 849819688548.7361,
+      "average_miners": 8.82274071759259,
       "expected_samples": 288,
-      "first_at": 1794256500000,
-      "from": 1794256300714,
-      "last_at": 1794342600000,
+      "first_at": 1794257100000,
+      "from": 1794256871049,
+      "last_at": 1794343200000,
       "maximum_hashrate": 1124776061193.858,
       "maximum_miners": 11.098983333333337,
       "minimum_hashrate": 0,
       "minimum_miners": 0,
       "samples": 288,
-      "to": 1794342700714,
-      "variation_percent": 48.43089850663109
+      "to": 1794343271049,
+      "variation_percent": 48.42820715471308
     },
     "6": {
-      "average_hashrate": 1027966146805.1261,
-      "average_miners": 10.13916148148148,
+      "average_hashrate": 1037077860370.646,
+      "average_miners": 10.121928888888887,
       "expected_samples": 72,
-      "first_at": 1794321300000,
-      "from": 1794321100714,
-      "last_at": 1794342600000,
+      "first_at": 1794321900000,
+      "from": 1794321671049,
+      "last_at": 1794343200000,
       "maximum_hashrate": 1082207456720.0636,
       "maximum_miners": 10.937643333333336,
       "minimum_hashrate": 418651644865.76105,
-      "minimum_miners": 8.058576666666667,
+      "minimum_miners": 8.37634,
       "samples": 72,
-      "to": 1794342700714,
-      "variation_percent": 10.379069549544493
+      "to": 1794343271049,
+      "variation_percent": 8.670332049780342
     }
   },
   "pools": [
     {
-      "hashrate": 1060005030000,
+      "hashrate": 1070005010000,
       "miners": 6,
       "name": "public-pool.io"
     },
     {
-      "hashrate": 1060500,
+      "hashrate": 1057900,
       "miners": 2,
       "name": "other"
     },
     {
-      "hashrate": 217000,
+      "hashrate": 226000,
       "miners": 1,
       "name": "nerdminer.io"
     }
   ],
   "recent": [
-    {
-      "at": 1794256500000,
-      "average_miners": 9.726243333333333,
-      "hashrate": 1095902091006.8943,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794256800000,
-      "average_miners": 9.854113333333334,
-      "hashrate": 1109515198680.7231,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
     {
       "at": 1794257100000,
       "average_miners": 9.568666666666667,
@@ -4324,8 +4308,24 @@
       "samples": 1
     },
     {
-      "at": 1794342700714,
-      "hashrate": 1060006307500,
+      "at": 1794342900000,
+      "average_miners": 8.91282,
+      "hashrate": 1039996692760.3,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794343200000,
+      "average_miners": 8.632986666666667,
+      "hashrate": 1065933104205.0017,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794343271049,
+      "hashrate": 1070006293900,
       "live": true,
       "miners": 9
     }
@@ -4336,12 +4336,12 @@
   },
   "versions": [
     {
-      "hashrate": 1060004297500,
+      "hashrate": 1070004293900,
       "miners": 7,
       "name": "2.5.7"
     },
     {
-      "hashrate": 2010000,
+      "hashrate": 2000000,
       "miners": 2,
       "name": "2.5.4"
     }
