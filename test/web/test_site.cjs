@@ -159,7 +159,7 @@ async function main(){
    await page.goto(base+'/#demo');await page.waitForURL(base+'/demo.html');await page.frameLocator('#demo-frame').locator('#m .hero').waitFor();
    assert.ok(page.frames().some(frame=>frame.url().startsWith(base+'/demo/miner/')));
   }
-  // Public period statistics: anonymous totals, not private miner telemetry.
+  // Both public pages use the same timestamped hashrate history.
   const originalStats=structuredClone(communityStats);
   const stamp=Date.now(),measured=[.9,1,1.1,1.1,1,.9].map((value,i)=>({at:stamp-(30-i*5)*60000,hashrate:value*1e12,miners:6+i%3,average_miners:6+i%3,samples:1,interval_ms:300000}));
   const period={from:stamp-3600000,to:stamp,samples:6,expected_samples:12,average_hashrate:1e12,minimum_hashrate:.9e12,maximum_hashrate:1.1e12,variation_percent:8.16496580927726,average_miners:7,minimum_miners:6,maximum_miners:8,first_at:measured[0].at,last_at:measured.at(-1).at};
@@ -177,31 +177,45 @@ async function main(){
    return {hasGap:dataset.data.some(p=>p.y===null),spanGaps:dataset.spanGaps};
   });
   assert.deepEqual(gap,{hasGap:true,spanGaps:false},'missing intervals must not be joined');
-  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();
-  await page.locator('[data-range=hour]').click();assert.equal(await page.locator('#st-export').count(),0);
-  assert.equal(await page.locator('#st-period-maximum').textContent(),'1,1 TH/s');assert.match(await page.locator('#st-period-minimum').textContent(),/900 GH\/s/);
-  assert.equal(await page.locator('#st-period-miners').textContent(),'7');assert.equal(await page.locator('#st-period-samples').textContent(),'6');assert.match(await page.locator('#st-period-coverage').textContent(),/50 %/);
-  assert.equal(await page.locator('#st-hashrate').textContent(),'1,05 TH/s','keep the live value separate from the period average');
-  const origin=await page.locator('#st-chart').evaluate(svg=>({grid:Number(svg.querySelector('.grid-h').getAttribute('x1')),line:Number(svg.querySelector('.line').getAttribute('d').match(/^M([\d.]+)/)[1])}));
-  assert.ok(Math.abs(origin.grid-origin.line)<1,'the first observed measurement starts at the plot origin');
-  await page.locator('#st-chart').focus();await page.keyboard.press('Home');assert.equal(await page.locator('#st-tooltip').isVisible(),true);assert.match(await page.locator('#st-tooltip strong').textContent(),/900 GH\/s/);
-  await page.locator('[data-st-metric=miners]').click();await page.locator('#st-chart').focus();await page.keyboard.press('End');assert.match(await page.locator('#st-tooltip strong').textContent(),/^7 mineurs/);
-  await page.locator('[data-st-metric=hashrate]').click();await page.locator('#st-chart').scrollIntoViewIfNeeded();const chartBox=await page.locator('#st-chart').boundingBox();await page.mouse.move(chartBox.x+chartBox.width/2,chartBox.y+60);assert.equal(await page.locator('#st-tooltip').isVisible(),true);
-  await page.locator('.public-readings summary').click();assert.equal(await page.locator('#st-readings tr').count(),7);
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));
+  await page.waitForFunction(()=>window.Chart?.getChart(document.getElementById('cryptoChart')));
+  const statsChartData=await page.evaluate(()=>Chart.getChart(document.getElementById('cryptoChart')).data.datasets[0].data.map(p=>({at:p.x,hashrate:p.y})));
+  assert.deepEqual(statsChartData,chartData,'the statistics page must display the same measured history as the home page');
+  assert.equal(await page.locator('#st-chart,[data-range],[data-st-metric],.period-statistics').count(),0,'the previous statistics chart is replaced');
+  assert.equal(await page.locator('#st-performance a[href="stats.html"]').count(),0,'the full statistics page must not link back to itself');
+  assert.equal(await page.locator('#st-hashrate').textContent(),'1,05 TH/s');
+  assert.equal(await page.locator('#st-miners').textContent(),'7');
+  assert.match(await page.locator('#home-history-caption').textContent(),/24 heures.*7 mesures/);
+  await page.locator('#cryptoChart').focus();await page.keyboard.press('Home');
+  assert.match(await page.locator('#home-history-inspect').textContent(),/900 GH\/s/);
+  await page.keyboard.press('End');assert.match(await page.locator('#home-history-inspect').textContent(),/1,05 TH\/s/);
+  await page.locator('#cryptoChart').scrollIntoViewIfNeeded();
+  const chartBox=await page.locator('#cryptoChart').boundingBox();await page.mouse.move(chartBox.x+chartBox.width/2,chartBox.y+60);
+  await page.waitForFunction(()=>Chart.getChart(document.getElementById('cryptoChart')).tooltip.opacity>0);
   const initialTheme=await page.locator('html').getAttribute('data-theme')||'light';await page.locator('#theme').click();
   const toggledTheme=await page.locator('html').getAttribute('data-theme')||'light';assert.notEqual(toggledTheme,initialTheme);
   assert.equal(await page.locator('#theme').getAttribute('aria-pressed'),String(toggledTheme==='dark'));
   await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme')||'light',initialTheme);
   assert.equal(await page.locator('#theme').getAttribute('aria-pressed'),String(initialTheme==='dark'));
+  await page.locator('#lang').click();assert.match(await page.locator('#home-history-caption').textContent(),/Last 24 hours.*7 measurements/);
+  await page.locator('#lang').click();
   if(process.env.BDL_SCREENSHOT_DIR){
    fs.mkdirSync(process.env.BDL_SCREENSHOT_DIR,{recursive:true});await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-desktop.png'),style:'nav,#chat-bubble{visibility:hidden}'});
    await page.setViewportSize({width:375,height:812});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-mobile.png'),style:'nav,#chat-bubble{visibility:hidden}'});await page.setViewportSize({width:1440,height:1000});
   }
-  communityStats.history=[{at:stamp-2*3600000,end_at:stamp-3600000,hashrate:1e12,miners:7,samples:12,interval_ms:3600000},{at:stamp-3600000,end_at:stamp-600000,hashrate:1.1e12,miners:8,samples:10,missing:true,interval_ms:3600000}];
-  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();await page.locator('[data-range=week]').click();assert.equal(await page.locator('[data-range=week]').getAttribute('aria-pressed'),'true');assert.match(await page.locator('#st-period-coverage').textContent(),/2.?016/);
-  assert.equal(await page.locator('#st-chart .line').count(),0,'do not join hourly averages across a partially missing hour');
-  communityStats.periods={24:{samples:0,expected_samples:288}};communityStats.recent=[];communityStats.history=[];
-  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-chart-empty').filter({hasText:/Aucune mesure/}).waitFor();assert.equal(await page.locator('#st-export').count(),0);assert.equal(await page.locator('#st-period-average').textContent(),'—');
+  // Old, future, invalid and missing readings must not become invented history.
+  communityStats.recent=[{at:stamp-86400001,hashrate:8e12},{at:stamp+1,hashrate:8e12},{at:stamp-600000,hashrate:-1},{at:stamp-300000,hashrate:1e12}];
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));
+  await page.locator('#home-history-empty').filter({hasText:/En attente/}).waitFor();
+  assert.equal(await page.locator('#cryptoChart').isVisible(),false,'one valid reading is not a history curve');
+  assert.match(await page.locator('#home-history-caption').textContent(),/1 mesures/);
+  communityStats.recent=[{at:stamp-900000,hashrate:1e12},{at:stamp-600000,hashrate:1.1e12,missing:true},{at:stamp-300000,hashrate:1.2e12}];
+  await page.evaluate(()=>refresh());
+  assert.deepEqual(await page.evaluate(()=>Chart.getChart(document.getElementById('cryptoChart')).data.datasets[0].data.map(p=>p.y)),[1e12,null,1.2e12],'missing readings must leave a gap in the shared history');
+  communityStats.recent=[];
+  await page.evaluate(()=>refresh());await page.locator('#home-history-empty').filter({hasText:/En attente/}).waitFor();
+  assert.equal(await page.evaluate(()=>!!Chart.getChart(document.getElementById('cryptoChart'))),false);
+  assert.equal(await page.locator('#home-history-caption').textContent(),'');
   communityStats=originalStats;
   communityStats.coins=[{name:'BSV',miners:1,hashrate:1e6},{name:'XEC',miners:1,hashrate:1e6},{name:'DGB',miners:1,hashrate:5e5},{name:'PPC',miners:1,hashrate:1e6}];
   await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-coins tbody tr').first().waitFor();

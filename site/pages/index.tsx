@@ -1,4 +1,5 @@
 import Layout from '../components/Layout';
+import HashrateHistory from '../components/HashrateHistory';
 
 export const config:StaticExportPageConfig={unstable_runtimeJS:false};
 
@@ -64,11 +65,7 @@ export default function HomePage(){
 </div></section>
 
 <section className="pulse-chart-section"><div className="wrap">
- <article className="pulse-history-card">
-  <div className="pulse-history-heading"><h2 data-t="hashHistoryTitle">Hashrate history</h2><a href="stats.html" data-t="marketAll">Full statistics</a></div>
-  <div className="pulse-chart-frame"><canvas id="cryptoChart" role="img" aria-label="Hashrate over the last 24 hours" aria-describedby="home-history-caption" hidden></canvas><p id="home-history-empty" className="pulse-chart-empty">Waiting for hashrate measurements.</p></div>
-  <p id="home-history-caption" className="pulse-chart-caption"></p>
- </article>
+ <HashrateHistory/>
 </div></section>
 
 <section id="market"><div className="wrap">

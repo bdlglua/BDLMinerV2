@@ -90,15 +90,13 @@ chatErrors:{taken:'This name is already taken.',wait:'You can change your name o
 chatAdminOn:'Team mode on.',chatAdminOff:'Key refused.',chatAdminSlow:'Too many tries: try again in an hour.',colBoard:'Board',colVersion:'Version',colMiners:'Miners',colHashrate:'Hashrate',noneNow:'No miner right now.',devOnline:'online',devOffline:'offline',devNone:'none yet',noStats:'No reports yet: miners share their hashrate from version 1.9.0 on.',statsDown:'Statistics unavailable for now.',
 experimental:'experimental',chartDay:'Total hashrate every 5 minutes, last 24 hours',chartWeek:'Total hashrate per hour, last 7 days',noChart:'The chart fills up as the reports come.',
 updated:'updated {s} s ago',now:'now'};
-Object.assign(FR,{"sPerformance": "PERFORMANCES DU PARC", "sHistory": "Statistiques de minage", "sAverage": "Hashrate moyen", "sMaximum": "Hashrate maximal", "sMiners": "Mineurs actifs moyens", "sSamples": "Mesures disponibles", "sMetric": "Mesure affichée", "sHashrate": "Hashrate", "sMean": "Moyenne de la période", "sNote": "Statistiques issues des mesures agrégées de cinq minutes. Les périodes manquantes restent vides ; la valeur instantanée est exclue des moyennes.", "sRecent": "Dernières mesures", "sTime": "Heure", "sSourceSamples": "Mesures sources", "sMinimum": "Minimum", "sPeakMiners": "Maximum", "sVariation": "Écart-type relatif", "sCoverage": "{n} % · {total} attendues", "sNoMeasurements": "Aucune mesure disponible sur cette période.", "sChartAria": "{metric}. Utilisez les flèches gauche et droite pour consulter les mesures.", "sInstant": "Valeur instantanée", "sHourMean": "Moyenne horaire", "sFiveMinute": "Moyenne sur 5 min"});
-Object.assign(EN,{"sMinimum": "Minimum", "sPeakMiners": "Peak", "sVariation": "Relative deviation", "sCoverage": "{n}% · {total} expected", "sNoMeasurements": "No measurements available in this period.", "sChartAria": "{metric}. Use left and right arrows to inspect measurements.", "sInstant": "Instantaneous value", "sHourMean": "Hourly average", "sFiveMinute": "Five-minute average"});
 document.querySelectorAll('[data-t]').forEach(e=>EN[e.dataset.t]=e.textContent);
 document.querySelectorAll('[data-h]').forEach(e=>EN[e.dataset.h]=e.innerHTML);
 document.querySelectorAll('[data-alt]').forEach(e=>EN[e.dataset.alt]=e.alt);
 document.querySelectorAll('[data-al]').forEach(e=>EN[e.dataset.al]=e.getAttribute('aria-label'));
 document.querySelectorAll('[data-ph]').forEach(e=>EN[e.dataset.ph]=e.placeholder);
 Object.assign(FR,{sourceCode:'Code source sur GitHub ↗',firmwareRelease:'Firmware '+VERSION,statsLoading:'Chargement des statistiques…',statsRetained:'Dernières mesures conservées ; actualisation en attente.',statsSaved:'Dernières mesures'});
-Object.assign(EN,{statsLoading:'Loading statistics…',statsRetained:'Showing the last readings; waiting for an update.',statsSaved:'Last readings'});
+Object.assign(EN,{live:'Live',statsLoading:'Loading statistics…',statsRetained:'Showing the last readings; waiting for an update.',statsSaved:'Last readings'});
 Object.assign(FR,{hashHistoryTitle:'Évolution du hashrate',screensTitle:'L’écran du mineur',featureStats:'Statistiques',featureFlash:'Flasher web',heroNetwork:'Réseau BDLMiner',heroMeasured:'Hashrate mesuré de la communauté',tickerTitle:'Réseau / Mineurs actifs'});
 let lang=(navigator.language||'').startsWith('fr')?'fr':'en';
 try{lang=localStorage.getItem('lang')||lang}catch(e){}
@@ -119,119 +117,6 @@ function boards(){const ul=document.getElementById('board-list');if(!ul)return;u
  for(const b of BOARDS){const li=document.createElement('li');const exp=/experimental/i.test(b.name);li.className=exp?'exp':'';
   li.textContent=exp?b.name.replace(/\s*\(experimental[^)]*\)/i,'')+' ('+T('experimental')+')':b.name;ul.appendChild(li)}}
 
-// Public totals: historical period indicators exclude the instantaneous live value.
-let range='day',statsMetric='hashrate',statsHover=null,statsPlot=null;
-const statsHours={hour:1,six:6,day:24,week:168};
-const statsNumber=n=>Number.isFinite(n)?n.toLocaleString(lang==='fr'?'fr-FR':'en-US',{maximumFractionDigits:1}):'—';
-const statsRate=n=>Number.isFinite(n)?rate(n):'—';
-const statsStamp=t=>new Date(t).toLocaleString(lang==='fr'?'fr-FR':'en-US',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-function statsSeries(){
- if(!summary)return[];
- const hours=statsHours[range],end=summary.at,from=end-hours*3600000;
- const hourly=p=>({...p,at:p.end_at??p.at+3600000,interval_ms:3600000});
- const source=hours===168?[...(summary.history||[]).map(hourly),...(summary.current_hour?[hourly(summary.current_hour)]:[]),...(summary.recent||[]).filter(p=>p.live)]:summary.recent||[];
- return source.filter(p=>Number.isFinite(p.at)&&p.at>from&&p.at<=end&&Number.isFinite(p.hashrate)&&p.hashrate>=0&&Number.isFinite(p.average_miners??p.miners)&&(p.average_miners??p.miners)>=0)
-  .map(p=>({...p,miners:p.average_miners??p.miners,interval_ms:p.interval_ms||(hours===168?3600000:300000),samples:p.live?0:p.samples??1})).sort((a,b)=>a.at-b.at);
-}
-function statsPeriod(points){
- const p=summary?.periods?.[statsHours[range]],set=(id,value)=>document.getElementById(id).textContent=value;
- set('st-period-average',statsRate(p?.average_hashrate));set('st-period-maximum',statsRate(p?.maximum_hashrate));
- set('st-period-minimum',T('sMinimum')+' · '+statsRate(p?.minimum_hashrate));
- set('st-period-variation',T('sVariation')+' · '+(Number.isFinite(p?.variation_percent)?statsNumber(p.variation_percent)+' %':'—'));
- set('st-period-miners',statsNumber(p?.average_miners));set('st-period-peak-miners',T('sPeakMiners')+' · '+statsNumber(p?.maximum_miners));
- set('st-period-samples',statsNumber(p?.samples));
- const coverage=p?.expected_samples?Math.min(100,p.samples/p.expected_samples*100):null;
- set('st-period-coverage',Number.isFinite(coverage)?T('sCoverage').replace('{n}',statsNumber(coverage)).replace('{total}',statsNumber(p.expected_samples)):'—');
- set('st-period-dates',p?.samples?statsStamp(p.first_at)+' → '+statsStamp(p.last_at):points.length?statsStamp(points[0].at)+' → '+statsStamp(points.at(-1).at):T('sNoMeasurements'));
- const rows=points.slice(-8).reverse().map(point=>{
-  const row=document.createElement('tr');
-  for(const text of [statsStamp(point.at)+(point.live?' · '+T('live'):''),statsRate(point.hashrate),statsNumber(point.miners),point.live?'—':statsNumber(point.samples)]){
-   const cell=document.createElement('td');cell.textContent=text;row.appendChild(cell);
-  }return row;
- });document.getElementById('st-readings').replaceChildren(...rows);
-}
-function chart(update=true){
- const svg=document.getElementById('st-chart');if(!svg)return;
- const points=statsSeries(),period=summary?.periods?.[statsHours[range]],tip=document.getElementById('st-tooltip'),empty=document.getElementById('st-chart-empty');
- if(update)statsPeriod(points);
- const W=Math.max(280,Math.round(svg.clientWidth||960)),H=svg.clientWidth<500?280:320,left=W<500?70:86,right=W-12,top=16,bottom=H-34;
- svg.setAttribute('viewBox','0 0 '+W+' '+H);tip.hidden=true;empty.hidden=!!points.length;
- svg.setAttribute('aria-label',T('sChartAria').replace('{metric}',T(statsMetric==='hashrate'?'sHashrate':'tMiners')));
- if(!points.length){svg.replaceChildren();empty.textContent=T('sNoMeasurements');statsPlot=null;return}
- const palette=getComputedStyle(document.documentElement);
- const color=palette.getPropertyValue(statsMetric==='hashrate'?'--accent':'--blue').trim();
- svg.style.setProperty('--plot-color',color);
- const start=Math.max(summary.at-statsHours[range]*3600000,points[0].at),end=Math.max(summary.at,start+1),values=points.map(p=>p[statsMetric]);
- const extrema=statsMetric==='hashrate'?[period?.minimum_hashrate,period?.maximum_hashrate]:[period?.minimum_miners,period?.maximum_miners];
- const low=Math.min(...values,...extrema.filter(Number.isFinite)),high=Math.max(...values,...extrema.filter(Number.isFinite));
- const padding=Math.max((high-low)*.15,high*.035,high?0.01:1),min=Math.max(0,low-padding),max=high+padding;
- const x=p=>left+(right-left)*(p.at-start)/(end-start),y=value=>bottom-(bottom-top)*(value-min)/(max-min),xy=p=>x(p).toFixed(2)+' '+y(p[statsMetric]).toFixed(2);
- let unit=0;const units=['H/s','kH/s','MH/s','GH/s','TH/s','PH/s','EH/s'];while(statsMetric==='hashrate'&&high/1000**unit>=1000&&unit<units.length-1)unit++;
- const scale=statsMetric==='hashrate'?1000**unit:1,precision=Math.min(6,Math.max(0,Math.ceil(-Math.log10((max-min)/4/scale))));
- const axisNumber=new Intl.NumberFormat(lang==='fr'?'fr-FR':'en-US',{maximumFractionDigits:precision});
- let grid='';
- for(let i=0;i<5;i++){
-  const value=min+(max-min)*i/4,py=y(value).toFixed(2),label=axisNumber.format(value/scale)+(statsMetric==='hashrate'?' '+units[unit]:'');
-  grid+='<line class="grid-h" x1="'+left+'" x2="'+right+'" y1="'+py+'" y2="'+py+'"/><text x="0" y="'+(Number(py)+4)+'">'+label+'</text>';
- }
- const ticks=W<500?3:6,locale=lang==='fr'?'fr-FR':'en-US';
- for(let i=0;i<ticks;i++){
-  const at=start+(end-start)*i/(ticks-1),px=left+(right-left)*i/(ticks-1);
-  const label=new Date(at).toLocaleString(locale,end-start>86400000?{day:'2-digit',month:'short',hour:'2-digit'}:{hour:'2-digit',minute:'2-digit'});
-  grid+='<text x="'+px.toFixed(2)+'" y="'+(H-9)+'" text-anchor="'+(!i?'start':i===ticks-1?'end':'middle')+'">'+label+'</text>';
- }
- const groups=[];let group=[];
- for(const p of points.filter(p=>!p.live)){
-  const previous=group.at(-1);
-  if(previous&&(p.missing||previous.missing||p.at-previous.at>Math.max(p.interval_ms,previous.interval_ms)*2.5)){groups.push(group);group=[]}
-  group.push(p);
- }if(group.length)groups.push(group);
- let shapes='';
- for(const run of groups){
-  if(run.length===1){const p=run[0],py=y(p[statsMetric]);shapes+='<rect x="'+(x(p)-4).toFixed(2)+'" y="'+Math.min(py,bottom-3).toFixed(2)+'" width="8" height="'+Math.max(3,bottom-py).toFixed(2)+'" fill="'+color+'"/>';continue}
-  const line=run.map((p,i)=>(i?'L':'M')+xy(p)).join(' ');
-  shapes+='<path d="'+line+' L'+x(run.at(-1)).toFixed(2)+' '+bottom+' L'+x(run[0]).toFixed(2)+' '+bottom+' Z" fill="url(#st-area-gradient)"/><path class="line" d="'+line+'"/>';
- }
- const mean=statsMetric==='hashrate'?period?.average_hashrate:period?.average_miners;
- if(Number.isFinite(mean))shapes+='<line class="mean" x1="'+left+'" x2="'+right+'" y1="'+y(mean).toFixed(2)+'" y2="'+y(mean).toFixed(2)+'"/>';
- const live=points.find(p=>p.live),last=points.filter(p=>!p.live).at(-1);
- if(live){
-  if(last&&!last.missing&&live.at-last.at<=last.interval_ms*2.5)shapes+='<path class="live-tail" d="M'+xy(last)+' L'+xy(live)+'"/>';
-  shapes+='<circle class="point" cx="'+x(live).toFixed(2)+'" cy="'+y(live[statsMetric]).toFixed(2)+'" r="4"/>';
- }
- const chosen=points[statsHover];
- if(chosen)shapes+='<line class="crosshair" x1="'+x(chosen).toFixed(2)+'" x2="'+x(chosen).toFixed(2)+'" y1="'+top+'" y2="'+bottom+'"/><circle class="point" cx="'+x(chosen).toFixed(2)+'" cy="'+y(chosen[statsMetric]).toFixed(2)+'" r="4"/>';
- svg.innerHTML='<defs><linearGradient id="st-area-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+color+'" stop-opacity=".4"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/></linearGradient><clipPath id="st-plot-clip"><rect x="'+left+'" y="'+(top-4)+'" width="'+(right-left)+'" height="'+(bottom-top+8)+'"/></clipPath></defs>'+grid+'<g clip-path="url(#st-plot-clip)">'+shapes+'</g>';
- statsPlot={points,x,left,right,W};
- if(chosen){
-  tip.hidden=false;tip.querySelector('time').textContent=statsStamp(chosen.at)+(chosen.live?' · '+T('live'):'');
-  tip.querySelector('strong').textContent=statsMetric==='hashrate'?statsRate(chosen.hashrate):statsNumber(chosen.miners)+' '+T('tMiners').toLowerCase();
-  tip.querySelector('small').textContent=(chosen.live?T('sInstant'):T(chosen.interval_ms===3600000?'sHourMean':'sFiveMinute'))+' · '+(statsMetric==='hashrate'?statsNumber(chosen.miners)+' '+T('tMiners').toLowerCase():statsRate(chosen.hashrate));
-  tip.style.left=Math.max(0,Math.min(W-tip.offsetWidth,x(chosen)+12))+'px';tip.style.top=Math.max(0,y(chosen[statsMetric])-tip.offsetHeight-12)+'px';
- }
-}
-document.querySelectorAll('[data-range]').forEach(button=>button.onclick=()=>{
- range=button.dataset.range;statsHover=null;document.querySelectorAll('[data-range]').forEach(other=>other.setAttribute('aria-pressed',String(other===button)));chart();
-});
-document.querySelectorAll('[data-st-metric]').forEach(button=>button.onclick=()=>{
- statsMetric=button.dataset.stMetric;statsHover=null;document.querySelectorAll('[data-st-metric]').forEach(other=>other.setAttribute('aria-pressed',String(other===button)));chart(false);
-});
-const statsChart=document.getElementById('st-chart');
-if(statsChart){
- const inspect=event=>{
-  if(!statsPlot)return;const rect=statsChart.getBoundingClientRect(),px=(event.clientX-rect.left)*statsPlot.W/rect.width;
-  const next=px<statsPlot.left||px>statsPlot.right?null:statsPlot.points.reduce((best,p,i)=>Math.abs(statsPlot.x(p)-px)<Math.abs(statsPlot.x(statsPlot.points[best])-px)?i:best,0);
-  if(next!==statsHover){statsHover=next;chart(false)}
- };
- statsChart.addEventListener('pointermove',inspect);statsChart.addEventListener('pointerdown',inspect);
- for(const name of ['pointerleave','blur'])statsChart.addEventListener(name,()=>{statsHover=null;chart(false)});
- statsChart.addEventListener('keydown',event=>{
-  if(!statsPlot||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();
-  statsHover=event.key==='Home'?0:event.key==='End'?statsPlot.points.length-1:statsHover===null?statsPlot.points.length-1:Math.max(0,Math.min(statsPlot.points.length-1,statsHover+(event.key==='ArrowRight'?1:-1)));chart(false);
- });
-
-}
-addEventListener('resize',()=>chart(false));
 let fetchedAt=0,statsFailed=false,statsLoading=false,statsFailures=0,statsRetryTimer=0;
 function statsConnection(){
  const age=summary?Date.now()-summary.at:Infinity;
@@ -362,10 +247,9 @@ document.querySelectorAll('.family-tabs').forEach(group=>group.addEventListener(
  homeFilter[group.dataset.target]=b.dataset.family;group.querySelectorAll('button').forEach(o=>o.setAttribute('aria-pressed',o===b));homeMarket()}));
 if(document.getElementById('hm-search'))document.getElementById('hm-search').addEventListener('input',e=>{homeFilter.query=e.target.value;homeMarket()});
 function stats(){homeMarket();statsConnection();document.dispatchEvent(new Event('bdl-public-stats'));if(!document.getElementById('stats'))return;const set=(id,v)=>document.getElementById(id).textContent=v;fleet();breakdowns();
- if(!summary){chart();return}
+ if(!summary)return;
  set('st-hashrate',rate(summary.hashrate||0));set('st-miners',(summary.miners||0).toLocaleString(lang=='fr'?'fr-FR':'en-US'));
- set('st-average',summary.miners?rate(summary.hashrate/summary.miners):'–');set('st-record',summary.record?rate(summary.record.hashrate):'–');
- chart()}
+ set('st-average',summary.miners?rate(summary.hashrate/summary.miners):'–');set('st-record',summary.record?rate(summary.record.hashrate):'–')}
 async function seedPublicStats(){
  if(localStatsPreview||summary||(!document.getElementById('stats')&&!document.getElementById('home-market')))return;
  try{
@@ -381,7 +265,7 @@ async function refresh(){
   // Respect the API's 15-second public cache; retries bypass a cached error.
   const r=await fetch(statsEndpoint,{cache:statsFailures?'reload':'default',credentials:'omit',signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Statistics unavailable');
   const next=await r.json();if(!validStats(next))throw Error('Invalid statistics');
-  summary=next;statsFailed=false;statsFailures=0;statsHover=null;fetchedAt=Date.now();saveStats(next);stats();
+  summary=next;statsFailed=false;statsFailures=0;fetchedAt=Date.now();saveStats(next);stats();
  }catch(e){
   statsFailed=true;statsFailures++;statsConnection();
   const delay=Math.min(2000*2**Math.min(statsFailures-1,4),20000);
@@ -409,7 +293,7 @@ function apply(){document.documentElement.lang=lang;
 if(document.getElementById('st-more'))document.getElementById('st-more').onclick=()=>{fleetAll=!fleetAll;fleet()};
 {const theme=document.getElementById('theme'),root=document.documentElement;
  const update=()=>{theme.setAttribute('aria-pressed',root.dataset.theme==='dark');document.querySelector('meta[name="theme-color"]')?.setAttribute('content',getComputedStyle(root).getPropertyValue('--bg').trim())};update();
- theme.onclick=()=>{const light=root.dataset.theme==='dark';root.dataset.theme=light?'light':'dark';update();chart(false);
+ theme.onclick=()=>{const light=root.dataset.theme==='dark';root.dataset.theme=light?'light':'dark';update();
   try{localStorage.setItem('theme',light?'light':'dark')}catch(e){}}}
 document.getElementById('lang').onclick=()=>{lang=lang=='fr'?'en':'fr';try{localStorage.setItem('lang',lang)}catch(e){}apply()};
 

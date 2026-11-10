@@ -183,6 +183,9 @@ button, input, select, textarea { font-family: var(--font); }
 .pulse-history-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
 .pulse-history-heading h2 { margin: 0; }
 .pulse-history-heading a { color: var(--accent); font-size: 13px; text-decoration: none; }
+.pulse-history-status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; }
+.pulse-history-status .live { display: inline-flex; align-items: center; gap: 8px; color: var(--good); }
+.pulse-history-status .live.is-stale { color: var(--label); }
 .pulse-chart-caption { color: var(--label); font-size: 12px; margin: 16px 0 0; }
 .pulse-chart-empty { display: grid; place-items: center; min-height: 300px; margin: 0; color: var(--label); font-size: 14px; text-align: center; }
 .pulse-chart-empty[hidden] { display: none; }
