@@ -40,7 +40,7 @@ def build_pages(root, output, version, boards, content):
     root, output = Path(root), Path(output)
     asset_versions = {name: hashlib.sha256((root / 'installer/assets' / name).read_bytes()).hexdigest()[:12]
                       for name in ('site.js', 'site.css', 'discovery.js', 'discovery.css', 'remote.js', 'remote.css',
-                                   'pulse-theme.css', 'pulse-chart.js', 'home-chart.js', 'vendor/chart.umd.min.js')}
+                                   'pulse-theme.css', 'pulse-chart.js', 'home-chart.js', 'navigation.js', 'vendor/chart.umd.min.js')}
     titles = {key: {'en': page[1], 'fr': page[2]} for key, page in PAGES.items()}
     for key, (filename, title, _) in PAGES.items():
         # Complete pages rendered by the React/Next.js site (site/, `npm run build`).

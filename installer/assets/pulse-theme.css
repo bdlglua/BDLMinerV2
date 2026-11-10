@@ -50,6 +50,10 @@ button, input, select, textarea { font-family: var(--font); }
   background: linear-gradient(115deg, rgba(139, 92, 246, .11), transparent 40%, rgba(120, 197, 157, .07)), var(--pulse-header); border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.18);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
 }
+/* Keep the sticky layout space while the bar slides out of view. */
+.site-header, :is(body, #__next) > nav { transition: transform .24s cubic-bezier(.22, 1, .36, 1), opacity .18s ease; }
+.site-header.nav-hidden, :is(body, #__next) > nav.nav-hidden { transform: translateY(calc(-100% - 32px)); opacity: 0; pointer-events: none; }
+.site-header.nav-focus-reveal, :is(body, #__next) > nav.nav-focus-reveal { transition: none; }
 .header-inner, :is(body, #__next) > nav > .wrap { min-height: 68px; height: 68px; gap: 16px; padding-inline: 22px; }
 .brand { gap: 10px; flex-shrink: 0; font-size: 22px; font-weight: 750; letter-spacing: -.025em; text-decoration: none; }
 .brand > span { background: linear-gradient(135deg, var(--accent), var(--violet)); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; }

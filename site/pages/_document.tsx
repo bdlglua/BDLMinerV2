@@ -22,6 +22,7 @@ export default function Document(){
    <script dangerouslySetInnerHTML={{__html:"window.BDL_BOARDS=__BOARDS__;window.BDL_VERSION='__VERSION__';"}}/>
    <script defer src="assets/site.js"/>
    <script defer src="assets/discovery.js"/>
+   <script defer src="assets/navigation.js"/>
   </Head>
   <body data-page="__PAGE_KEY__"><Main/><NextScript/></body>
  </Html>;
