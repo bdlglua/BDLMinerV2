@@ -788,7 +788,7 @@ check('private remote monitoring is opt-in, pairs a secret key and links to its 
   assert.equal(await f.page.locator('#k_remotekey').getAttribute('maxlength'),'64');
   assert.equal(await f.page.locator('#k_rname').getAttribute('maxlength'),'48');
   const viewer=f.page.getByRole('link',{name:'Ouvrir mon dashboard distant'});
-  assert.equal(await viewer.getAttribute('href'),'https://bdlminer-stats.bdlminer-bot.workers.dev/remote');
+  assert.equal(await viewer.getAttribute('href'),'https://miner.bdl-pool.com/remote.html');
   const key='0123456789abcdef'.repeat(4);
   await f.page.fill('#k_remotekey',key);await f.page.fill('#k_rname','M5 bureau');await f.page.check('#k_remote');
   assert.equal(await f.page.locator('#save').textContent(),'Enregistrer et redémarrer');
