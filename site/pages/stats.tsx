@@ -3,7 +3,7 @@ import Layout from '../components/Layout';
 export const config:StaticExportPageConfig={unstable_runtimeJS:false};
 
 export default function StatsPage(){
- return <Layout>
+ return <Layout statistics>
 <section id="stats">
  <div className="wrap">
   <h1 data-t="statsTitle">Network statistics</h1>

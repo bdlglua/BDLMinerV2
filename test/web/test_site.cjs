@@ -123,7 +123,7 @@ async function main(){
     const html=await response.text();assert.ok(html.includes('data-page="'+key+'"'));assert.ok(!html.includes('__PAGE_CONTENT__'));
     assert.equal(html.includes('src="https://unpkg.com/esp-web-tools@'),key==='flash','load the USB tool only on its own page');
    }
-   await page.goto(base+'/stats.html');await page.locator('#st-pools tbody tr').first().waitFor();
+   await page.goto(base+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-pools tbody tr').first().waitFor();
    assert.match(await page.locator('#st-coins').textContent(),/BTC.*BCH/s);
    assert.match(await page.locator('#st-pools').textContent(),/Public Pool.*Autre \/ pool privée.*Pool non renseignée/s);
    assert.equal(await page.locator('[data-t="poolsHelp"]').count(),0);
@@ -171,7 +171,7 @@ async function main(){
    return {hasGap:dataset.data.some(p=>p.y===null),spanGaps:dataset.spanGaps};
   });
   assert.deepEqual(gap,{hasGap:true,spanGaps:false},'missing intervals must not be joined');
-  await page.goto(url+'/stats.html');await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();
   await page.locator('[data-range=hour]').click();assert.equal(await page.locator('#st-export').count(),0);
   assert.equal(await page.locator('#st-period-maximum').textContent(),'1,1 TH/s');assert.match(await page.locator('#st-period-minimum').textContent(),/900 GH\/s/);
   assert.equal(await page.locator('#st-period-miners').textContent(),'7');assert.equal(await page.locator('#st-period-samples').textContent(),'6');assert.match(await page.locator('#st-period-coverage').textContent(),/50 %/);
@@ -192,36 +192,36 @@ async function main(){
    await page.setViewportSize({width:375,height:812});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-mobile.png'),style:'nav,#chat-bubble{visibility:hidden}'});await page.setViewportSize({width:1440,height:1000});
   }
   communityStats.history=[{at:stamp-2*3600000,end_at:stamp-3600000,hashrate:1e12,miners:7,samples:12,interval_ms:3600000},{at:stamp-3600000,end_at:stamp-600000,hashrate:1.1e12,miners:8,samples:10,missing:true,interval_ms:3600000}];
-  await page.goto(url+'/stats.html');await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();await page.locator('[data-range=week]').click();assert.equal(await page.locator('[data-range=week]').getAttribute('aria-pressed'),'true');assert.match(await page.locator('#st-period-coverage').textContent(),/2.?016/);
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-period-average').filter({hasText:'1 TH/s'}).waitFor();await page.locator('[data-range=week]').click();assert.equal(await page.locator('[data-range=week]').getAttribute('aria-pressed'),'true');assert.match(await page.locator('#st-period-coverage').textContent(),/2.?016/);
   assert.equal(await page.locator('#st-chart .line').count(),0,'do not join hourly averages across a partially missing hour');
   communityStats.periods={24:{samples:0,expected_samples:288}};communityStats.recent=[];communityStats.history=[];
-  await page.goto(url+'/stats.html');await page.locator('#st-chart-empty').filter({hasText:/Aucune mesure/}).waitFor();assert.equal(await page.locator('#st-export').count(),0);assert.equal(await page.locator('#st-period-average').textContent(),'—');
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-chart-empty').filter({hasText:/Aucune mesure/}).waitFor();assert.equal(await page.locator('#st-export').count(),0);assert.equal(await page.locator('#st-period-average').textContent(),'—');
   communityStats=originalStats;
   communityStats.coins=[{name:'BSV',miners:1,hashrate:1e6},{name:'XEC',miners:1,hashrate:1e6},{name:'DGB',miners:1,hashrate:5e5},{name:'PPC',miners:1,hashrate:1e6}];
-  await page.goto(url+'/stats.html');await page.locator('#st-coins tbody tr').first().waitFor();
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-coins tbody tr').first().waitFor();
   assert.equal(await page.locator('#st-coins tbody tr').count(),4);
   assert.match(await page.locator('#st-coins').textContent(),/BSV.*XEC.*DGB.*PPC/s);
-  delete communityStats.pools;await page.goto(url+'/stats.html');
+  delete communityStats.pools;await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));
   await page.locator('#st-pools tbody tr').first().waitFor();
   assert.equal(await page.locator('#st-pools tbody tr').count(),1);
   assert.match(await page.locator('#st-pools').textContent(),/Pool non renseignée.*3.*2,5 MH\/s/s);
   assert.equal(await page.locator('#st-pools a').count(),0,'undisclosed pools must have no link');
   await page.locator('#lang').click();assert.match(await page.locator('#st-pools').textContent(),/Not shared/);
   communityStats.pools=[{name:'<img src=x onerror=alert(1)>',miners:3,hashrate:2.5e6}];
-  await page.goto(url+'/stats.html');await page.locator('#st-pools tbody tr').first().waitFor();
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-pools tbody tr').first().waitFor();
   assert.match(await page.locator('#st-pools').textContent(),/Other \/ private pool/);
   assert.equal(await page.locator('#st-pools img').count(),0);
   assert.equal(await page.locator('#st-pools a').count(),0,'unrecognised names must never become links');
   const poolSites=JSON.parse(fs.readFileSync(path.join(__dirname,'../../installer/content.json'))).pool_links;
   communityStats.pools=Object.keys(poolSites).map(name=>({name,miners:1,hashrate:1e6,url:'https://attacker.example/worker'}));
   communityStats.miners=communityStats.pools.length;communityStats.hashrate=communityStats.miners*1e6;
-  await page.goto(url+'/stats.html');await page.locator('#st-pools tbody tr').first().waitFor();
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-pools tbody tr').first().waitFor();
   assert.equal(await page.locator('#st-pools a').count(),Object.keys(poolSites).length);
   for(const destination of Object.values(poolSites))assert.equal(await page.locator('#st-pools a[href="'+destination+'"]').count(),1);
   assert.doesNotMatch(await page.locator('#st-pools').innerHTML(),/attacker\.example/);
   // A failed, malformed, old or hanging response must not turn retained readings
   // into a fresh "Live" status, discard them, or start overlapping requests.
-  communityStats.at=Date.now();await page.goto(url+'/stats.html');await page.locator('#st-live-label').filter({hasText:'Live'}).waitFor();
+  communityStats.at=Date.now();await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-live-label').filter({hasText:'Live'}).waitFor();
   const retainedRate=await page.locator('#st-hashrate').textContent();
   for(const failure of ['error','invalid']){
    statsResponse=failure;await page.evaluate(()=>refresh());
@@ -251,9 +251,37 @@ async function main(){
   statsResponse='error';await page.evaluate(()=>refresh());assert.match(await page.locator('#hm-status').textContent(),/last readings/);
   assert.equal(await page.locator('#hm-status').isVisible(),true);
   statsResponse='ok';communityStats.at=Date.now();await page.evaluate(()=>refresh());assert.equal(await page.locator('#hm-status').isVisible(),false);
-  statsResponse='error';await page.goto(url+'/stats.html');await page.locator('#st-live-label').filter({hasText:'Statistics unavailable'}).waitFor();
+  await page.evaluate(()=>localStorage.removeItem(statsCacheKey));
+  statsResponse='error';await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-live-label').filter({hasText:'Statistics unavailable'}).waitFor();
   assert.equal(await page.locator('#st-hashrate').textContent(),'–');
   statsResponse='ok';await page.evaluate(()=>refresh());
+  await page.waitForFunction(()=>document.getElementById('st-live-label').textContent==='Live');
+  const publicCached=await page.evaluate(()=>localStorage.getItem(statsCacheKey));
+  assert.ok(publicCached,'save validated public readings for the next page');
+  statsResponse='pending';releaseSummary=undefined;await page.goto(url+'/stats.html');
+  await page.waitForFunction(()=>statsLoading);
+  assert.equal(await page.locator('#st-hashrate').textContent(),retainedRate,'cached totals should display while the next page waits for the API');
+  assert.equal(await page.locator('#st-live-label').textContent(),'Last readings','cache must never claim a live connection');
+  assert.equal(await page.evaluate(()=>fetchedAt),0);
+  for(let i=0;i<200&&!releaseSummary;i++)await page.waitForTimeout(10);assert.ok(releaseSummary);
+  statsResponse='ok';releaseSummary();await page.waitForFunction(()=>!statsLoading&&fetchedAt>0);
+  assert.equal(await page.locator('#st-live-label').textContent(),'Live');
+  for(const invalidCache of ['broken','expired']){
+   await page.evaluate(kind=>{
+    if(kind==='broken')localStorage.setItem(statsCacheKey,'{invalid');
+    else{const value=JSON.parse(localStorage.getItem(statsCacheKey));value.savedAt=Date.now()-11*60000;localStorage.setItem(statsCacheKey,JSON.stringify(value))}
+   },invalidCache);
+   statsResponse='pending';releaseSummary=undefined;await page.goto(url+'/stats.html');await page.waitForFunction(()=>statsLoading);
+   assert.equal(await page.locator('#st-hashrate').textContent(),'–',invalidCache+' cache must be ignored');
+   for(let i=0;i<200&&!releaseSummary;i++)await page.waitForTimeout(10);assert.ok(releaseSummary);
+   statsResponse='ok';releaseSummary();await page.waitForFunction(()=>!statsLoading&&fetchedAt>0);
+  }
+  // A brief error should retry promptly, rather than wait for the next 20-second poll.
+  await page.evaluate(()=>localStorage.removeItem(statsCacheKey));statsResponse='error';await page.goto(url+'/stats.html');
+  await page.waitForFunction(()=>statsFailed&&!statsLoading);const failedCalls=summaryCalls;
+  statsResponse='ok';await page.locator('#st-live-label').filter({hasText:'Live'}).waitFor({timeout:7000});
+  assert.ok(summaryCalls>failedCalls,'automatically retry a failed request');
+
   // The image credits are full of unbreakable revision hashes and long links.
   await page.setViewportSize({width:375,height:812});await page.goto(url+'/assets/boards/CREDITS.html');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'CREDITS.html should fit mobile');

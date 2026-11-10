@@ -5,6 +5,22 @@ const STATS='https://api.bdl-pool.com:36018/api/summary';
 const localStatsPreview=new URLSearchParams(location.search).get('statsApi')==='go'&&
  (location.protocol==='file:'||['localhost','127.0.0.1','[::1]'].includes(location.hostname));
 const statsEndpoint=localStatsPreview?'http://127.0.0.1:8787/api/summary':STATS;
+const statsCacheKey='bdlminer:public-stats:v1:'+statsEndpoint,statsCacheAge=10*60000,statsCacheLimit=512*1024;
+function validStats(next){
+ return !!next&&Number.isFinite(next.at)&&Number.isFinite(next.hashrate)&&next.hashrate>=0&&Number.isInteger(next.miners)&&next.miners>=0&&
+  !['boards','versions','coins','pools','fleet','models','recent','history'].some(key=>next[key]!=null&&(!Array.isArray(next[key])||next[key].some(row=>!row||typeof row!=='object')));
+}
+function savedStats(){
+ try{
+  const raw=localStorage.getItem(statsCacheKey);if(!raw||raw.length>statsCacheLimit)return null;
+  const saved=JSON.parse(raw),now=Date.now();
+  if(!Number.isFinite(saved.savedAt)||now-saved.savedAt< -60000||now-saved.savedAt>statsCacheAge||!validStats(saved.summary)||now-saved.summary.at< -60000||now-saved.summary.at>statsCacheAge)return null;
+  return saved.summary;
+ }catch{return null}
+}
+function saveStats(value){
+ try{const raw=JSON.stringify({savedAt:Date.now(),summary:value});if(raw.length<=statsCacheLimit)localStorage.setItem(statsCacheKey,raw)}catch{}
+}
 let poolNames={},poolLinks={};try{const data=JSON.parse(document.getElementById('site-data').textContent);poolNames=data.pool_names||{};poolLinks=data.pool_links||{}}catch{}
 const FR={skip:'Aller au contenu',navFeatures:'Fonctions',navBoards:'Cartes',navInstall:'Flasher',navStats:'Statistiques',navCommunity:'Communauté',
 navHome:'Accueil',navStart:'Bien démarrer',navDemo:'Démo',navMore:'Explorer',navFAQ:'FAQ',navNews:'Nouveautés',navSupport:'Soutenir',navPages:'Toutes les pages',
@@ -86,7 +102,7 @@ Object.assign(FR,{hashHistoryTitle:'Évolution du hashrate',screensTitle:'L’é
 let lang=(navigator.language||'').startsWith('fr')?'fr':'en';
 try{lang=localStorage.getItem('lang')||lang}catch(e){}
 const T=k=>(lang=='fr'?FR:EN)[k];
-let screen='mining',summary=null;
+let screen='mining',summary=(document.getElementById('stats')||document.getElementById('home-market'))?savedStats():null;
 
 function rate(h){const u=['H/s','kH/s','MH/s','GH/s','TH/s','PH/s','EH/s'];if(!(h>0))return'0 H/s';let i=0;while(h>=1000&&i<u.length-1){h/=1000;i++}
  return h.toLocaleString(lang=='fr'?'fr-FR':'en-US',{maximumFractionDigits:h>=100?0:h>=10?1:2})+' '+u[i]}
@@ -215,10 +231,10 @@ if(statsChart){
 
 }
 addEventListener('resize',()=>chart(false));
-let fetchedAt=0,statsFailed=false,statsLoading=false;
+let fetchedAt=0,statsFailed=false,statsLoading=false,statsFailures=0,statsRetryTimer=0;
 function statsConnection(){
  const age=summary?Date.now()-summary.at:Infinity;
- const fresh=!!summary&&!statsFailed&&age>=-60000&&age<=60000&&Date.now()-fetchedAt<=60000;
+ const fresh=!!summary&&fetchedAt>0&&!statsFailed&&age>=-60000&&age<=60000&&Date.now()-fetchedAt<=60000;
  const message=summary?T('statsRetained'):T(statsFailed?'statsDown':'statsLoading');
  const text=(element,value)=>{if(element&&element.textContent!==value)element.textContent=value};
  const label=document.getElementById('st-live-label'),live=document.getElementById('st-live');
@@ -351,14 +367,17 @@ function stats(){homeMarket();statsConnection();document.dispatchEvent(new Event
  chart()}
 async function refresh(){
  if(statsLoading||(!document.getElementById('stats')&&!document.getElementById('home-market')))return;
- statsLoading=true;
+ clearTimeout(statsRetryTimer);statsRetryTimer=0;statsLoading=true;
  try{
-  const r=await fetch(statsEndpoint,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Statistics unavailable');
-  const next=await r.json();
-  if(!next||!Number.isFinite(next.at)||!Number.isFinite(next.hashrate)||next.hashrate<0||!Number.isInteger(next.miners)||next.miners<0||
-   ['boards','versions','coins','pools','fleet','recent','history'].some(key=>next[key]!=null&&(!Array.isArray(next[key])||next[key].some(row=>!row||typeof row!=='object'))))throw Error('Invalid statistics');
-  summary=next;statsFailed=false;statsHover=null;fetchedAt=Date.now();stats();
- }catch(e){statsFailed=true;statsConnection()}
+  // Respect the API's 15-second public cache; retries bypass a cached error.
+  const r=await fetch(statsEndpoint,{cache:statsFailures?'reload':'default',credentials:'omit',signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Statistics unavailable');
+  const next=await r.json();if(!validStats(next))throw Error('Invalid statistics');
+  summary=next;statsFailed=false;statsFailures=0;statsHover=null;fetchedAt=Date.now();saveStats(next);stats();
+ }catch(e){
+  statsFailed=true;statsFailures++;statsConnection();
+  const delay=Math.min(2000*2**Math.min(statsFailures-1,4),20000);
+  statsRetryTimer=setTimeout(()=>{statsRetryTimer=0;if(!document.hidden)refresh()},delay);
+ }
  finally{statsLoading=false}
 }
 
