@@ -28,6 +28,7 @@ async function main(){
   assert.equal(await page.locator('[data-t="ctaInstall"]').textContent(),'Install');
   assert.equal(await page.locator('#board-comparison,#demo-frame,#faq-search,#support').count(),0,'home must contain only home content');
   assert.equal(await page.locator('main h1').count(),1);
+  assert.equal(await page.locator('#hero-network-spark .hero-spark-line').getAttribute('d'),'','no sample curve should appear without measurements');
   await page.locator('#site-links a[href="boards.html"]').click();await page.waitForURL(url+'/boards.html');
   await page.waitForSelector('.board-card');
   assert.equal(await page.locator('#board-comparison .board-card').count(),2);
@@ -134,6 +135,8 @@ async function main(){
   await page.waitForFunction(()=>window.Chart?.getChart(document.getElementById('cryptoChart')));
   const chartData=await page.evaluate(()=>Chart.getChart(document.getElementById('cryptoChart')).data.datasets[0].data.map(p=>({at:p.x,hashrate:p.y})));
   assert.deepEqual(chartData,communityStats.recent.map(p=>({at:p.at,hashrate:p.hashrate})),'the template chart must use the actual public measurements');
+  assert.match(await page.locator('#hero-network-rate').innerText(),/1[,.]05 TH\/s/,'the hero card must display the real network hashrate');
+  assert.ok((await page.locator('#hero-network-spark .hero-spark-line').getAttribute('d')).startsWith('M'),'measurements must populate the hero curve');
   const gap=await page.evaluate(()=>{
    const canvas=document.getElementById('cryptoChart');
    BDLPulseChart.render(canvas,[{t:0,value:1e6},{t:300000,value:2e6},{t:1500000,value:3e6}],{gapMs:750000});

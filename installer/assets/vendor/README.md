@@ -7,3 +7,5 @@ Chart.js 4.5.1 is distributed under the MIT License. The unmodified browser bund
 - Bundle: https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js
 - License: [CHARTJS-LICENSE.md](CHARTJS-LICENSE.md)
 - Upstream: https://github.com/chartjs/Chart.js
+
+The floating network and glass icons are original SVG illustrations made for the site owner’s visual reference.

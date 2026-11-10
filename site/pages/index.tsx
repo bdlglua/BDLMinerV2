@@ -1,13 +1,14 @@
 import Layout from '../components/Layout';
-import Icon from '../components/Icons';
 
 export const config:StaticExportPageConfig={unstable_runtimeJS:false};
 
 const features=[
- ['chip','f1t','Hardware SHA-256'],
- ['link','f2t','Stratum V1 and V2'],
- ['chart','f3t','Web dashboard'],
- ['shield','f4t','Signed updates'],
+ ['hardware','f1t','Hardware SHA-256','boards.html'],
+ ['link','f2t','Stratum V1 and V2','start.html'],
+ ['chart','f3t','Web dashboard','demo.html'],
+ ['network','featureStats','Live statistics','stats.html'],
+ ['shield','f4t','Signed updates','releases.html'],
+ ['flash','featureFlash','Web flasher','flash.html'],
 ] as const;
 const pools=['Public Pool','CKPool','OCEAN','NerdMiner.io','Braiins','ViaBTC'];
 const families=[['all','famAll','All boards'],['esp32','famEsp32','ESP32'],['s3','famS3','ESP32-S3'],['s2c3','famS2c3','S2 / C3'],['asic','famAsic','ASIC']];
@@ -15,7 +16,7 @@ const families=[['all','famAll','All boards'],['esp32','famEsp32','ESP32'],['s3'
 export default function HomePage(){
  return <Layout chart>
 <section className="hero-band" id="top">
- <div className="wrap hero">
+ <div className="wrap hero hero-stage">
  <div className="hero-copy">
   <p className="hero-kicker" data-t="heroKicker">Open-source firmware · ESP32 &amp; ASIC</p>
   <h1 data-h="title">Bitcoin solo mining, <b>on small hardware.</b></h1>
@@ -35,9 +36,17 @@ export default function HomePage(){
   </div>
  </div>
 
+ <aside className="hero-mini" aria-label="BDLMiner network">
+  <div className="hero-mini-head"><span data-t="heroNetwork">BDLMiner network</span><span className="hero-mini-period">24 h</span></div>
+  <strong id="hero-network-rate">—</strong>
+  <svg id="hero-network-spark" viewBox="0 0 260 110" aria-hidden="true"><path className="hero-spark-grid" d="M0 25H260M0 60H260M0 95H260"/></svg>
+  <p data-t="heroMeasured">Measured community hashrate</p>
+ </aside>
+ <img className="hero-network" src="assets/pulse-orbit.svg" width="360" height="340" alt="" aria-hidden="true"/>
  </div>
  <div className="wrap">
   <div className="ticker-panel">
+   <h2 className="pulse-ticker-title" data-t="tickerTitle">Network / Live miners</h2>
    <div className="family-tabs" role="group" aria-label="Board family" data-al="famGroup" data-target="cards">
     {families.map(([key,tk,label],i)=><button type="button" key={key} data-family={key} aria-pressed={i===0?'true':'false'} data-t={tk}>{label}</button>)}
    </div>
@@ -46,6 +55,13 @@ export default function HomePage(){
  </div>
 </section>
 
+
+<section id="features" className="pulse-features"><div className="wrap">
+ <h2 className="sr-only" data-t="featTitle">Made for solo mining</h2>
+ <div className="pulse-shortcuts">
+  {features.map(([asset,tk,title,href])=><a href={href} key={tk}><img src={'assets/pulse-'+asset+'.svg'} width="72" height="72" alt=""/><span data-t={tk}>{title}</span></a>)}
+ </div>
+</div></section>
 
 <section className="pulse-chart-section"><div className="wrap">
  <article className="pulse-history-card">
@@ -76,12 +92,7 @@ export default function HomePage(){
  </div>
 </div></section>
 
-<section id="features"><div className="wrap">
- <h2 data-t="featTitle">Made for solo mining</h2>
- <div className="grid">
-  {features.map(([icon,tk,title])=><div className="feature-item" key={tk}><span className="feature-icon"><Icon name={icon}/></span><h3 data-t={tk}>{title}</h3></div>)}
- </div>
-</div></section>
+
 
 <section className="device-section"><div className="wrap"><h2 data-t="screensTitle">On-device screens</h2>
  <div className="hero-art">

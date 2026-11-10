@@ -82,7 +82,7 @@ document.querySelectorAll('[data-al]').forEach(e=>EN[e.dataset.al]=e.getAttribut
 document.querySelectorAll('[data-ph]').forEach(e=>EN[e.dataset.ph]=e.placeholder);
 Object.assign(FR,{sourceCode:'Code source sur GitHub ↗',firmwareRelease:'Firmware '+VERSION,statsLoading:'Chargement des statistiques…',statsRetained:'Dernières mesures conservées ; actualisation en attente.',statsSaved:'Dernières mesures'});
 Object.assign(EN,{statsLoading:'Loading statistics…',statsRetained:'Showing the last readings; waiting for an update.',statsSaved:'Last readings'});
-Object.assign(FR,{hashHistoryTitle:'Évolution du hashrate',screensTitle:'L’écran du mineur'});
+Object.assign(FR,{hashHistoryTitle:'Évolution du hashrate',screensTitle:'L’écran du mineur',featureStats:'Statistiques',featureFlash:'Flasher web',heroNetwork:'Réseau BDLMiner',heroMeasured:'Hashrate mesuré de la communauté',tickerTitle:'Réseau / Mineurs actifs'});
 let lang=(navigator.language||'').startsWith('fr')?'fr':'en';
 try{lang=localStorage.getItem('lang')||lang}catch(e){}
 const T=k=>(lang=='fr'?FR:EN)[k];
@@ -314,9 +314,9 @@ function homeMarket(){const table=document.getElementById('home-market');if(!tab
  const all=(summary?.boards||[]).filter(b=>b.miners>0).map(b=>({...b,family:familyOf(b.name),label:name(b.name)})).sort((a,b)=>b.hashrate-a.hashrate);
  const icon=r=>{const c=document.createElement('span');c.className='chip-icon';c.dataset.family=r.family;c.setAttribute('aria-hidden','true');
   c.textContent=r.label.replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase();return c};
- // Cards: the four busiest boards of the chosen family.
+ // Cards: the three busiest boards of the chosen family.
  const cards=document.getElementById('hm-cards');
- if(cards){cards.innerHTML='';const list=all.filter(r=>homeFilter.cards==='all'||r.family===homeFilter.cards).slice(0,4);
+ if(cards){cards.innerHTML='';const list=all.filter(r=>homeFilter.cards==='all'||r.family===homeFilter.cards).slice(0,3);
   if(!list.length){const p=document.createElement('p');p.className='ticker-empty';p.textContent=!summary?'–':all.length?T('noMatch'):T('noneNow');cards.appendChild(p)}
   list.forEach((r,i)=>{const a=document.createElement('a'),head=document.createElement('span'),title=document.createElement('span'),tag=document.createElement('span');
    a.className='ticker';a.href=BOARDS.some(b=>b.env===r.name)?'flash.html?board='+encodeURIComponent(r.name):'stats.html';
