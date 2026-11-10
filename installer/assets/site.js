@@ -373,11 +373,11 @@ function apply(){document.documentElement.lang=lang;
  showScreen(screen);boards();stats();document.dispatchEvent(new Event('bdl-language-change'))}
 // The phone menu: opens under the bar, closes on a link, Escape or a tap elsewhere.
 {const menu=document.getElementById('menu'),links=document.getElementById('site-links'),more=document.getElementById('nav-more');
- const set=open=>{links.classList.toggle('open',open);menu.setAttribute('aria-expanded',open);menu.textContent=open?'✕':'☰'};
+ const set=open=>{links.classList.toggle('open',open);menu.setAttribute('aria-expanded',open);menu.textContent=open?'✕':'☰';if(!open&&more)more.open=false};
  menu.onclick=e=>{e.stopPropagation();set(!links.classList.contains('open'))};
  links.addEventListener('click',e=>{if(e.target.closest('a'))set(false)});
  document.addEventListener('click',e=>{if(!e.target.closest('nav'))set(false);if(more&&!more.contains(e.target))more.open=false});
- document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(more?.open){more.open=false;more.querySelector('summary').focus();return}if(links.classList.contains('open')){set(false);menu.focus()}})}
+ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(more?.open){more.open=false;more.querySelector('summary').focus({preventScroll:true});return}if(links.classList.contains('open')){set(false);menu.focus({preventScroll:true})}})}
 if(document.getElementById('st-more'))document.getElementById('st-more').onclick=()=>{fleetAll=!fleetAll;fleet()};
 {const theme=document.getElementById('theme'),root=document.documentElement;
  const update=()=>{theme.setAttribute('aria-pressed',root.dataset.theme==='dark');document.querySelector('meta[name="theme-color"]')?.setAttribute('content',getComputedStyle(root).getPropertyValue('--bg').trim())};update();

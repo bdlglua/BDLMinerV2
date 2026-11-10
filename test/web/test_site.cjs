@@ -29,6 +29,33 @@ async function main(){
   assert.equal(await page.locator('#board-comparison,#demo-frame,#faq-search,#support').count(),0,'home must contain only home content');
   assert.equal(await page.locator('main h1').count(),1);
   assert.equal(await page.locator('#hero-network-spark .hero-spark-line').getAttribute('d'),'','no sample curve should appear without measurements');
+  // Closing a drawer or leaving the phone layout must release scroll hiding.
+  const originalViewport=page.viewportSize();
+  await page.setViewportSize({width:390,height:800});
+  await page.locator('#menu').click();await page.locator('#nav-more summary').click();await page.locator('#menu').click();
+  assert.equal(await page.locator('#nav-more').getAttribute('open'),null);
+  await page.evaluate(()=>{document.activeElement.blur();scrollTo({top:600,behavior:'instant'})});
+  await page.waitForFunction(()=>document.querySelector('#__next>nav').classList.contains('nav-hidden'));
+  await page.locator('main').evaluate(e=>{e.tabIndex=-1;e.focus({preventScroll:true})});
+  const keyboardScroll=await page.evaluate(()=>scrollY);await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.evaluate(()=>scrollY),keyboardScroll,'returning to the header by keyboard must not scroll the page');
+  await page.waitForFunction(()=>getComputedStyle(document.documentElement).scrollPaddingTop!=='0px');
+
+  await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await page.locator('#menu').click();
+  await page.setViewportSize({width:1440,height:800});
+  await page.waitForFunction(()=>document.getElementById('menu').getAttribute('aria-expanded')==='false');
+  // Every drawer link remains reachable on short screens, including the 1040/1100 breakpoint gap.
+  for(const width of [390,1041]){
+   await page.setViewportSize({width,height:320});await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
+   await page.locator('#menu').click();await page.locator('#nav-more summary').click();
+   assert.ok(await page.locator('#site-links').evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight-10));
+   await page.locator('#nav-support').scrollIntoViewIfNeeded();
+   assert.ok(await page.locator('#nav-support').evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight-10));
+   await page.keyboard.press('Escape');await page.keyboard.press('Escape');
+  }
+  await page.setViewportSize({width:1440,height:320});await page.locator('#nav-more summary').click();
+  assert.ok(await page.locator('.site-more-menu').evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight-10));
+  await page.keyboard.press('Escape');await page.setViewportSize(originalViewport);await page.goto(url);
   await page.locator('#site-links a[href="boards.html"]').click();await page.waitForURL(url+'/boards.html');
   await page.waitForSelector('.board-card');
   assert.equal(await page.locator('#board-comparison .board-card').count(),2);

@@ -4,8 +4,9 @@
   const header = document.querySelector('.site-header, #__next > nav, body > nav');
   if (!header) return;
   const position = () => Math.max(0, Math.min(window.scrollY, document.documentElement.scrollHeight - innerHeight));
-  let previous = position(), direction = 0, distance = 0, pending = false;
-  const interacting = () => header.querySelector('[aria-expanded="true"], details[open], :focus-visible');
+  let previous = position(), direction = 0, distance = 0, pending = false, focusFrame = 0;
+  const interacting = () => [...header.querySelectorAll('[aria-expanded="true"], details[open], :focus-visible')]
+    .some(control => control.getClientRects().length > 0);
   function reveal() {
     header.classList.remove('nav-hidden');
     previous = position(); direction = 0; distance = 0;
@@ -24,16 +25,30 @@
   window.addEventListener('scroll', () => {
     if (!pending) { pending = true; requestAnimationFrame(update); }
   }, {passive: true});
-  // Keyboard focus reveals the bar immediately, before the browser scrolls it into view.
+  // Focus must ignore the anchor inset while the browser brings a header control into view.
+  function finishFocus() {
+    cancelAnimationFrame(focusFrame); focusFrame = 0;
+    document.documentElement.classList.remove('nav-focusing');
+  }
   function revealForFocus() {
+    document.documentElement.classList.add('nav-focusing');
     header.classList.add('nav-focus-reveal');
     reveal();
     header.getBoundingClientRect(); // Apply the visible position before native focus scrolling.
     header.classList.remove('nav-focus-reveal');
+    cancelAnimationFrame(focusFrame);
+    focusFrame = requestAnimationFrame(finishFocus);
   }
   header.addEventListener('focusin', revealForFocus);
-  document.addEventListener('keydown', event => { if (event.key === 'Tab') revealForFocus(); });
+  header.addEventListener('click', finishFocus);
+  document.addEventListener('keydown', event => { if (event.key === 'Tab') revealForFocus(); else finishFocus(); });
   header.addEventListener('toggle', reveal, true);
-  window.addEventListener('resize', reveal);
-  window.addEventListener('pageshow', reveal);
+  function resetForViewport() {
+    finishFocus();
+    const toggle = header.querySelector('.menu-toggle, #menu');
+    if (toggle?.getAttribute('aria-expanded') === 'true' && !toggle.getClientRects().length) toggle.click();
+    reveal();
+  }
+  window.addEventListener('resize', resetForViewport);
+  window.addEventListener('pageshow', resetForViewport);
 })();

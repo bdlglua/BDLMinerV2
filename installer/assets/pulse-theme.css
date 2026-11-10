@@ -30,6 +30,7 @@
   --pulse-green-glow: rgba(0, 170, 113, .06); --pulse-purple-glow: rgba(139, 92, 246, .08);
 }
 html { scroll-padding-top: var(--anchor-offset); }
+html.nav-focusing { scroll-padding-top: 0; scroll-behavior: auto; }
 body {
   color: var(--text); font-family: var(--font); line-height: 1.6;
   background-color: var(--bg);
@@ -77,7 +78,7 @@ button, input, select, textarea { font-family: var(--font); }
 #theme, #lang, #menu, .theme-toggle, .language-switch { color: var(--text); }
 #theme, .theme-toggle { border: 1px solid var(--border); background: var(--panel); width: 36px; height: 36px; min-height: 36px; border-radius: 8px; }
 #lang { border-radius: 12px; border-color: var(--border); background: var(--panel); font-size: 13px; }
-.site-more-menu { background: var(--bg2); border-color: var(--border-strong); border-radius: 16px; backdrop-filter: blur(16px); }
+.site-more-menu { background: var(--bg2); border-color: var(--border-strong); border-radius: 16px; backdrop-filter: blur(16px); max-height: calc(100vh - 108px); max-height: calc(100dvh - 108px); overflow-y: auto; overscroll-behavior: contain; }
 .site-more-menu a { color: var(--text); }
 .hero-band { background: none; overflow: clip; }
 .hero.hero-stage, .hero-band > .hero.hero-stage {
@@ -289,7 +290,7 @@ table.market td, .miners-table td { color: var(--text); }
   #menu, .menu-toggle { width: 30px; min-width: 30px; padding: 0; }
   #lang { font-size: 12px; padding: 7px 9px; }
   .header-github { display: none; }
-  .main-nav, .links { top: 61px; }
+  .main-nav, .links { top: 61px; max-height: calc(100vh - 86px); max-height: calc(100dvh - 86px); }
   .hero-actions, .hero .buttons { gap: 12px; }
   .hero-actions .button, .hero-actions .text-link, .hero .buttons .btn { padding-inline: 20px; }
   .hero h1, .page-content .hero h1 { font-size: 42px; }
@@ -359,6 +360,9 @@ table.market td, .miners-table td { color: var(--text); }
 @media (max-width: 1100px) {
  .main-nav, .links { display: none; position: absolute; inset: 67px 0 auto; margin: 0; background: var(--bg2); border: 1px solid var(--border); border-radius: 0 0 14px 14px; padding: 14px 20px; flex-direction: column; align-items: stretch; }
  .main-nav.open, .links.open { display: flex; }
+ .main-nav, .links { max-height: calc(100vh - 98px); max-height: calc(100dvh - 98px); overflow-y: auto; overscroll-behavior: contain; }
+ .links .site-more { width: 100%; }
+ .links .site-more-menu { position: static; min-width: 0; margin: 4px 0 8px 10px; border: 0; border-left: 2px solid var(--border); border-radius: 0; box-shadow: none; padding: 0 0 0 8px; background: none; max-height: none; overflow: visible; }
  .menu-toggle { display: flex; }
  #menu { display: block; }
  .header-actions { margin-left: auto; }
@@ -381,7 +385,7 @@ table.market td, .miners-table td { color: var(--text); }
  .pulse-shortcuts img { width: 58px; height: 58px; }
  .pulse-shortcuts a { font-size: 11px; }
  .header-inner, :is(body, #__next) > nav > .wrap { padding-inline: 14px; gap: 8px; height: 62px; min-height: 62px; }
- .main-nav, .links { top: 61px; }
+ .main-nav, .links { top: 61px; max-height: calc(100vh - 86px); max-height: calc(100dvh - 86px); }
  .metric::before, .tile::before, .ticker::before { width: 4px; }
 }
 @media (max-width: 380px) {
