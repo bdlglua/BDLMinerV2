@@ -24,6 +24,8 @@
     const muted = palette.getPropertyValue('--label').trim() || '#94a3b8';
     const grid = palette.getPropertyValue('--chart-grid').trim() || 'rgba(255,255,255,.05)';
     const background = palette.getPropertyValue('--bg').trim() || '#070913';
+    const foreground = palette.getPropertyValue('--fg').trim() || '#fff';
+    const border = palette.getPropertyValue('--border-strong').trim() || '#344054';
     const rgb = /^#[a-f0-9]{6}$/i.test(color) ? color.slice(1).match(/../g).map(v => parseInt(v, 16)).join(',') : '0,255,136';
     const formatTime = value => new Intl.DateTimeFormat(locale, {
       ...(points.at(-1).t - points[0].t > 86400000 ? {day: '2-digit', month: 'short'} : {}),
@@ -59,8 +61,9 @@
       plugins: {
         legend: {display: false},
         tooltip: {
-          backgroundColor: 'rgba(19,23,42,.96)', titleColor: '#a4b0c5', bodyColor: '#fff',
-          borderColor: `rgba(${rgb},.35)`, borderWidth: 1, padding: 12, displayColors: false,
+          backgroundColor: background, titleColor: muted, bodyColor: foreground,
+          borderColor: border, borderWidth: 1, cornerRadius: 8, caretSize: 0, caretPadding: 10,
+          padding: 12, displayColors: false,
           callbacks: {
             title: items => items.length ? formatTime(items[0].parsed.x) : '',
             label: item => rate(item.parsed.y, locale),
