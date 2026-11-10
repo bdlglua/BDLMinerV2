@@ -33,12 +33,20 @@ versions, disabled pool sharing and disconnected pools appear as *Not shared*.
 Public pool names link to a predefined official website, with its URL shown below
 the name. Private/other and undisclosed groups have no link.
 
-No Bitcoin address, worker, private hostname, name or identifier is sent. The service
-adds the reports up live and keeps a 5-minute sample of the total 35 days; the sender's network
-address only limits the number of reports and is never stored. The totals are public:
-**<https://bdlminer-stats.bdlminer-bot.workers.dev/>** (total hashrate, miners, 7-day
+No Bitcoin address, worker, private hostname, name or identifier is sent. From
+2.5.7, reports go directly to `https://api.bdl-pool.com:36018/report`, with
+certificate and hostname verification. The collector adds the reports up live
+and keeps a five-minute sample of the total for 35 days. It applies server-wide
+admission limits behind the TCP relay and does not store client IP addresses.
+The totals are public:
+**<https://miner.bdl-pool.com/stats.html>** (total hashrate, miners, 7-day
 chart, by board, version, cryptocurrency and pool). A paused miner sends
 nothing. It is on by default; turn it off with the *Share my hashrate anonymously*
 setting (`sharehr`), which applies at once.
+
+Older firmware still uses a compatibility Cloudflare Worker, which forwards
+reports to the server and remains subject to its own request allowance.
+Updating to 2.5.7 removes that intermediary for anonymous reports and optional
+[personal monitoring](remote-access.md).
 
 [Back to the project overview](../README.md#privacy).
