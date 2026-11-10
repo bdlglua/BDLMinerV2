@@ -2,6 +2,9 @@
 import Head from 'next/head';
 import type {ReactNode} from 'react';
 
+// Start before styles/scripts finish loading; site.js validates age and schema before displaying it.
+const statsBootstrap="if(new URLSearchParams(location.search).get('statsApi')!=='go'){try{window.BDL_PUBLIC_STATS_SEED=fetch('https://raw.githubusercontent.com/bdlglua/BDLMinerV2/public-stats/summary.json',{credentials:'omit',cache:'default',signal:AbortSignal.timeout(5000)}).then(r=>r.ok?r.json():null).catch(()=>null)}catch{}}";
+
 interface LayoutProps {
  children: ReactNode;
  flasher?: boolean;
@@ -16,6 +19,7 @@ export default function Layout({children,flasher=false,remote=false,chart=false,
    <title>__PAGE_TITLE__</title>
    <meta name="viewport" content="width=device-width,initial-scale=1"/>
    {(chart||statistics)&&<link rel="preconnect" href="https://api.bdl-pool.com:36018" crossOrigin="anonymous"/>}
+   {(chart||statistics)&&<script id="public-stats-bootstrap" dangerouslySetInnerHTML={{__html:statsBootstrap}}/>}
    {flasher&&<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"/>}
    {remote&&<meta name="referrer" content="no-referrer"/>}
    {remote&&<meta name="bdl-remote-api" content="https://api.bdl-pool.com:36018"/>}

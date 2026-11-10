@@ -16,6 +16,11 @@ async function main(){
   let communityStats={at:Date.now(),miners:3,hashrate:2.5e6,coins:[{name:"BTC",miners:2,hashrate:2e6},{name:"BCH",miners:1,hashrate:5e5}],boards:[],versions:[],fleet:[],history:[],recent:[],record:null,
    pools:[{name:'public-pool.io',miners:1,hashrate:1e6},{name:'other',miners:1,hashrate:1e6},{name:'unknown',miners:1,hashrate:5e5}]};
   let statsResponse='ok',summaryCalls=0,releaseSummary;
+  let publicSeed=null,seedDeferred=false,releaseSeed;
+  await page.route('https://raw.githubusercontent.com/bdlglua/BDLMinerV2/public-stats/summary.json',async route=>{
+   if(seedDeferred)await new Promise(resolve=>{releaseSeed=resolve});
+   return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(publicSeed)});
+  });
   await page.route('https://api.bdl-pool.com:36018/api/summary',async route=>{
    summaryCalls++;
    if(statsResponse==='pending')await new Promise(resolve=>{releaseSummary=resolve});
@@ -34,6 +39,7 @@ async function main(){
   await page.setViewportSize({width:390,height:800});
   await page.locator('#menu').click();await page.locator('#nav-more summary').click();await page.locator('#menu').click();
   assert.equal(await page.locator('#nav-more').getAttribute('open'),null);
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await page.evaluate(()=>{document.activeElement.blur();scrollTo({top:600,behavior:'instant'})});
   await page.waitForFunction(()=>document.querySelector('#__next>nav').classList.contains('nav-hidden'));
   await page.locator('main').evaluate(e=>{e.tabIndex=-1;e.focus({preventScroll:true})});
@@ -276,6 +282,29 @@ async function main(){
    for(let i=0;i<200&&!releaseSummary;i++)await page.waitForTimeout(10);assert.ok(releaseSummary);
    statsResponse='ok';releaseSummary();await page.waitForFunction(()=>!statsLoading&&fetchedAt>0);
   }
+  // A first visit must show a recent public reading even while the live API hangs.
+  await page.evaluate(()=>localStorage.removeItem(statsCacheKey));
+  publicSeed={...structuredClone(communityStats),at:Date.now()-120000,hashrate:2e12};
+  statsResponse='pending';releaseSummary=undefined;await page.goto(url+'/stats.html');
+  await page.locator('#st-hashrate').filter({hasText:'2 TH/s'}).waitFor();
+  assert.equal(await page.evaluate(()=>fetchedAt),0);
+  assert.equal(await page.locator('#st-live-label').textContent(),'Last readings');
+  for(let i=0;i<200&&!releaseSummary;i++)await page.waitForTimeout(10);assert.ok(releaseSummary);
+  statsResponse='ok';releaseSummary();await page.waitForFunction(()=>!statsLoading&&fetchedAt>0);
+  assert.equal(await page.locator('#st-hashrate').textContent(),retainedRate,'the live response replaces the public snapshot');
+  // A delayed snapshot cannot overwrite data already validated by the live API.
+  await page.evaluate(()=>localStorage.removeItem(statsCacheKey));seedDeferred=true;releaseSeed=undefined;
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>fetchedAt>0);
+  for(let i=0;i<200&&!releaseSeed;i++)await page.waitForTimeout(10);assert.ok(releaseSeed);
+  seedDeferred=false;releaseSeed();await page.evaluate(()=>window.BDL_PUBLIC_STATS_SEED.then(()=>true));
+  assert.equal(await page.locator('#st-hashrate').textContent(),retainedRate);
+  publicSeed={...publicSeed,at:Date.now()-31*60000};
+  await page.evaluate(()=>localStorage.removeItem(statsCacheKey));statsResponse='pending';releaseSummary=undefined;
+  await page.goto(url+'/stats.html');await page.waitForFunction(()=>statsLoading);
+  await page.evaluate(()=>window.BDL_PUBLIC_STATS_SEED.then(()=>true));
+  assert.equal(await page.locator('#st-hashrate').textContent(),'–','an expired public snapshot must be ignored');
+  for(let i=0;i<200&&!releaseSummary;i++)await page.waitForTimeout(10);assert.ok(releaseSummary);
+  statsResponse='ok';releaseSummary();await page.waitForFunction(()=>!statsLoading&&fetchedAt>0);publicSeed=null;
   // A brief error should retry promptly, rather than wait for the next 20-second poll.
   await page.evaluate(()=>localStorage.removeItem(statsCacheKey));statsResponse='error';await page.goto(url+'/stats.html');
   await page.waitForFunction(()=>statsFailed&&!statsLoading);const failedCalls=summaryCalls;

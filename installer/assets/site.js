@@ -2,6 +2,7 @@
 // window.BDL_BOARDS and window.BDL_VERSION (filled in by tools/make_site_pages.py).
 const BOARDS=window.BDL_BOARDS||[],VERSION=window.BDL_VERSION||'';
 const STATS='https://api.bdl-pool.com:36018/api/summary';
+const STATS_SNAPSHOT='https://raw.githubusercontent.com/bdlglua/BDLMinerV2/public-stats/summary.json';
 const localStatsPreview=new URLSearchParams(location.search).get('statsApi')==='go'&&
  (location.protocol==='file:'||['localhost','127.0.0.1','[::1]'].includes(location.hostname));
 const statsEndpoint=localStatsPreview?'http://127.0.0.1:8787/api/summary':STATS;
@@ -365,6 +366,14 @@ function stats(){homeMarket();statsConnection();document.dispatchEvent(new Event
  set('st-hashrate',rate(summary.hashrate||0));set('st-miners',(summary.miners||0).toLocaleString(lang=='fr'?'fr-FR':'en-US'));
  set('st-average',summary.miners?rate(summary.hashrate/summary.miners):'–');set('st-record',summary.record?rate(summary.record.hashrate):'–');
  chart()}
+async function seedPublicStats(){
+ if(localStatsPreview||summary||(!document.getElementById('stats')&&!document.getElementById('home-market')))return;
+ try{
+  const next=await (window.BDL_PUBLIC_STATS_SEED||fetch(STATS_SNAPSHOT,{credentials:'omit',cache:'default',signal:AbortSignal.timeout(5000)}).then(r=>r.ok?r.json():null));
+  const age=Date.now()-next?.at;
+  if(!fetchedAt&&!summary&&validStats(next)&&age>=-60000&&age<=30*60000){summary=next;saveStats(next);stats()}
+ }catch{} // A missing or old public snapshot must never prevent a direct API request.
+}
 async function refresh(){
  if(statsLoading||(!document.getElementById('stats')&&!document.getElementById('home-market')))return;
  clearTimeout(statsRetryTimer);statsRetryTimer=0;statsLoading=true;
@@ -657,5 +666,5 @@ $c('chat-form').onsubmit=async e=>{e.preventDefault();if(chat.busy)return;const 
  if(chatSend(say)){t.value='';t.style.height='auto';chatAttachClear()}};
 chatConnect();
 
-apply();refresh();setInterval(()=>{if(!document.hidden)refresh()},20000);
+apply();seedPublicStats();refresh();setInterval(()=>{if(!document.hidden)refresh()},20000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
