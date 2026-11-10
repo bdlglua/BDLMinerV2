@@ -76,10 +76,15 @@ miner. Those operations stay on the local miner page.
 - Reports use CA and hostname verification, with no insecure fallback and no
   redirects. A failed report waits for the next attempt; it does not restart the
   miner or stop mining. The public statistics retain their existing behavior.
-- The Cloudflare-hosted service isolates each address or key in its own Durable
-  Object named by a SHA-256 digest. The hosting operator can access stored
-  readings; this is not end-to-end encryption. Request addresses are used only for
-  temporary in-memory rate limits.
+- The self-hosted service isolates each address or key in its own SQLite
+  database named by a SHA-256 digest. The hosting operator can access stored
+  readings; this is not end-to-end encryption. Server-wide admission limits
+  protect the service behind the TCP relay, which does not preserve client IPs.
+- Current website requests and newly built firmware use the server directly.
+  Installed older firmware still uses a compatibility Worker: it forwards new
+  reports to the server but remains subject to its request allowance. Updating
+  those boards removes that dependency. Public chart history was imported;
+  private history on the new service starts with the newly received reports.
 - To stop sending, disable monitoring on each miner. Existing readings expire
   after seven days. With a key, **Manage my private data → Erase data and revoke
   key** removes them immediately and permanently revokes the key.
@@ -90,7 +95,7 @@ admission limit also bounds requests from one Internet address.
 
 ## API
 
-On `https://bdlminer-stats.bdlminer-bot.workers.dev`, with
+On `https://api.bdl-pool.com:36018`, with
 `Authorization: Address <payout-address>` or `Authorization: Bearer <private-key>`:
 
 - `GET /api/remote`: your latest readings and their age.

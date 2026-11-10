@@ -17,8 +17,9 @@
 #include "web.h"
 
 namespace {
-constexpr char kRemoteHost[] = "bdlminer-stats.bdlminer-bot.workers.dev";
-constexpr char kRemoteURL[] = "https://bdlminer-stats.bdlminer-bot.workers.dev/api/remote/report";
+constexpr char kRemoteHost[] = "api.bdl-pool.com";
+constexpr uint16_t kRemotePort = 36018;
+constexpr char kRemoteURL[] = "https://api.bdl-pool.com:36018/api/remote/report";
 constexpr uint32_t kRemoteEveryMs = 300000;
 uint32_t remoteNext = 60000;
 }
@@ -71,7 +72,7 @@ void remotePoll() {
     http.setTimeout(10000);
     http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
     int code = -1;
-    if (http.begin(tls, kRemoteURL) && tlsConnectVerified(tls, kRemoteHost, kExplorerRootCA)) {
+    if (http.begin(tls, kRemoteURL) && tlsConnectVerified(tls, kRemoteHost, kExplorerRootCA, kRemotePort)) {
         http.setUserAgent(DEFAULT_USER_AGENT);
         http.addHeader("Content-Type", "application/json");
         http.addHeader("Authorization", keyed ? String("Bearer ") + settings.remoteKey : String("Address ") + address);

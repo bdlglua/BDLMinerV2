@@ -1,7 +1,7 @@
 // Site behaviour: language, flasher, live statistics, chat. The page sets
 // window.BDL_BOARDS and window.BDL_VERSION (filled in by tools/make_site_pages.py).
 const BOARDS=window.BDL_BOARDS||[],VERSION=window.BDL_VERSION||'';
-const STATS='https://bdlminer-stats.bdlminer-bot.workers.dev/api/summary';
+const STATS='https://api.bdl-pool.com:36018/api/summary';
 const localStatsPreview=new URLSearchParams(location.search).get('statsApi')==='go'&&
  (location.protocol==='file:'||['localhost','127.0.0.1','[::1]'].includes(location.hostname));
 const statsEndpoint=localStatsPreview?'http://127.0.0.1:8787/api/summary':STATS;
@@ -49,7 +49,7 @@ chatErrors:{taken:'Ce pseudo est déjà pris.',wait:'Tu pourras changer de pseud
  media_slow:'Pas plus de 10 fichiers par heure.',media_full:'Le chat est plein pour l\'instant : réessaie plus tard.',upload:'L\'envoi du fichier a échoué.'},
 chatAdminOn:'Mode équipe activé.',chatAdminOff:'Clé refusée.',chatAdminSlow:'Trop d\'essais : réessaie dans une heure.',
 live:'En direct',week:'7 jours',byBoard:'Par carte',byVersion:'Par version',colBoard:'Carte',colVersion:'Version',colMiners:'Miners',colHashrate:'Hashrate',noneNow:'Aucun miner en ce moment.',period:'Période',updated:'mis à jour il y a {s} s',now:'maintenant',
-statsMore:'Données brutes : <a href="https://bdlminer-stats.bdlminer-bot.workers.dev/api/summary">JSON</a> · <a href="https://bdlminer-stats.bdlminer-bot.workers.dev/">page des statistiques</a>.',
+statsMore:'Données brutes : <a href="https://api.bdl-pool.com:36018/api/summary">JSON</a>.',
 lotteryTitle:'Le minage solo est un loisir, pas un revenu.',
 lottery:'À la vitesse d’un ESP32, trouver un bloc est extrêmement improbable.',
 communityTitle:'Communauté',communityLead:'Questions, installations, meilleures shares et idées : viens dire bonjour.',

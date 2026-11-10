@@ -1,6 +1,6 @@
 // Anonymous hashrate sharing (settings.shareHashrate, on by default): every 5
 // minutes, the firmware version, the board, the selected coin and the hashrate are posted to the
-// BDLMiner statistics Worker, which adds up the reports of every miner.
+// BDLMiner statistics collector, which adds up the reports of every miner.
 // Pool sharing (on by default, independently switchable) adds a public pool group. No Bitcoin
 // address, worker, configured hostname, port, name or identifier is sent.
 #pragma once
@@ -8,7 +8,7 @@
 #include <stddef.h>
 
 #ifndef STATS_URL
-#define STATS_URL "https://bdlminer-stats.bdlminer-bot.workers.dev/report"
+#define STATS_URL "https://api.bdl-pool.com:36018/report"
 #endif
 
 // Sends the report when it is due. Called every few seconds by the market

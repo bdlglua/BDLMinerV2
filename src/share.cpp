@@ -24,13 +24,41 @@ namespace {
 // The first report waits for a settled hashrate (the average of the last
 // minute) once mining has started; then one every 5 minutes, for the live
 // statistics. Each report says how long it stands for ("every"), which the
-// Worker needs to add them up without an identifier. A failed report is not
+// collector needs to add them up without an identifier. A failed report is not
 // retried sooner: the next one comes.
 constexpr uint32_t kFirstMs = 3 * 60 * 1000UL;
 constexpr uint32_t kEverySeconds = 300;
 constexpr uint32_t kEveryMs = kEverySeconds * 1000UL;
 constexpr uint32_t kWaitMs = 60 * 1000UL;  // no WiFi, memory or hashrate yet
 uint32_t next = kFirstMs;
+
+// Separate the certificate hostname from an explicit HTTPS port. Never pass
+// "host:port" as SNI or silently connect a custom-port URL to port 443.
+bool shareEndpoint(const char *url, char *host, size_t capacity, uint16_t &port) {
+    if (strncmp(url, "https://", 8)) return false;
+    const char *first = url + 8, *end = first;
+    while (*end && *end != ':' && *end != '/' && *end != '?' && *end != '#') end++;
+    const size_t length = end - first;
+    if (!length || length >= capacity) return false;
+    for (const char *p = first; p < end; p++) {
+        const bool letter = (*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z');
+        if (!letter && !(*p >= '0' && *p <= '9') && *p != '.' && *p != '-') return false;
+    }
+    port = 443;
+    if (*end == ':') {
+        const char *digits = ++end;
+        unsigned value = 0;
+        while (*end >= '0' && *end <= '9') {
+            value = value * 10 + (*end++ - '0');
+            if (value > 65535) return false;
+        }
+        if (end == digits || !value) return false;
+        port = static_cast<uint16_t>(value);
+    }
+    if (*end && *end != '/') return false;
+    memcpy(host, first, length); host[length] = 0;
+    return true;
+}
 
 }  // namespace
 
@@ -82,13 +110,13 @@ void sharePoll() {
     const char *pool = settings.sharePool && minerStats().poolConnected ? netPoolHost().c_str() : nullptr;
     if (!shareBody(body, sizeof(body), rate, sameName(model, BOARD_NAME) ? nullptr : model, pool, settings.miningCoin)) return;
     String url = STATS_URL;
-    int start = url.indexOf("://") + 3, slash = url.indexOf('/', start);
-    String host = url.substring(start, slash < 0 ? url.length() : slash);
+    char host[254]; uint16_t port;
+    if (!shareEndpoint(url.c_str(), host, sizeof(host), port)) return;
     WiFiClientSecure tls;
     HTTPClient http;
     http.setTimeout(10000);
     int code = -1;
-    if (http.begin(tls, url) && tlsConnect(tls, host.c_str())) {
+    if (http.begin(tls, url) && tlsConnect(tls, host, port)) {
         // Transport compatibility marker; the displayed/Stratum identity is BDLMinerV2.
         http.setUserAgent("BDLMinerV1/" FW_VERSION);
         http.addHeader("Content-Type", "application/json");

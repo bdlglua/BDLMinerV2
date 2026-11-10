@@ -70,11 +70,17 @@ La page garde une clé en mémoire seulement et ne l'enregistre jamais. Elle
 n'enregistre l'adresse dans le navigateur que si **Retenir cette adresse** est
 coché ; **Déconnexion** l'oublie. Rien n'est placé dans les liens.
 
-Le service Cloudflare sépare les espaces par adresse ou par clé, dont seule
-l'empreinte sert à nommer le stockage. L'opérateur d'hébergement peut accéder aux
-mesures stockées ; elles ne sont pas chiffrées de bout en bout. Les adresses des
-requêtes servent seulement aux limites temporaires en mémoire. Les détails
+Le service hébergé sur le serveur sépare les espaces par adresse ou par clé,
+dont seule l'empreinte sert à nommer la base SQLite. L'opérateur d'hébergement
+peut accéder aux mesures stockées ; elles ne sont pas chiffrées de bout en bout.
+Des limites globales protègent le serveur : le relais ne transmet pas l'IP des clients. Les détails
 techniques et l'API sont décrits dans le [guide complet](remote-access.md).
+
+Le site et les nouveaux firmwares compilés utilisent directement le serveur.
+Les anciens firmwares passent encore par un Worker de compatibilité qui
+transmet les envois au serveur ; son quota de requêtes reste applicable jusqu'à
+la mise à jour des cartes. Les graphiques publics ont été importés. Le nouvel
+historique privé commence avec les relevés reçus sur le serveur.
 
 Pour arrêter les envois, désactive le suivi sur chaque carte : le bouton
 s'applique immédiatement. Les anciennes mesures expirent après sept jours. Avec

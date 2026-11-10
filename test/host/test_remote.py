@@ -49,15 +49,15 @@ bool trialPending(){return false;}
 String pool="public-pool.io";const String &netPoolHost(){return pool;}
 struct WiFiClientSecure {};
 const char kExplorerRootCA[]="ROOT";
-unsigned handshakes=0;bool tlsConnectVerified(WiFiClientSecure &,const char *host,const char *root){
- assert(!strcmp(host,"bdlminer-stats.bdlminer-bot.workers.dev"));assert(!strcmp(root,"ROOT"));++handshakes;return verified;
+unsigned handshakes=0;bool tlsConnectVerified(WiFiClientSecure &,const char *host,const char *root,uint16_t port){
+ assert(!strcmp(host,"api.bdl-pool.com"));assert(port==36018);assert(!strcmp(root,"ROOT"));++handshakes;return verified;
 }
 std::vector<std::string> sent,logs;std::map<std::string,std::string> headers;
 void logf(const char *format,...){char b[256];va_list args;va_start(args,format);vsnprintf(b,sizeof(b),format,args);va_end(args);logs.emplace_back(b);}
 struct HTTPClient {
  void setTimeout(int){}
  void setFollowRedirects(int mode){assert(mode==HTTPC_DISABLE_FOLLOW_REDIRECTS);}
- bool begin(WiFiClientSecure &,const char *url){assert(!strcmp(url,"https://bdlminer-stats.bdlminer-bot.workers.dev/api/remote/report"));return true;}
+ bool begin(WiFiClientSecure &,const char *url){assert(!strcmp(url,"https://api.bdl-pool.com:36018/api/remote/report"));return true;}
  void setUserAgent(const char *v){assert(!strcmp(v,DEFAULT_USER_AGENT));}
  void addHeader(const char *name,const String &value){headers[name]=value;}
  int POST(uint8_t *data,size_t size){sent.emplace_back((char*)data,size);return 204;}

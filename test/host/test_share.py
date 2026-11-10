@@ -21,7 +21,8 @@ prefix = r'''
 #define BOARD_NAME "M5StickC-Plus2"
 namespace board { const char *model = "M5StickC-Plus2"; const char *modelName() { return model; } }
 #define FW_ENV "m5stickc-plus2"
-#define STATS_URL "https://stats.example/report"
+const char *statsUrl = "https://stats.example/report";
+#define STATS_URL statsUrl
 using std::isfinite;
 struct String : std::string {
     using std::string::string;
@@ -48,8 +49,9 @@ String activePool = "public-pool.io";
 const String &netPoolHost() { return activePool; }
 struct WiFiClientSecure {};
 std::vector<std::string> posted, hosts;
+std::vector<uint16_t> ports;
 int answer = 204;
-bool tlsConnect(WiFiClientSecure &, const char *host, uint16_t = 443, uint8_t = 12) { hosts.push_back(host); return true; }
+bool tlsConnect(WiFiClientSecure &, const char *host, uint16_t port = 443, uint8_t = 12) { hosts.push_back(host); ports.push_back(port); return true; }
 struct HTTPClient {
     std::string url;
     void setTimeout(int) {}
@@ -65,6 +67,14 @@ void sharePoll();
 '''
 tests = r'''
 int main() {
+    char endpoint[254]; uint16_t endpointPort;
+    assert(shareEndpoint("https://api.bdl-pool.com:36018/report", endpoint, sizeof(endpoint), endpointPort));
+    assert(!strcmp(endpoint,"api.bdl-pool.com") && endpointPort==36018);
+    assert(shareEndpoint("https://stats.example/report", endpoint, sizeof(endpoint), endpointPort) && endpointPort==443);
+    for(const char *bad:{"http://stats.example/report","https:///report","https://user:pass@stats.example/report",
+                        "https://stats.example:0/report","https://stats.example:65536/report","https://stats.example:/report",
+                        "https://stats.example:443x/report","https://stats.example:999999999999/report"})
+        assert(!shareEndpoint(bad,endpoint,sizeof(endpoint),endpointPort));
     char out[256];
     assert(shareBody(out, sizeof(out), 1.0234e6));
     assert(!strcmp(out, R"({"v":"1.9.0","board":"m5stickc-plus2","hashrate":1.02e+06,"every":300,"coin":"BTC"})"));
@@ -112,6 +122,7 @@ int main() {
     sharePoll(); assert(posted.empty());                       // not before 3 minutes
     nowMs = kFirstMs; sharePoll(); assert(posted.size() == 1);
     assert(hosts.back() == "stats.example");
+    assert(ports.back() == 443);
     assert(posted[0] == R"({"v":"1.9.0","board":"m5stickc-plus2","hashrate":1.02e+06,"every":300,"coin":"BTC"})");
     assert(kEveryMs == kEverySeconds * 1000 && kEverySeconds == 300);
     nowMs += kEveryMs - 1; sharePoll(); assert(posted.size() == 1);
@@ -140,7 +151,12 @@ int main() {
     assert(posted.size() == 9); // pool sharing cannot bypass the main opt-out
     settings.shareHashrate = true; settings.sharePool = false; stats.poolConnected = true; sharePoll();
     assert(posted.size() == 10 && posted.back().find("pool") == std::string::npos);
-    puts("share: OK");
+    statsUrl="https://api.bdl-pool.com:36018/report";
+    nowMs += kEveryMs; sharePoll();
+    assert(hosts.back()=="api.bdl-pool.com" && ports.back()==36018);
+    const auto count=posted.size();statsUrl="http://api.bdl-pool.com:36018/report";
+    nowMs += kEveryMs;sharePoll();assert(posted.size()==count);
+    puts("share: OK (verified HTTPS on default and explicit ports)");
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:

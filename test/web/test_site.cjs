@@ -15,7 +15,7 @@ async function main(){
   await page.route('https://**/*',route=>route.fulfill({status:200,contentType:'text/javascript',body:''}));
   let communityStats={at:Date.now(),miners:3,hashrate:2.5e6,coins:[{name:"BTC",miners:2,hashrate:2e6},{name:"BCH",miners:1,hashrate:5e5}],boards:[],versions:[],fleet:[],history:[],recent:[],record:null,
    pools:[{name:'public-pool.io',miners:1,hashrate:1e6},{name:'other',miners:1,hashrate:1e6},{name:'unknown',miners:1,hashrate:5e5}]};
-  await page.route('https://bdlminer-stats.bdlminer-bot.workers.dev/api/summary',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(communityStats)}));
+  await page.route('https://api.bdl-pool.com:36018/api/summary',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(communityStats)}));
   await page.addInitScript(()=>{window.WebSocket=class{constructor(){this.readyState=1;setTimeout(()=>this.onopen?.(),0)}send(){}close(){}}});
   await page.goto(url);await page.locator('[data-t="ctaInstall"]').waitFor();
   const siteFont=await page.evaluate(async()=>{await document.fonts.load('400 16px "DM Sans"');return{family:getComputedStyle(document.body).fontFamily,loaded:document.fonts.check('400 16px "DM Sans"')}});
@@ -186,7 +186,7 @@ async function main(){
   // "My miners" is a site page: shared navigation, site language and theme, and
   // readings fetched from the statistics service by payout address only.
   await page.setViewportSize({width:1440,height:1000});
-  const remoteAPI='https://bdlminer-stats.bdlminer-bot.workers.dev',remoteCalls=[],now=Date.now();
+  const remoteAPI='https://api.bdl-pool.com:36018',remoteCalls=[],now=Date.now();
   const remoteMiner={id:'0123456789abcdef',name:'M5 bureau',board:'m5stickc-plus2',v:'2.5.4',coin:'BTC',online:true,age_s:42,hashrate:1.2e6,temp_c:47.5,accepted:12,rejected:1,uptime_s:7200,power_percent:100,best:4096,pool_connected:true,pool:'public-pool.io'};
   await page.route(remoteAPI+'/api/remote**',async route=>{
    const request=route.request(),target=new URL(request.url());remoteCalls.push({path:target.pathname,auth:request.headers().authorization,referer:request.headers().referer});
