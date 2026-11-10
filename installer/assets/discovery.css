@@ -178,7 +178,7 @@ nav .wrap{height:66px}
 .links a,.site-more summary{border-radius:4px;font-size:14px}
 .links a[aria-current=page],.site-more[data-current=true]>summary{color:var(--fg);background:transparent;box-shadow:none}
 .links a.nav-flash{padding:9px 15px;margin-left:4px;border-radius:4px;color:var(--on-accent);background:var(--primary);box-shadow:none}
-.links a.nav-flash:hover{background:var(--primary-hover);color:#fff}
+.links a.nav-flash:hover{background:var(--primary-hover);color:var(--on-accent)}
 .site-more-menu{backdrop-filter:none;border-radius:5px}
 #theme,#lang,#menu{border-radius:4px}
 #theme .sun{display:none}
@@ -271,7 +271,7 @@ table.market .bar i{background:var(--accent)}
 .chart .line,.chart .last{stroke:var(--accent)}
 .chart .last{fill:var(--accent)}
 .remote .state{color:var(--good)}
-.remote button.remote-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.remote button.remote-primary{background:var(--primary);border-color:var(--primary);color:var(--on-accent)}
 footer{background:var(--bg2);border-top-color:var(--border)}
 footer .footer-nav a{font-size:13px}
 .chat-bubble{background:var(--panel);border:1px solid var(--border-strong);color:var(--text);border-radius:4px;box-shadow:none}
@@ -347,6 +347,8 @@ footer .footer-nav a{font-size:13px}
 .stats-breakdowns table.by th,.stats-breakdowns table.by td{padding:8px 5px}
 .stats-breakdowns table.by th{font-size:10px;text-transform:uppercase;letter-spacing:.04em}
 #st-status{margin:18px 0 0}
+.chart-head .live.is-stale{color:var(--muted)}
+#hm-status{margin:0 0 16px}
 :root[data-theme=dark] .stats-overview .tile-primary{color:var(--on-accent)}
 :root[data-theme=dark] .stats-overview .tile-primary .label,
 :root[data-theme=dark] .stats-overview .tile-primary .value,

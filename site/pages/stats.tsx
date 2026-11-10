@@ -42,7 +42,7 @@ export default function StatsPage(){
    <div className="card"><h3 data-t="coinsTitle">By cryptocurrency</h3><table className="by" id="st-coins"></table></div>
    <div className="card"><h3 data-t="byPool">By pool</h3><table className="by" id="st-pools"></table></div>
   </div>
-  <p className="s" id="st-status" data-h="statsMore">Raw data: <a href="https://api.bdl-pool.com:36018/api/summary">JSON</a>.</p>
+  <p className="s" id="st-status" role="status" aria-live="polite" data-h="statsMore">Raw data: <a href="https://api.bdl-pool.com:36018/api/summary">JSON</a>.</p>
  </div>
 </section>
  </Layout>;

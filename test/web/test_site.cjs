@@ -15,7 +15,12 @@ async function main(){
   await page.route('https://**/*',route=>route.fulfill({status:200,contentType:'text/javascript',body:''}));
   let communityStats={at:Date.now(),miners:3,hashrate:2.5e6,coins:[{name:"BTC",miners:2,hashrate:2e6},{name:"BCH",miners:1,hashrate:5e5}],boards:[],versions:[],fleet:[],history:[],recent:[],record:null,
    pools:[{name:'public-pool.io',miners:1,hashrate:1e6},{name:'other',miners:1,hashrate:1e6},{name:'unknown',miners:1,hashrate:5e5}]};
-  await page.route('https://api.bdl-pool.com:36018/api/summary',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(communityStats)}));
+  let statsResponse='ok',summaryCalls=0,releaseSummary;
+  await page.route('https://api.bdl-pool.com:36018/api/summary',async route=>{
+   summaryCalls++;
+   if(statsResponse==='pending')await new Promise(resolve=>{releaseSummary=resolve});
+   return route.fulfill({status:statsResponse==='error'?503:200,contentType:'application/json',body:JSON.stringify(statsResponse==='invalid'?{error:'invalid'}:communityStats)});
+  });
   await page.addInitScript(()=>{window.WebSocket=class{constructor(){this.readyState=1;setTimeout(()=>this.onopen?.(),0)}send(){}close(){}}});
   await page.goto(url);await page.locator('[data-t="ctaInstall"]').waitFor();
   const siteFont=await page.evaluate(async()=>{await document.fonts.load('400 16px "DM Sans"');return{family:getComputedStyle(document.body).fontFamily,loaded:document.fonts.check('400 16px "DM Sans"')}});
@@ -63,7 +68,8 @@ async function main(){
   await frame.locator('a[href="settings.html"]').first().click();await frame.locator('#k_power').waitFor();
   await frame.locator('#k_power').fill('50');await frame.locator('#save').click();
   await frame.locator('#msg').filter({hasText:/appliqu|applied/i}).waitFor({timeout:5000}).catch(async error=>{console.error('Demo save status:',await frame.locator('#msg').textContent(),errors,await frame.locator('input:invalid,select:invalid').evaluateAll(nodes=>nodes.map(n=>({id:n.id,value:n.value,message:n.validationMessage}))),await frame.locator('#f').evaluate(f=>({onsubmit:f.getAttribute('onsubmit'),handler:typeof saveSettings,form:document.getElementById('save').form?.id,busy:window.busy})));throw error});
-  await frame.locator('a[href="index.html"]').first().click();await frame.locator('#m .hero').filter({hasText:/502/}).waitFor();
+  // The 50% demo sample is 502.5 kH/s and is rounded in the dashboard.
+  await frame.locator('a[href="index.html"]').first().click();await frame.locator('#m .hero .v').filter({hasText:/50[0-9] kH\/s/}).waitFor();
   await frame.locator('.demo-notice select').selectOption('pool');
   await frame.locator('#mining-state').filter({hasText:/attente du pool/}).waitFor();
   const demoFrame=page.frames().find(f=>f.url().includes('/demo/miner/'));
@@ -113,6 +119,9 @@ async function main(){
    await page.goto(base+'/boards.html');await page.locator('[data-filter="s3"]').click();
    await page.locator('[data-board-env="lilygo-t-display-s3"]').click();await page.waitForURL(base+'/flash.html?board=lilygo-t-display-s3');
    assert.equal(await page.locator('#board').inputValue(),'lilygo-t-display-s3');
+   const channelVersion=prefix.endsWith('/beta')?'2.0.2-beta.1':'2.0.1';
+   assert.equal(await page.locator('[data-t="firmwareRelease"]').getAttribute('href'),'https://github.com/bdlglua/BDLMinerV2/releases/tag/v'+channelVersion);
+   assert.equal(await page.locator('[data-t="firmwareRelease"]').textContent(),'Firmware '+channelVersion);
    await page.goto(base+'/#demo');await page.waitForURL(base+'/demo.html');await page.frameLocator('#demo-frame').locator('#m .hero').waitFor();
    assert.ok(page.frames().some(frame=>frame.url().startsWith(base+'/demo/miner/')));
   }
@@ -134,7 +143,9 @@ async function main(){
   await page.locator('.public-readings summary').click();assert.equal(await page.locator('#st-readings tr').count(),7);
   const initialTheme=await page.locator('html').getAttribute('data-theme')||'light';await page.locator('#theme').click();
   const toggledTheme=await page.locator('html').getAttribute('data-theme')||'light';assert.notEqual(toggledTheme,initialTheme);
+  assert.equal(await page.locator('#theme').getAttribute('aria-pressed'),String(toggledTheme==='dark'));
   await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme')||'light',initialTheme);
+  assert.equal(await page.locator('#theme').getAttribute('aria-pressed'),String(initialTheme==='dark'));
   if(process.env.BDL_SCREENSHOT_DIR){
    fs.mkdirSync(process.env.BDL_SCREENSHOT_DIR,{recursive:true});await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-desktop.png'),style:'nav,#chat-bubble{visibility:hidden}'});
    await page.setViewportSize({width:375,height:812});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.locator('#st-performance').screenshot({path:path.join(process.env.BDL_SCREENSHOT_DIR,'public-statistics-mobile.png'),style:'nav,#chat-bubble{visibility:hidden}'});await page.setViewportSize({width:1440,height:1000});
@@ -167,6 +178,41 @@ async function main(){
   assert.equal(await page.locator('#st-pools a').count(),Object.keys(poolSites).length);
   for(const destination of Object.values(poolSites))assert.equal(await page.locator('#st-pools a[href="'+destination+'"]').count(),1);
   assert.doesNotMatch(await page.locator('#st-pools').innerHTML(),/attacker\.example/);
+  // A failed, malformed, old or hanging response must not turn retained readings
+  // into a fresh "Live" status, discard them, or start overlapping requests.
+  communityStats.at=Date.now();await page.goto(url+'/stats.html');await page.locator('#st-live-label').filter({hasText:'Live'}).waitFor();
+  const retainedRate=await page.locator('#st-hashrate').textContent();
+  for(const failure of ['error','invalid']){
+   statsResponse=failure;await page.evaluate(()=>refresh());
+   assert.equal(await page.locator('#st-live-label').textContent(),'Last readings');
+   assert.equal(await page.locator('#st-hashrate').textContent(),retainedRate);
+   assert.equal(await page.locator('#st-live .dot.on').count(),0);
+  }
+  statsResponse='ok';communityStats.at=Date.now()-120000;await page.evaluate(()=>refresh());
+  assert.equal(await page.locator('#st-live-label').textContent(),'Last readings');
+  assert.match(await page.locator('#st-updated').textContent(),/updated 12\d s ago/,'age comes from the readings, not the fetch');
+  communityStats.at=Date.now();await page.evaluate(()=>refresh());assert.equal(await page.locator('#st-live-label').textContent(),'Live');
+  assert.equal(await page.locator('#st-status a').count(),1,'restore the JSON link after recovery');
+  await page.locator('#st-status a').focus();await page.waitForTimeout(1100);
+  assert.equal(await page.locator('#st-status a').evaluate(el=>el===document.activeElement),true,'age updates must not recreate a focused link');
+  statsResponse='pending';const beforeCalls=summaryCalls;await page.evaluate(()=>{window.pendingStats=refresh()});
+  while(!releaseSummary)await page.waitForTimeout(10);
+  await page.evaluate(()=>Promise.all([refresh(),refresh()]));assert.equal(summaryCalls,beforeCalls+1,'only one request can be pending');
+  statsResponse='ok';releaseSummary();await page.evaluate(()=>window.pendingStats);
+  const timedOut=await page.evaluate(async()=>{
+   const originalFetch=fetch,originalTimeout=AbortSignal.timeout;let signal;
+   window.fetch=(_url,options)=>{signal=options.signal;return new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason)))};
+   AbortSignal.timeout=()=>originalTimeout.call(AbortSignal,100);
+   try{await refresh();return{aborted:signal.aborted,loading:statsLoading}}finally{window.fetch=originalFetch;AbortSignal.timeout=originalTimeout}
+  });
+  assert.deepEqual(timedOut,{aborted:true,loading:false});assert.equal(await page.locator('#st-hashrate').textContent(),retainedRate);
+  await page.goto(url);await page.locator('#hm-status[hidden]').waitFor({state:'attached'});
+  statsResponse='error';await page.evaluate(()=>refresh());assert.match(await page.locator('#hm-status').textContent(),/last readings/);
+  assert.equal(await page.locator('#hm-status').isVisible(),true);
+  statsResponse='ok';communityStats.at=Date.now();await page.evaluate(()=>refresh());assert.equal(await page.locator('#hm-status').isVisible(),false);
+  statsResponse='error';await page.goto(url+'/stats.html');await page.locator('#st-live-label').filter({hasText:'Statistics unavailable'}).waitFor();
+  assert.equal(await page.locator('#st-hashrate').textContent(),'–');
+  statsResponse='ok';await page.evaluate(()=>refresh());
   // The image credits are full of unbreakable revision hashes and long links.
   await page.setViewportSize({width:375,height:812});await page.goto(url+'/assets/boards/CREDITS.html');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'CREDITS.html should fit mobile');
@@ -201,12 +247,14 @@ async function main(){
   assert.equal(await page.locator('#nav-more a[href="remote.html"]').count(),1,'My miners is in the shared navigation');
   assert.equal(await page.locator('meta[name="referrer"]').getAttribute('content'),'no-referrer');
   assert.equal(await page.locator('#rm-login h2').textContent(),'See your miners');
+  assert.equal(await page.locator('.remote-total').isVisible(),false,'an empty total must not reserve space before login');
   await page.locator('#rm-key').fill('bc1qremotetest.worker1');await page.locator('#rm-login-form button[type=submit]').click();
   await page.locator('#rm-miners .miner h2').filter({hasText:'M5 bureau'}).waitFor();
   await page.locator('#rm-stat-reports').filter({hasText:'4'}).waitFor();
   assert.ok(remoteCalls.length>=2&&remoteCalls.every(c=>c.auth==='Address bc1qremotetest'),'the payout address (without worker) is the only credential');
   assert.ok(remoteCalls.every(c=>!c.referer),'no referrer is sent to the statistics service');
   assert.equal(await page.locator('#rm-login').isVisible(),false);assert.equal(await page.locator('#rm-logout').isVisible(),true);
+  assert.equal(await page.locator('.remote-total').isVisible(),true);
   assert.equal(await page.locator('#rm-manage').isVisible(),false,'an address space cannot be erased');
   assert.match(await page.locator('#rm-total').textContent(),/1\.2 MH\/s/);
   await page.locator('#lang').click();await page.locator('#rm-miners .state').filter({hasText:'En ligne'}).waitFor();

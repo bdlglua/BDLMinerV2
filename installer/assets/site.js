@@ -80,6 +80,8 @@ document.querySelectorAll('[data-h]').forEach(e=>EN[e.dataset.h]=e.innerHTML);
 document.querySelectorAll('[data-alt]').forEach(e=>EN[e.dataset.alt]=e.alt);
 document.querySelectorAll('[data-al]').forEach(e=>EN[e.dataset.al]=e.getAttribute('aria-label'));
 document.querySelectorAll('[data-ph]').forEach(e=>EN[e.dataset.ph]=e.placeholder);
+Object.assign(FR,{sourceCode:'Code source sur GitHub ↗',firmwareRelease:'Firmware '+VERSION,statsLoading:'Chargement des statistiques…',statsRetained:'Dernières mesures conservées ; actualisation en attente.',statsSaved:'Dernières mesures'});
+Object.assign(EN,{statsLoading:'Loading statistics…',statsRetained:'Showing the last readings; waiting for an update.',statsSaved:'Last readings'});
 let lang=(navigator.language||'').startsWith('fr')?'fr':'en';
 try{lang=localStorage.getItem('lang')||lang}catch(e){}
 const T=k=>(lang=='fr'?FR:EN)[k];
@@ -212,8 +214,22 @@ if(statsChart){
 
 }
 addEventListener('resize',()=>chart(false));
-let fetchedAt=0;
-setInterval(()=>{const el=document.getElementById('st-updated');if(!fetchedAt||!el)return;const s=Math.round((Date.now()-fetchedAt)/1000);el.textContent=T('updated').replace('{s}',s)},1000);
+let fetchedAt=0,statsFailed=false,statsLoading=false;
+function statsConnection(){
+ const age=summary?Date.now()-summary.at:Infinity;
+ const fresh=!!summary&&!statsFailed&&age>=-60000&&age<=60000&&Date.now()-fetchedAt<=60000;
+ const message=summary?T('statsRetained'):T(statsFailed?'statsDown':'statsLoading');
+ const text=(element,value)=>{if(element&&element.textContent!==value)element.textContent=value};
+ const label=document.getElementById('st-live-label'),live=document.getElementById('st-live');
+ text(label,fresh?T('live'):summary?T('statsSaved'):T(statsFailed?'statsDown':'statsLoading'));
+ if(live){live.classList.toggle('is-stale',!fresh);live.querySelector('.dot').className='dot '+(fresh?'on':'none')}
+ const updated=document.getElementById('st-updated');
+ text(updated,summary?T('updated').replace('{s}',Math.max(0,Math.round(age/1000))):'');
+ const home=document.getElementById('hm-status');if(home){home.hidden=fresh;text(home,fresh?'':message)}
+ const status=document.getElementById('st-status');
+ if(status){if(fresh&&!(summary.miners===0&&!summary.history?.length)){const html=T('statsMore');if(status.innerHTML!==html)status.innerHTML=html}else text(status,fresh?T('noStats'):message)}
+}
+setInterval(statsConnection,1000);
 
 // Every supported board: green when some are online now, red when the only
 // ones seen went offline (the service estimates them: reports carry no
@@ -327,14 +343,23 @@ function homeMarket(){const table=document.getElementById('home-market');if(!tab
 document.querySelectorAll('.family-tabs').forEach(group=>group.addEventListener('click',e=>{const b=e.target.closest('button[data-family]');if(!b)return;
  homeFilter[group.dataset.target]=b.dataset.family;group.querySelectorAll('button').forEach(o=>o.setAttribute('aria-pressed',o===b));homeMarket()}));
 if(document.getElementById('hm-search'))document.getElementById('hm-search').addEventListener('input',e=>{homeFilter.query=e.target.value;homeMarket()});
-function stats(){homeMarket();if(!document.getElementById('stats'))return;const set=(id,v)=>document.getElementById(id).textContent=v;fleet();breakdowns();
+function stats(){homeMarket();statsConnection();if(!document.getElementById('stats'))return;const set=(id,v)=>document.getElementById(id).textContent=v;fleet();breakdowns();
  if(!summary){chart();return}
  set('st-hashrate',rate(summary.hashrate||0));set('st-miners',(summary.miners||0).toLocaleString(lang=='fr'?'fr-FR':'en-US'));
  set('st-average',summary.miners?rate(summary.hashrate/summary.miners):'–');set('st-record',summary.record?rate(summary.record.hashrate):'–');
- chart();
- if(!summary.miners&&!summary.history?.length)document.getElementById('st-status').textContent=T('noStats')}
-async function refresh(){if(!document.getElementById('stats')&&!document.getElementById('home-market'))return;try{const r=await fetch(statsEndpoint,{cache:'no-store'});if(!r.ok)throw 0;summary=await r.json();statsHover=null;fetchedAt=Date.now();stats()}
- catch(e){if(!summary&&document.getElementById('stats')){chart();document.getElementById('st-status').textContent=T('statsDown')}}}
+ chart()}
+async function refresh(){
+ if(statsLoading||(!document.getElementById('stats')&&!document.getElementById('home-market')))return;
+ statsLoading=true;
+ try{
+  const r=await fetch(statsEndpoint,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Statistics unavailable');
+  const next=await r.json();
+  if(!next||!Number.isFinite(next.at)||!Number.isFinite(next.hashrate)||next.hashrate<0||!Number.isInteger(next.miners)||next.miners<0||
+   ['boards','versions','coins','pools','fleet','recent','history'].some(key=>next[key]!=null&&(!Array.isArray(next[key])||next[key].some(row=>!row||typeof row!=='object'))))throw Error('Invalid statistics');
+  summary=next;statsFailed=false;statsHover=null;fetchedAt=Date.now();stats();
+ }catch(e){statsFailed=true;statsConnection()}
+ finally{statsLoading=false}
+}
 
 function apply(){document.documentElement.lang=lang;
  document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T(e.dataset.t));
@@ -353,8 +378,9 @@ function apply(){document.documentElement.lang=lang;
  document.addEventListener('click',e=>{if(!e.target.closest('nav'))set(false);if(more&&!more.contains(e.target))more.open=false});
  document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(more?.open){more.open=false;more.querySelector('summary').focus();return}if(links.classList.contains('open')){set(false);menu.focus()}})}
 if(document.getElementById('st-more'))document.getElementById('st-more').onclick=()=>{fleetAll=!fleetAll;fleet()};
-{const theme=document.getElementById('theme'),root=document.documentElement;theme.setAttribute('aria-pressed',root.dataset.theme!=='dark');
- theme.onclick=()=>{const light=root.dataset.theme==='dark';if(light)delete root.dataset.theme;else root.dataset.theme='dark';theme.setAttribute('aria-pressed',light);
+{const theme=document.getElementById('theme'),root=document.documentElement;
+ const update=()=>{theme.setAttribute('aria-pressed',root.dataset.theme==='dark');document.querySelector('meta[name="theme-color"]')?.setAttribute('content',getComputedStyle(root).getPropertyValue('--bg').trim())};update();
+ theme.onclick=()=>{const light=root.dataset.theme==='dark';if(light)delete root.dataset.theme;else root.dataset.theme='dark';update();chart(false);
   try{localStorage.setItem('theme',light?'light':'dark')}catch(e){}}}
 document.getElementById('lang').onclick=()=>{lang=lang=='fr'?'en':'fr';try{localStorage.setItem('lang',lang)}catch(e){}apply()};
 

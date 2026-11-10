@@ -68,6 +68,7 @@ export default function HomePage(){
   <label className="market-search"><span className="sr-only" data-t="searchLabel">Search a board</span><input type="search" id="hm-search" placeholder="Search a board" data-ph="searchBoard" autoComplete="off"/></label>
  </div>
  <p className="lead small" data-t="marketLead">Community hashrate by board · updated every 20 seconds.</p>
+  <p className="s" id="hm-status" role="status" aria-live="polite"></p>
  <div className="market-card">
   <table className="market" id="home-market">
    <thead><tr><th className="rank">#</th><th data-t="colBoard">Board</th><th className="num" data-t="colHashrate">Hashrate</th><th className="num col-miners" data-t="colMiners">Miners</th><th className="col-share" data-t="colShare">Share of miners</th><th><span className="sr-only" data-t="navInstall">Flash</span></th></tr></thead>

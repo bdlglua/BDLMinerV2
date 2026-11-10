@@ -9,7 +9,7 @@
 .remote-pill{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:650;color:var(--label);padding:0;border-radius:0;background:transparent;margin:0;text-transform:uppercase;letter-spacing:.08em}
 .remote-pill:before{display:none}
 .remote-total{display:grid;gap:2px;text-align:right;min-width:220px;justify-items:end}
-.remote:not(.on) .remote-total>span,.remote:not(.on) .remote-total>strong,.remote:not(.on) .remote-total>small{visibility:hidden}
+.remote:not(.on) .remote-total{display:none}
 .remote-total>span{color:var(--label);font-size:13px}
 .remote-total strong{font-size:40px;font-weight:700;color:var(--fg);letter-spacing:-.03em;white-space:nowrap;font-variant-numeric:tabular-nums}
 .remote-total small{color:var(--label)}
@@ -24,7 +24,7 @@
 .remote button{cursor:pointer;white-space:nowrap;font-weight:600;border-width:1px;border-radius:4px;padding:8px 18px}
 .remote button:hover{border-color:var(--fg)}
 .remote button:disabled{opacity:.45;cursor:wait}
-.remote button.remote-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.remote button.remote-primary{background:var(--primary);border-color:var(--primary);color:var(--on-accent)}
 .remote button.remote-primary:hover{background:var(--primary-hover);border-color:transparent}
 .remote button.remote-danger{border-color:color-mix(in srgb,var(--bad) 45%,transparent);color:var(--bad)}
 .remote button.remote-danger:hover{border-color:var(--bad)}
