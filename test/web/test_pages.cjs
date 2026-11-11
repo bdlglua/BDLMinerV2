@@ -46,6 +46,7 @@ async function fixture(options={}){
   state.statsStatus=200;state.logDelay=0;state.logText='Miner log is available';
   if(options.capabilities)state.settings.capabilities={...state.settings.capabilities,...options.capabilities};
   if(options.live)state.settings.live=['power','maxtemp','nightfrom','saver'];
+  if(options.portal){state.settings.schema.push(['wifi2','text','Network','Fallback WiFi 1 name',{}]);state.settings.values.wifi2='';if(options.portal!=='absent')state.settings.portal=options.portal}
   if(options.poolSharing){
     state.settings.schema.push(['sharehr','bool','Network','Share my hashrate anonymously',{}],['sharepool','bool','Network','Share my pool anonymously',{}]);
     Object.assign(state.settings.values,{sharehr:true,sharepool:true});
@@ -567,6 +568,14 @@ check('ASIC settings describe the two-minute thermal pause without ESP32 throttl
 check('ASIC thermal pause help is translated into French',()=>run({language:'fr',capabilities:{thermal_steps:false}},async f=>{
   await loaded(f);const text=await f.page.locator('[data-key="maxtemp"] .field-help').textContent();
   assert.match(text,/65 °C.*au moins 2 minutes.*5 °C/);assert.doesNotMatch(text,/Throttling|Mining|starts/);
+}));
+
+check('settings show the setup network and its own password',()=>run({portal:{name:'BDLMinerV2-F4E1',password:'k7mnp2qrst'}},async f=>{
+  await loaded(f);const help=f.page.locator('#k_wifi2').locator('xpath=ancestor::*[contains(@class,"field-help") or .//*[contains(@class,"field-help")]][1]');
+  const text=await help.innerText();assert.ok(text.includes('BDLMinerV2-F4E1')&&text.includes('k7mnp2qrst'),text);
+}));
+check('settings from firmware without a setup network password still load',()=>run({portal:'absent'},async f=>{
+  await loaded(f);assert.equal(await f.page.locator('#k_wifi2').count(),1);assert.ok(!(await f.page.locator('body').innerText()).includes('setup network'));
 }));
 
 check('secret visibility toggles do not submit settings',()=>run({},async f=>{

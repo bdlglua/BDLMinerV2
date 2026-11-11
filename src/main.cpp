@@ -25,10 +25,12 @@
 #include "web.h"
 
 static void onPortalStarted() {
-    String ap = portalApName();
-    logf("[wifi] setup portal: join \"%s\" (password %s), then open http://192.168.4.1\n", ap.c_str(),
-         PORTAL_AP_PASSWORD);
-    ui::showPortal(ap, PORTAL_AP_PASSWORD);
+    String ap = portalApName(), password = portalPassword();
+    // The serial console only: the log is kept for the dashboard.
+    Serial.printf("[wifi] setup portal: join \"%s\" (password %s), then open http://192.168.4.1\n", ap.c_str(),
+                  password.c_str());
+    logf("[wifi] setup portal: join \"%s\", then open http://192.168.4.1\n", ap.c_str());
+    ui::showPortal(ap, password.c_str());
 }
 
 static void logStats() {

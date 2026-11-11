@@ -97,6 +97,14 @@ If nothing is saved within **3 minutes**, the portal closes and the board restar
 (it reopens the portal on the next boot as long as Wi‑Fi is not configured).
 
 To reopen the portal: **hold button A during boot** (2 s).
+
+**The portal's password once the miner is set up.** `MineYourCoins` is the password
+of a miner that has no payout address yet. A miner that has one opens its portal with
+**a password of its own** (ten letters and digits), so that nobody nearby can
+reconfigure it while your network is down: read it on the miner's screen (and its QR
+code) when the portal opens, or beforehand in the dashboard under *Settings › Network*
+(below *Fallback WiFi 1*); it is also printed on the USB serial console. Without it,
+erasing everything (below) brings `MineYourCoins` back.
 To erase everything (Wi‑Fi + settings): **hold A for 5 s** while running.
 
 ## Backup pool
@@ -325,7 +333,9 @@ HTTPS; *Add to Home screen* works on the local address.
   with the pool's answer (*Recent shares*), an *Update available* tile (see
   [Updates from GitHub](#updates-from-github)), the reason of the last restart, and night / heat /
   battery state. With **Other miners** set, a *Miners* section shows each of them and the
-  total hashrate (each miner's `/api/stats` allows other pages to read it).
+  total hashrate (each miner's `/api/stats` allows the pages of your local network to
+  read it; a page of any other site gets the readings without the payout address, the
+  WiFi name, the addresses or the crash report).
   The responsive interface separates mining, pool, Bitcoin network, device health and
   GitHub updates. It shows both the 60-second average and the live 10-second hashrate,
   configured/effective duty cycle and the reason for a limit or pause.
@@ -429,6 +439,11 @@ These are also shown in the dashboard's Pool card.
 > your local network can read them (your BTC address is public on the pool anyway).
 > Settings, backups and firmware updates are open too unless you set a web password; it
 > is then sent with HTTP basic authentication, which is not encrypted on the local network.
+> Changes are only accepted from the miner's own pages, opened by its IP address, a local
+> name (`bdlminer-xxxx.local`, `.lan`, `.home`…) or the name your router gives it
+> (`bdlminer-xxxx.fritz.box`). After three requests under a name that is not the miner's,
+> that last form is refused for an hour (a web page trying names to reach the miner):
+> open the miner by its IP address or `.local` name meanwhile.
 
 ## What the pool sees
 

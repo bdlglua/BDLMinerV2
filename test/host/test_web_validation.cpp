@@ -105,4 +105,52 @@ int main() {
                                "https://192.168.1.40", "http://192.168.1.4"})
         assert(!originAllowed(origin, "192.168.1.40"));
     puts("Request origin tests passed");
+
+    using webvalidation::HostKind;
+    using webvalidation::hostKind;
+    assert(hostKind("192.168.1.40", "bdlminer-f4e1") == HostKind::Local);
+    assert(hostKind("bdlminer-f4e1.local", "bdlminer-f4e1") == HostKind::Local);
+    assert(hostKind("bdlminer-f4e1.fritz.box", "bdlminer-f4e1") == HostKind::OwnNamed);
+    assert(hostKind("bdlminer-0000.evil.example", "bdlminer-f4e1") == HostKind::Refused);
+    {
+        // Guessing the miner's name: a few refused names close the foreign-domain name.
+        webvalidation::RebindingGuard guard;
+        const char *own = "bdlminer-f4e1", *named = "bdlminer-f4e1.fritz.box";
+        uint32_t now = 4000000000u;  // millis() wraps during the test
+        assert(guard.allowed(named, own, now));
+        assert(!guard.allowed("bdlminer-0000.evil.example", own, now));
+        assert(!guard.allowed("bdlminer-0001.evil.example", own, now));
+        assert(guard.allowed(named, own, now));  // two mistakes are not an attack
+        assert(!guard.allowed("bdlminer-0002.evil.example", own, now += 1000));
+        assert(!guard.allowed(named, own, now));
+        assert(!guard.allowed("bdlminer-f4e1.evil.example", own, now));  // the right guess comes too late
+        assert(guard.allowed("192.168.1.40", own, now) && guard.allowed("bdlminer-f4e1.local", own, now) &&
+               guard.allowed("bdlminer-f4e1", own, now) && guard.allowed("", own, now));
+        // Still closed just before the hour, and each refused name starts it again.
+        assert(!guard.allowed(named, own, now += webvalidation::RebindingGuard::kLockMs - 1));
+        assert(!guard.allowed("bdlminer-0003.evil.example", own, now));
+        assert(!guard.allowed(named, own, now += webvalidation::RebindingGuard::kLockMs - 1));
+        assert(guard.allowed(named, own, now += 1) && guard.misses == 0);
+        // Mistakes more than an hour apart never add up.
+        for (int i = 0; i < 6; i++) {
+            assert(!guard.allowed("evil.example", own, now += webvalidation::RebindingGuard::kLockMs));
+            assert(guard.allowed(named, own, now));
+        }
+    }
+    puts("DNS rebinding guard tests passed");
+
+    using webvalidation::originLocal;
+    for (const char *origin : {"http://192.168.1.41", "http://192.168.1.41:8080", "http://10.0.0.7", "http://172.16.0.1",
+                               "http://172.31.255.254", "http://169.254.3.4", "http://127.0.0.1", "http://100.64.0.1",
+                               "http://100.127.9.9", "http://bdlminer-0a1b.local", "http://BDLMINER-0A1B.LAN",
+                               "http://homeassistant", "http://nas.home.arpa:8123", "http://bdlminer-0a1b.local."})
+        assert(originLocal(origin));
+    for (const char *origin : {"", "null", "https://192.168.1.41", "http://8.8.8.8", "http://172.32.0.1", "http://172.15.0.1",
+                               "http://100.128.0.1", "http://192.169.1.1", "http://192.168.1", "http://192.168.1.1.1",
+                               "http://192.168.1.256", "http://192.168..1", "http://1921.168.1.1", "http://evil.example",
+                               "http://bdlminer-0a1b.evil.example", "http://192.168.1.41.evil.example", "http://local.example",
+                               "http://[::1]", "http://", "http://:80", "ftp://192.168.1.41"})
+        assert(!originLocal(origin));
+    assert(!originLocal(nullptr));
+    puts("Local origin tests passed");
 }

@@ -33,7 +33,10 @@ class SiteBuilderTests(unittest.TestCase):
                 document = (output / filename).read_text()
                 self.assertIn('data-page="' + key + '"', document)
                 self.assertNotIn('__PAGE_CONTENT__', document)
-                self.assertEqual('src="https://unpkg.com/esp-web-tools@' in document, key == 'flash')
+                # The USB tool flashes boards: served by the site itself, never from a CDN.
+                self.assertEqual('src="assets/vendor/esp-web-tools-10.4.0/install-button.js"' in document, key == 'flash')
+                self.assertNotIn('unpkg.com', document)
+                self.assertIsNone(re.search(r'<script[^>]+src="(?:https?:)?//', document))
                 self.assertRegex(document, r'src="assets/site\.js\?v=[a-f0-9]{12}"')
                 self.assertRegex(document, r'href="assets/site\.css\?v=[a-f0-9]{12}"')
             self.assertIn('href="flash.html"', home)

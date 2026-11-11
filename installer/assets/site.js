@@ -515,7 +515,7 @@ $c('chat-name').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefa
 const chatLinkTo=()=>location.origin+location.pathname+'#chat-code='+chatCode();
 let qrHide=0;
 function chatQrLib(){if(window.qrcode)return Promise.resolve();return new Promise((ok,fail)=>{const s=document.createElement('script');
- s.src='https://unpkg.com/qrcode-generator@1.4.4/qrcode.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s)})}
+ s.src='assets/vendor/qrcode-generator-1.4.4/qrcode.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s)})}
 async function chatQr(show){const box=$c('chat-qr'),btn=$c('chat-qr-show');clearTimeout(qrHide);
  if(!show){box.hidden=true;$c('chat-qr-img').innerHTML='';btn.textContent=T('chatQrShow');btn.setAttribute('aria-expanded','false');return}
  try{await chatQrLib()}catch(e){chatNote(T('chatQrFailed'));return}

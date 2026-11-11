@@ -54,7 +54,7 @@ def build_pages(root, output, version, boards, content):
             page = page.replace('"assets/' + name + '"', '"assets/' + name + '?v=' + digest + '"')
         page = re.sub(r'href="#([a-z-]+)"', lambda match: 'href="' + LEGACY_SECTIONS.get(match[1], '#' + match[1]) + '"', page)
         if key != 'flash':
-            page = re.sub(r'<script type="module" src="https://unpkg.com/esp-web-tools[^>]+></script>\n?', '', page)
+            page = re.sub(r'<script type="module" src="assets/vendor/esp-web-tools[^>]+></script>\n?', '', page)
         (output / filename).write_text(page, encoding='utf-8')
     # Old "My miners" address (/remote/), still used by bookmarks and the
     # statistics service: open the site page, keeping no query string.

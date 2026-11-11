@@ -127,7 +127,8 @@ async function main(){
    for(const [key,name]of Object.entries(pages)){
     const response=await page.request.get(base+'/'+name);assert.equal(response.status(),200,name+' must be a real page');
     const html=await response.text();assert.ok(html.includes('data-page="'+key+'"'));assert.ok(!html.includes('__PAGE_CONTENT__'));
-    assert.equal(html.includes('src="https://unpkg.com/esp-web-tools@'),key==='flash','load the USB tool only on its own page');
+    assert.equal(html.includes('src="assets/vendor/esp-web-tools-10.4.0/install-button.js"'),key==='flash','load the USB tool only on its own page');
+    assert.ok(!/<script[^>]+src="(?:https?:)?\/\//.test(html),name+' must load no script from another site');
    }
    await page.goto(base+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-pools tbody tr').first().waitFor();
    assert.match(await page.locator('#st-coins').textContent(),/BTC.*BCH/s);

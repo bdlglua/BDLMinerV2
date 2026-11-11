@@ -44,19 +44,7 @@ inline bool sameText(const char *a, const char *b, size_t n) {
     return true;
 }
 
-// The Host header of a request that changes the miner or reads its secrets.
-// A name another site controls could lead to the miner (DNS rebinding): only
-// an IP address, a name without a dot, a local name (.local, .lan...) or the
-// miner's own name (bdlminer-xxxx, whatever follows it) are accepted.
-inline bool hostAllowed(const char *host, const char *ownName) {
-    if (!host || !*host || *host == '[') return true;  // no header (not a browser) or an IPv6 address
-    size_t n = strcspn(host, ":");
-    if (n && host[n - 1] == '.') n--;
-    if (strspn(host, "0123456789.") >= n) return true;  // IPv4
-    const char *dot = (const char *)memchr(host, '.', n);
-    if (!dot) return true;
-    size_t own = strlen(ownName);
-    if (own && (size_t)(dot - host) == own && sameText(host, ownName, own)) return true;
+inline bool localSuffix(const char *host, size_t n) {
     static const char *kLocal[] = {".local", ".lan", ".home", ".home.arpa", ".internal", ".localdomain"};
     for (const char *suffix : kLocal) {
         size_t s = strlen(suffix);
@@ -64,6 +52,51 @@ inline bool hostAllowed(const char *host, const char *ownName) {
     }
     return false;
 }
+
+// The Host header of a request that changes the miner or reads its secrets.
+// A name another site controls could lead to the miner (DNS rebinding): only
+// an IP address, a name without a dot or a local name (.local, .lan...) are
+// accepted as they are (Local). The miner's own name under any other domain
+// (bdlminer-xxxx.fritz.box, as routers name it) is OwnNamed: accepted too,
+// but its four hexadecimal digits can be guessed, see RebindingGuard.
+enum class HostKind : uint8_t { Refused, Local, OwnNamed };
+inline HostKind hostKind(const char *host, const char *ownName) {
+    if (!host || !*host || *host == '[') return HostKind::Local;  // no header (not a browser) or an IPv6 address
+    size_t n = strcspn(host, ":");
+    if (n && host[n - 1] == '.') n--;
+    if (strspn(host, "0123456789.") >= n) return HostKind::Local;  // IPv4
+    const char *dot = (const char *)memchr(host, '.', n);
+    if (!dot || localSuffix(host, n)) return HostKind::Local;
+    size_t own = strlen(ownName);
+    if (own && (size_t)(dot - host) == own && sameText(host, ownName, own)) return HostKind::OwnNamed;
+    return HostKind::Refused;
+}
+inline bool hostAllowed(const char *host, const char *ownName) {
+    return hostKind(host, ownName) != HostKind::Refused;
+}
+
+// A page of another site that leads its own name to the miner has to guess
+// the miner's name (65536 of them) for that name to be accepted. Each wrong
+// name is a request with a refused Host: after a few of them, the miner's
+// name under a foreign domain is refused as well for an hour, counted from
+// the last refused request. IP addresses and local names keep working.
+struct RebindingGuard {
+    static constexpr uint8_t kMisses = 3;
+    static constexpr uint32_t kLockMs = 60 * 60 * 1000UL;
+    uint8_t misses = 0;
+    uint32_t lastMiss = 0;
+    bool allowed(const char *host, const char *ownName, uint32_t now) {
+        HostKind kind = hostKind(host, ownName);
+        if (kind == HostKind::Local) return true;
+        if (misses && now - lastMiss >= kLockMs) misses = 0;
+        if (kind == HostKind::Refused) {
+            if (misses < kMisses) misses++;
+            lastMiss = now;
+            return false;
+        }
+        return misses < kMisses;
+    }
+};
 
 // The Origin header, when the browser sends one (every cross-site POST has
 // it), must be this very miner: another site's page cannot use it.
@@ -73,6 +106,41 @@ inline bool originAllowed(const char *origin, const char *host) {
     origin += 7;
     size_t n = strlen(origin);
     return host && strlen(host) == n && sameText(origin, host, n);
+}
+
+// "10.1.2.3": a private, link-local, loopback or carrier-grade (VPN) address.
+inline bool privateIPv4(const char *text, size_t n) {
+    unsigned part[4] = {}, count = 0, digits = 0;
+    for (size_t i = 0; i < n; i++) {
+        char c = text[i];
+        if (c == '.') {
+            if (!digits || ++count > 3) return false;
+            digits = 0;
+        } else if (c >= '0' && c <= '9') {
+            part[count] = part[count] * 10 + unsigned(c - '0');
+            if (++digits > 3 || part[count] > 255) return false;
+        } else {
+            return false;
+        }
+    }
+    if (count != 3 || !digits) return false;
+    return part[0] == 10 || part[0] == 127 || (part[0] == 172 && part[1] >= 16 && part[1] <= 31) ||
+           (part[0] == 192 && part[1] == 168) || (part[0] == 169 && part[1] == 254) ||
+           (part[0] == 100 && part[1] >= 64 && part[1] <= 127);
+}
+
+// The Origin of a page of the local network (another miner's dashboard, a
+// home server): http, at a private address, a name without a dot or a local
+// name. Any other page reads the statistics without what names their owner.
+inline bool originLocal(const char *origin) {
+    if (!origin || strncmp(origin, "http://", 7)) return false;
+    const char *host = origin + 7;
+    if (*host == '[') return false;
+    size_t n = strcspn(host, ":/");
+    if (n && host[n - 1] == '.') n--;
+    if (!n) return false;
+    if (strspn(host, "0123456789.") >= n) return privateIPv4(host, n);
+    return !memchr(host, '.', n) || localSuffix(host, n);
 }
 
 }  // namespace webvalidation
