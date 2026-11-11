@@ -68,6 +68,11 @@ jobs:
       - run: cargo clippy --locked --manifest-path firmware-rs/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --locked --manifest-path firmware-rs/Cargo.toml
       - run: cargo build --locked --release --manifest-path firmware-rs/Cargo.toml -p bdlminer-host
+      # The reference set must be exactly what its independent generator gives.
+      - name: Reference set up to date
+        run: |
+          python3 firmware-rs/core/tests/fixtures/make_golden.py > firmware-rs/core/tests/fixtures/golden.json
+          git diff --exit-code -- firmware-rs/core/tests/fixtures/golden.json
 
   test:
     runs-on: ubuntu-latest

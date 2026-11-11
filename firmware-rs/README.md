@@ -90,7 +90,8 @@ on both lockfiles on every change to
 Dependabot proposes weekly updates of both lockfiles. The ESP32 build has its own manual workflow,
 `firmware-rs-esp.yml`, with the third-party toolchain action pinned by commit.
 
-Common CI and build failures, with their fix: [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+Common CI and build failures, the reference set and the benchmark:
+[docs/firmware-rs-ci-troubleshooting.md](../docs/firmware-rs-ci-troubleshooting.md).
 
 ## Status
 

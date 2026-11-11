@@ -203,4 +203,5 @@ dashboard API), a host build that mines on a PC, and an ESP-IDF build for
 ESP32 boards. `cargo test --manifest-path firmware-rs/Cargo.toml` runs its
 tests. What is ported, and what is not yet, is listed in
 [firmware-rs/README.md](../firmware-rs/README.md); the C++ firmware in `src/`
-stays the released one meanwhile.
+stays the released one meanwhile. CI failures and their fixes:
+[firmware-rs-ci-troubleshooting.md](firmware-rs-ci-troubleshooting.md).
