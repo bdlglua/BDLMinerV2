@@ -4,8 +4,15 @@
 #include <strings.h>
 
 inline const char *publicPoolGroup(const char *host) {
+    // Appended in step with the statistics service (BDLMiner-stats, src/pools.js)
+    // and the site (installer/content.json): the service refuses a group it does
+    // not know, so it is updated before a firmware that sends a new one ships.
     static const char *const domains[] = {"public-pool.io", "nerdminers.org", "nerdminer.io", "ckpool.org",
-                                         "ocean.xyz", "braiins.com", "viabtc.com", "f2pool.com", "antpool.com"};
+                                         "ocean.xyz", "braiins.com", "viabtc.com", "f2pool.com", "antpool.com",
+                                         "bdl-pool.com", "solopool.org", "kano.is", "atlaspool.io",
+                                         "solomining.de", "satoshiradio.nl", "noderunners.network", "d-central.tech",
+                                         "mining-dutch.nl", "luxor.tech", "nicehash.com", "secpool.com",
+                                         "spiderpool.com", "hmpool.io", "molepool.com", "peermining.org"};
     if (!host) return "other";
     size_t length = strlen(host);
     if (length && host[length - 1] == '.') --length;
