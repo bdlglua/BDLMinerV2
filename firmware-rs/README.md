@@ -83,9 +83,11 @@ ESP32-C3 `--target riscv32imc-esp-espidf` (`MCU=esp32c3`).
 
 The `firmware-rs` job of `.github/workflows/ci.yml` runs, on every push and
 pull request: `cargo fmt --check` (workspace and `esp`), `cargo clippy -D
-warnings`, the tests, a release build of `bdlminer-host`, and `cargo audit`
-on both lockfiles (RustSec advisories). Dependabot proposes weekly updates of
-both lockfiles. The ESP32 build has its own manual workflow,
+warnings`, the tests and a release build of `bdlminer-host`. The security
+audit workflow, `security-audit.yml`, runs `cargo audit` (RustSec advisories)
+on both lockfiles on every change to
+`firmware-rs/`, and weekly, so new advisories surface without a push.
+Dependabot proposes weekly updates of both lockfiles. The ESP32 build has its own manual workflow,
 `firmware-rs-esp.yml`, with the third-party toolchain action pinned by commit.
 
 | Failure | Cause and fix |
