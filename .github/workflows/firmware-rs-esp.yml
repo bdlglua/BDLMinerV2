@@ -21,7 +21,7 @@ jobs:
             mcu: esp32s3
     steps:
       - uses: actions/checkout@v7
-      - uses: esp-rs/xtensa-toolchain@v1.5
+      - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7.0
         with:
           default: true
           buildtargets: ${{ matrix.mcu }}

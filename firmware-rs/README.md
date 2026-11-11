@@ -79,6 +79,26 @@ the C++ firmware's partition table (`partitions/min_spiffs.csv`). For an
 ESP32-S3 add `--target xtensa-esp32s3-espidf` (and `MCU=esp32s3`), for an
 ESP32-C3 `--target riscv32imc-esp-espidf` (`MCU=esp32c3`).
 
+## CI and troubleshooting
+
+The `firmware-rs` job of `.github/workflows/ci.yml` runs, on every push and
+pull request: `cargo fmt --check` (workspace and `esp`), `cargo clippy -D
+warnings`, the tests, a release build of `bdlminer-host`, and `cargo audit`
+on both lockfiles (RustSec advisories). Dependabot proposes weekly updates of
+both lockfiles. The ESP32 build has its own manual workflow,
+`firmware-rs-esp.yml`, with the third-party toolchain action pinned by commit.
+
+| Failure | Cause and fix |
+|---|---|
+| `cargo fmt` diff | Run `cargo fmt --all` in `firmware-rs` (and `cargo fmt` in `esp`). |
+| `--locked` refuses to update `Cargo.lock` | A `Cargo.toml` changed without its lockfile: run `cargo update -p <crate>` (in `esp`: `cargo +stable update`) and commit the lockfile. |
+| `cargo audit` reports an advisory | Update the crate (`cargo update -p <crate>`); if no fixed version exists, document the exposure in the pull request before ignoring it. |
+| `custom toolchain 'esp' ... is not installed` | Commands run inside `esp/` use the Xtensa toolchain: install it with `espup install`, or run from `firmware-rs/` (the host crates use stable Rust). |
+| ESP build: `ldproxy` not found | `cargo install ldproxy`. |
+| ESP build fails for an S3/C3 | Pass both the target and `MCU` (`MCU=esp32s3 cargo build --target xtensa-esp32s3-espidf`); ESP-IDF is built per chip. |
+| ESP-IDF download or CMake errors | Delete `esp/.embuild` and `esp/target`, then build again (the first build downloads ESP-IDF v5.3 and needs Python 3 and git). |
+| End-to-end pool tests time out | They mine against local pools on 127.0.0.1 and need a few seconds of CPU; on a very slow runner run them alone: `cargo test -p bdlminer-app --test pool_e2e`. |
+
 ## Status
 
 Done and tested on a PC: everything in `core`, `app` and `host`.
