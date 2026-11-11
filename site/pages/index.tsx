@@ -1,15 +1,16 @@
 import Layout from '../components/Layout';
 import HashrateHistory from '../components/HashrateHistory';
+import Icon from '../components/Icons';
 
 export const config:StaticExportPageConfig={unstable_runtimeJS:false};
 
 const features=[
- ['hardware','f1t','Hardware SHA-256','boards.html'],
+ ['chip','f1t','Hardware SHA-256','boards.html'],
  ['link','f2t','Stratum V1 and V2','start.html'],
  ['chart','f3t','Web dashboard','demo.html'],
- ['network','featureStats','Live statistics','stats.html'],
+ ['grid','featureStats','Live statistics','stats.html'],
  ['shield','f4t','Signed updates','releases.html'],
- ['flash','featureFlash','Web flasher','flash.html'],
+ ['bolt','featureFlash','Web flasher','flash.html'],
 ] as const;
 const pools=['Public Pool','CKPool','OCEAN','NerdMiner.io','Braiins','ViaBTC'];
 const families=[['all','famAll','All boards'],['esp32','famEsp32','ESP32'],['s3','famS3','ESP32-S3'],['s2c3','famS2c3','S2 / C3'],['asic','famAsic','ASIC']];
@@ -20,8 +21,8 @@ export default function HomePage(){
  <div className="wrap hero hero-stage">
  <div className="hero-copy">
   <p className="hero-kicker" data-t="heroKicker">Open-source firmware · ESP32 &amp; ASIC</p>
-  <h1 data-h="title">Bitcoin solo mining, <b>on small hardware.</b></h1>
-  <p className="hero-lead" data-t="tagline">Open-source miner firmware for ESP32 boards and Bitaxe.</p>
+  <h1 data-h="title">Bitcoin solo mining, <b>on small hardware</b></h1>
+  <p className="hero-lead" data-t="tagline">Open-source miner firmware for ESP32 boards and Bitaxe</p>
   <div className="buttons">
    <a className="btn" href="flash.html" data-t="ctaInstall">Install</a>
    <a className="btn ghost" href="https://github.com/bdlglua/BDLMinerV2/releases/download/v__VERSION__/BDLMiner-__VERSION__-Linux-kit.zip" data-t="ctaHub">Linux hub</a>
@@ -37,13 +38,18 @@ export default function HomePage(){
   </div>
  </div>
 
+ <div className="hero-product">
+ <figure className="hardware-figure">
+  <img className="hardware-photo" src="assets/boards/gamma.webp" width="826" height="960" alt="Bitaxe Gamma mining board with its display, ESP32 module and cooling fan" data-alt="heroHardwareAlt" fetchPriority="high"/>
+  <figcaption><span>Bitaxe Gamma 601</span><span>ASIC · SHA-256</span></figcaption>
+ </figure>
  <aside className="hero-mini" aria-label="BDLMiner network">
   <div className="hero-mini-head"><span data-t="heroNetwork">BDLMiner network</span><span className="hero-mini-period">24 h</span></div>
   <strong id="hero-network-rate">—</strong>
   <svg id="hero-network-spark" viewBox="0 0 260 110" aria-hidden="true"><path className="hero-spark-grid" d="M0 25H260M0 60H260M0 95H260"/></svg>
   <p data-t="heroMeasured">Measured community hashrate</p>
  </aside>
- <img className="hero-network" src="assets/pulse-orbit.svg" width="360" height="340" alt="" aria-hidden="true"/>
+ </div>
  </div>
  <div className="wrap">
   <div className="ticker-panel">
@@ -60,7 +66,7 @@ export default function HomePage(){
 <section id="features" className="pulse-features"><div className="wrap">
  <h2 className="sr-only" data-t="featTitle">Made for solo mining</h2>
  <div className="pulse-shortcuts">
-  {features.map(([asset,tk,title,href])=><a href={href} key={tk}><img src={'assets/pulse-'+asset+'.svg'} width="72" height="72" alt=""/><span data-t={tk}>{title}</span></a>)}
+  {features.map(([icon,tk,title,href])=><a href={href} key={tk}><Icon name={icon}/><span data-t={tk}>{title}</span></a>)}
  </div>
 </div></section>
 

@@ -12,7 +12,7 @@ export default function Document(){
    <meta property="og:title" content="BDLMinerV2 | Bitcoin solo mining firmware"/>
    <meta property="og:description" content="Open-source Bitcoin solo mining firmware for supported ESP32 and Bitaxe boards."/>
    <meta property="og:image" content="assets/screen-mining.png"/>
-   <meta name="theme-color" content="#080f16"/>
+   <meta name="theme-color" content="#141415"/>
    <link rel="icon" href="assets/icon.svg" type="image/svg+xml"/>
    <script dangerouslySetInnerHTML={{__html:themeBoot}}/>
    <link rel="stylesheet" href="assets/site.css"/>

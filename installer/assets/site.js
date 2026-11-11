@@ -26,12 +26,12 @@ let poolNames={},poolLinks={};try{const data=JSON.parse(document.getElementById(
 const FR={skip:'Aller au contenu',navFeatures:'Fonctions',navBoards:'Cartes',navInstall:'Flasher',navStats:'Statistiques',navCommunity:'Communauté',
 navHome:'Accueil',navStart:'Bien démarrer',navDemo:'Démo',navMore:'Explorer',navFAQ:'FAQ',navNews:'Nouveautés',navSupport:'Soutenir',navPages:'Toutes les pages',
 navRemote:'Mes mineurs',
-heroPill:'Logiciel libre · mises à jour signées',famAll:'Toutes',famEsp32:'ESP32',famS3:'ESP32-S3',famS2c3:'S2 / C3',famAsic:'ASIC',famGroup:'Famille de cartes',searchLabel:'Rechercher une carte',searchBoard:'Rechercher une carte',noMatch:'Aucune carte ne correspond.',cardMiners:'{n} miners',cardMiner:'{n} miner',check1:'SHA-256 matériel sur ESP32, S2, S3 et C3',check2:'Stratum V1 et V2 chiffré (Noise)',check3:'Bitaxe Gamma jusqu’à 800 MHz',
+heroPill:'Logiciel libre · mises à jour signées',famAll:'Toutes',famEsp32:'ESP32',famS3:'ESP32-S3',famS2c3:'S2 / C3',famAsic:'ASIC',famGroup:'Famille de cartes',searchLabel:'Rechercher une carte',searchBoard:'Rechercher une carte',noMatch:'Aucune carte ne correspond.',cardMiners:'{n} mineurs',cardMiner:'{n} mineur',check1:'SHA-256 matériel sur ESP32, S2, S3 et C3',check2:'Stratum V1 et V2 chiffré (Noise)',check3:'Bitaxe Gamma jusqu’à 800 MHz',
 heroKicker:'Firmware libre · ESP32 et ASIC',deviceCaption:'Statistiques sur l’écran du mineur',
 worksWith:'Pools solo compatibles',marketTitle:'Réseau en direct',marketLead:'Hashrate partagé par carte · actualisé toutes les 20 secondes.',
-marketAll:'Toutes les statistiques',colShare:'Part des miners',liveFleet:'Parc en direct',heroMiners:'miners en ligne',heroRecord:'Meilleure heure',
-title:'Minage Bitcoin solo, <b>sur petite carte.</b>',
-tagline:'Firmware libre pour mineurs ESP32 et Bitaxe.',
+marketAll:'Toutes les statistiques',colShare:'Part des mineurs',liveFleet:'Parc en direct',heroMiners:'miners en ligne',heroRecord:'Meilleure heure',
+title:'Minage Bitcoin solo, <b>sur petite carte</b>',
+tagline:'Firmware libre pour mineurs ESP32 et Bitaxe',
 ctaInstall:'Installer',ctaHub:'Kit Linux',ctaBoards:'Cartes compatibles',version:'Firmware : '+VERSION,
 featTitle:'Pensé pour le minage solo',
 f1t:'SHA-256 matériel',f2t:'Stratum V1 et V2',f3t:'Dashboard web',f4t:'Mises à jour signées',
@@ -50,12 +50,12 @@ devOnline:'en ligne',devOffline:'hors ligne',devNone:'aucun pour l\'instant',dev
 tHashrate:'Hashrate total',tMiners:'Mineurs',tAverage:'Moyenne / mineur',tRecord:'Pic horaire',
 chatTitle:'Discussion',chatOpen:'Ouvrir la discussion',themeDark:'Thème sombre',chatUnread:'non lus',chatClose:'Fermer la discussion',chatSettings:'Réglages',chatName:'Pseudo',chatNamePh:'Ton pseudo',
 chatSave:'Enregistrer',chatNameHint:'Modifiable tous les 30 jours',chatWhen:'Modifiable le {d}',chatNow:'Modifiable maintenant',
-chatCodeTitle:'Autre appareil',chatQrShow:'📱 Mon QR code',chatQrHide:'Masquer le QR code',chatQrAlt:'QR code pour ouvrir la discussion avec ton pseudo',chatLink:'Copier le lien',chatLinkCopied:'Lien copié : ouvre-le sur ton autre appareil. Ne le partage avec personne.',chatQrFailed:'Impossible d\'afficher le QR code pour l\'instant : utilise « Copier le lien ».',chatCodeHint:'🔒 Scanne-le avec ton téléphone. Ne le montre à personne.',
+chatCodeTitle:'Autre appareil',chatQrShow:'Mon QR code',chatQrHide:'Masquer le QR code',chatQrAlt:'QR code pour ouvrir la discussion avec ton pseudo',chatLink:'Copier le lien',chatLinkCopied:'Lien copié : ouvre-le sur ton autre appareil. Ne le partage avec personne.',chatQrFailed:'Impossible d\'afficher le QR code pour l\'instant : utilise « Copier le lien ».',chatCodeHint:'Scanne-le avec ton téléphone. Ne le montre à personne.',
 chatBack:'Retour à la discussion',chatMembers:'Membres en ligne',chatYou:'(toi)',chatGuests:'+ {n} visiteur(s) sans pseudo',chatNobody:'Personne avec un pseudo pour l\'instant.',chatNeedName:'Choisis d\'abord ton pseudo.',chatSaved:'Pseudo enregistré.',
 chatMessage:'Message',chatTextPh:'Message…',chatSend:'Envoyer',chatAttach:'Photo ou vidéo',chatRecord:'Message vocal',chatRemove:'Retirer',
 chatRules:'Messages, photos et vidéos publics, gardés 7 jours. Ne partage jamais de phrase de récupération, de clé privée ni de mot de passe.',
-chatEmpty:'Aucun message pour l\'instant : dis bonjour !',chatTeam:'équipe',chatEdited:'modifié',chatEdit:'Modifier',chatDelete:'Supprimer',chatSure:'Sûr ?',chatBan:'Bannir',
-chatSaveEdit:'Enregistrer',chatCancel:'Annuler',chatOffline:'Connexion au chat…',chatUploading:'Envoi du fichier…',chatRecording:'Enregistrement… {s} s (clique sur 🎤 pour arrêter)',
+chatEmpty:'Aucun message pour l\'instant',chatTeam:'équipe',chatEdited:'modifié',chatEdit:'Modifier',chatDelete:'Supprimer',chatSure:'Sûr ?',chatBan:'Bannir',
+chatSaveEdit:'Enregistrer',chatCancel:'Annuler',chatOffline:'Connexion au chat…',chatUploading:'Envoi du fichier…',chatRecording:'Enregistrement… {s} s (clique sur le micro pour arrêter)',
 chatVoice:'Message vocal ({s} s)',chatPlay:'Écouter',chatPause:'Pause',chatPosition:'Position dans le message vocal',chatPhoto:'Photo',chatVideo:'Vidéo',chatNoMic:'Micro indisponible ou refusé.',
 chatCodeSet:'Ton pseudo t\'a suivi sur cet appareil.',
 chatErrors:{taken:'Ce pseudo est déjà pris.',wait:'Tu pourras changer de pseudo le {d}.',too_many:'Trop de nouveaux pseudos depuis ta connexion aujourd\'hui : réessaie demain.',
@@ -78,8 +78,8 @@ altGlobal:'Écran du prix du Bitcoin et du réseau',altClock:'Écran de l\'horlo
 noStats:'Pas encore de rapport : les miners partagent leur hashrate à partir de la version 1.9.0.',statsDown:'Statistiques indisponibles pour le moment.',
 experimental:'expérimental',chartDay:'Hashrate total toutes les 5 minutes, 24 dernières heures',chartWeek:'Hashrate total par heure, 7 derniers jours',noChart:'La courbe se remplit au fil des rapports.'};
 const EN={noMatch:'No board matches.',cardMiners:'{n} miners',cardMiner:'{n} miner',colCoin:'Cryptocurrency',coinsTitle:'By cryptocurrency',poolOther:'Other / private pool',poolUnknown:'Not shared',colPool:'Pool',chatUnread:'unread',devMore:'Show the {n} other supported boards',devFewer:'Hide the boards without a miner',chatYou:'(you)',chatGuests:'+ {n} visitor(s) without a name',chatNobody:'Nobody with a name yet.',chatWhen:'Changeable on {d}',chatNow:'Changeable now',chatNeedName:'Choose your name first.',chatSaved:'Name registered.',
-chatEmpty:'No message yet: say hello!',chatTeam:'team',chatEdited:'edited',chatEdit:'Edit',chatDelete:'Delete',chatSure:'Sure?',chatBan:'Ban',chatSaveEdit:'Save',chatCancel:'Cancel',
-chatOffline:'Connecting to the chat…',chatUploading:'Sending the file…',chatRecording:'Recording… {s} s (click 🎤 to stop)',chatVoice:'Voice message ({s} s)',chatPlay:'Play',chatPause:'Pause',chatPosition:'Position in the voice message',chatPhoto:'Photo',chatVideo:'Video',
+chatEmpty:'No messages yet',chatTeam:'team',chatEdited:'edited',chatEdit:'Edit',chatDelete:'Delete',chatSure:'Sure?',chatBan:'Ban',chatSaveEdit:'Save',chatCancel:'Cancel',
+chatOffline:'Connecting to the chat…',chatUploading:'Sending the file…',chatRecording:'Recording… {s} s (click the microphone to stop)',chatVoice:'Voice message ({s} s)',chatPlay:'Play',chatPause:'Pause',chatPosition:'Position in the voice message',chatPhoto:'Photo',chatVideo:'Video',
 chatNoMic:'Microphone unavailable or refused.',chatQrHide:'Hide the QR code',chatLinkCopied:'Link copied: open it on your other device. Share it with no one.',chatQrFailed:'The QR code cannot be shown for now: use “Copy the link”.',chatCodeSet:'Your name followed you to this device.',
 chatErrors:{taken:'This name is already taken.',wait:'You can change your name on {d}.',too_many:'Too many new names from your connection today: try again tomorrow.',
  name:'Choose your name first.',reserved:'This name is kept for the team.',empty:'The message is empty.',too_long:'Message too long (500 characters at most).',
@@ -97,7 +97,7 @@ document.querySelectorAll('[data-al]').forEach(e=>EN[e.dataset.al]=e.getAttribut
 document.querySelectorAll('[data-ph]').forEach(e=>EN[e.dataset.ph]=e.placeholder);
 Object.assign(FR,{sourceCode:'Code source sur GitHub ↗',firmwareRelease:'Firmware '+VERSION,statsLoading:'Chargement des statistiques…',statsRetained:'Dernières mesures conservées ; actualisation en attente.',statsSaved:'Dernières mesures'});
 Object.assign(EN,{live:'Live',statsLoading:'Loading statistics…',statsRetained:'Showing the last readings; waiting for an update.',statsSaved:'Last readings'});
-Object.assign(FR,{hashHistoryTitle:'Évolution du hashrate',screensTitle:'L’écran du mineur',featureStats:'Statistiques',featureFlash:'Flasher web',heroNetwork:'Réseau BDLMiner',heroMeasured:'Hashrate mesuré de la communauté',tickerTitle:'Réseau / Mineurs actifs'});
+Object.assign(FR,{hashHistoryTitle:'Évolution du hashrate',screensTitle:'L’écran du mineur',featureStats:'Statistiques',featureFlash:'Flasher web',heroHardwareAlt:'Carte de minage Bitaxe Gamma avec écran, module ESP32 et ventilateur',heroNetwork:'Réseau BDLMiner',heroMeasured:'Hashrate mesuré de la communauté',tickerTitle:'Réseau / Mineurs actifs'});
 let lang=(navigator.language||'').startsWith('fr')?'fr':'en';
 try{lang=localStorage.getItem('lang')||lang}catch(e){}
 const T=k=>(lang=='fr'?FR:EN)[k];
@@ -228,7 +228,7 @@ function homeMarket(){const table=document.getElementById('home-market');if(!tab
    head.append(icon(r),title,tag);
    const value=document.createElement('strong');value.className='ticker-value';value.textContent=rate(r.hashrate);
    const foot=document.createElement('span'),count=document.createElement('span'),badge=document.createElement('span');foot.className='ticker-foot';
-   count.textContent=T(r.miners===1?'cardMiner':'cardMiners').replace('{n}',r.miners.toLocaleString(locale));badge.className='chg up';badge.textContent=pct(minerTotal?r.miners/minerTotal:0);
+   count.textContent=T(r.miners===1?'cardMiner':'cardMiners').replace('{n}',r.miners.toLocaleString(locale));badge.className='chg';badge.textContent=pct(minerTotal?r.miners/minerTotal:0)+' '+(lang==='fr'?'des mineurs':'of miners');
    foot.append(count,badge);a.append(head,value,foot);cards.appendChild(a)})}
  // Table: every board online in the chosen family that matches the search.
  const q=homeFilter.query.trim().toLowerCase();
@@ -287,7 +287,7 @@ function apply(){document.documentElement.lang=lang;
  showScreen(screen);boards();stats();document.dispatchEvent(new Event('bdl-language-change'))}
 // The phone menu: opens under the bar, closes on a link, Escape or a tap elsewhere.
 {const menu=document.getElementById('menu'),links=document.getElementById('site-links'),more=document.getElementById('nav-more');
- const set=open=>{links.classList.toggle('open',open);menu.setAttribute('aria-expanded',open);menu.textContent=open?'✕':'☰';if(!open&&more)more.open=false};
+ const set=open=>{links.classList.toggle('open',open);menu.setAttribute('aria-expanded',open);if(!open&&more)more.open=false};
  menu.onclick=e=>{e.stopPropagation();set(!links.classList.contains('open'))};
  links.addEventListener('click',e=>{if(e.target.closest('a'))set(false)});
  document.addEventListener('click',e=>{if(!e.target.closest('nav'))set(false);if(more&&!more.contains(e.target))more.open=false});
@@ -446,7 +446,7 @@ async function chatShrink(file){if(file.type==='image/gif'||!window.createImageB
 async function chatUpload(a){const r=await fetch('https://'+CHAT_HOST+'/api/media?kind='+a.kind,{method:'POST',body:a.blob,
   headers:{'X-Chat-Code':chatCode(),'Content-Type':a.blob.type||'application/octet-stream'}});
  let j={};try{j=await r.json()}catch(e){}if(!r.ok||!j.media)throw Error(j.error||'upload');return j.media}
-// Voice messages: the microphone until 🎤 again, 60 seconds at most.
+// Voice messages: press the microphone again to stop, 60 seconds at most.
 async function chatRecord(){const btn=$c('chat-rec');
  if(chat.rec){chat.rec.stop();return}
  let stream;try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){chatNote(T('chatNoMic'));return}

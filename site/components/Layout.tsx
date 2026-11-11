@@ -1,6 +1,7 @@
 // Shared page frame: navigation, footer and chat. Page content goes in <main>.
 import Head from 'next/head';
 import type {ReactNode} from 'react';
+import Icon from './Icons';
 
 // Start before styles/scripts finish loading; site.js validates age and schema before displaying it.
 const statsBootstrap="if(new URLSearchParams(location.search).get('statsApi')!=='go'){try{window.BDL_PUBLIC_STATS_SEED=fetch('https://raw.githubusercontent.com/bdlglua/BDLMinerV2/public-stats/summary.json',{credentials:'omit',cache:'default',signal:AbortSignal.timeout(5000)}).then(r=>r.ok?r.json():null).catch(()=>null)}catch{}}";
@@ -53,7 +54,7 @@ export default function Layout({children,flasher=false,remote=false,chart=false}
   </div>
   <button id="theme" type="button" aria-pressed="false" data-al="themeDark" aria-label="Dark theme"><svg className="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg><svg className="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg></button>
   <button id="lang" type="button">Français</button>
-  <button id="menu" type="button" aria-expanded="false" aria-controls="site-links" data-al="menu" aria-label="Menu">☰</button>
+  <button id="menu" type="button" aria-expanded="false" aria-controls="site-links" data-al="menu" aria-label="Menu"><span className="menu-open"><Icon name="menu"/></span><span className="menu-close"><Icon name="close"/></span></button>
  </div>
 </nav>
 
@@ -74,7 +75,7 @@ export default function Layout({children,flasher=false,remote=false,chart=false}
 </footer>
 
 <button type="button" className="chat-bubble" id="chat-bubble" aria-controls="chat" aria-expanded="false" data-al="chatOpen" aria-label="Open the chat">
- <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.2 1.1 4.2 2.9 5.6L4 21l4.4-2.3c1.1.3 2.3.5 3.6.5 5.5 0 10-3.6 10-8.1S17.5 3 12 3zm-5 9.3a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6z" /></svg>
+ <Icon name="message"/>
  <span className="badge" id="chat-unread" hidden></span>
 </button>
 <section className="chat" id="chat" role="dialog" aria-labelledby="chat-title" hidden>
@@ -84,7 +85,7 @@ export default function Layout({children,flasher=false,remote=false,chart=false}
   <button type="button" className="chat-icon" id="chat-gear" aria-pressed="false" aria-controls="chat-settings" data-al="chatSettings" aria-label="Settings">
    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
   </button>
-  <button type="button" className="chat-icon" id="chat-close" data-al="chatClose" aria-label="Close the chat">✕</button>
+  <button type="button" className="chat-icon" id="chat-close" data-al="chatClose" aria-label="Close the chat"><Icon name="close"/></button>
  </header>
  <ol className="chat-log" id="chat-log" aria-live="polite" aria-relevant="additions"></ol>
  <div className="chat-settings" id="chat-settings" hidden>
@@ -97,10 +98,10 @@ export default function Layout({children,flasher=false,remote=false,chart=false}
   </div>
   <div className="field">
    <label data-t="chatCodeTitle">Other device</label>
-   <div className="row"><button type="button" className="btn-s ghost" id="chat-qr-show" aria-expanded="false" aria-controls="chat-qr" data-t="chatQrShow">📱 My QR code</button></div>
+   <div className="row"><button type="button" className="btn-s ghost" id="chat-qr-show" aria-expanded="false" aria-controls="chat-qr" data-t="chatQrShow">My QR code</button></div>
    <div className="chat-qr" id="chat-qr" hidden>
     <div id="chat-qr-img" role="img" data-al="chatQrAlt" aria-label="QR code to open the chat with your name"></div>
-    <p className="hint" data-t="chatCodeHint">🔒 Scan it with your phone. Show it to no one.</p>
+    <p className="hint" data-t="chatCodeHint">Scan it with your phone. Show it to no one.</p>
     <button type="button" className="btn-s ghost" id="chat-link" data-t="chatLink">Copy the link</button>
    </div>
   </div>
@@ -115,14 +116,14 @@ export default function Layout({children,flasher=false,remote=false,chart=false}
  <p className="chat-note" id="chat-note" role="status"></p>
  <form id="chat-form" autoComplete="off">
   <div className="chat-attach" id="chat-attach" hidden><span id="chat-attach-name"></span>
-   <button type="button" className="chat-icon" id="chat-attach-drop" data-al="chatRemove" aria-label="Remove">✕</button></div>
+   <button type="button" className="chat-icon" id="chat-attach-drop" data-al="chatRemove" aria-label="Remove"><Icon name="close"/></button></div>
   <div className="compose">
-   <button type="button" className="chat-icon" id="chat-file" data-al="chatAttach" aria-label="Photo or video">📎</button>
+   <button type="button" className="chat-icon" id="chat-file" data-al="chatAttach" aria-label="Photo or video"><Icon name="paperclip"/></button>
    <input type="file" id="chat-file-input" accept="image/*,video/*" hidden />
-   <button type="button" className="chat-icon rec" id="chat-rec" aria-pressed="false" data-al="chatRecord" aria-label="Voice message">🎤</button>
+   <button type="button" className="chat-icon rec" id="chat-rec" aria-pressed="false" data-al="chatRecord" aria-label="Voice message"><Icon name="mic"/></button>
    <label className="skip" htmlFor="chat-text" data-t="chatMessage">Message</label>
    <textarea id="chat-text" rows={1} maxLength={500} data-ph="chatTextPh" placeholder="Message…"></textarea>
-   <button type="submit" className="send" id="chat-send" data-al="chatSend" aria-label="Send">➤</button>
+   <button type="submit" className="send" id="chat-send" data-al="chatSend" aria-label="Send"><Icon name="arrow"/></button>
   </div>
  </form>
  <p className="chat-rules" data-t="chatRules">Public messages, photos and videos, kept 7 days. Never share a seed phrase, a private key or a password.</p>
