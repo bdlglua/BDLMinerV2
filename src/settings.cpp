@@ -422,10 +422,14 @@ void wifiSetup(bool forcePortal, void (*onPortal)()) {
                                settings.currency.c_str(), 4);
     WiFiManagerParameter pLang("lang", "Language: 0 English, 1 French (Francais)", lang, 1,
                                "type='number' min='0' max='1'");
+    // Never sent back to the portal: its access point has a published
+    // password, and the page would hand the web password (in its HTML) to
+    // anyone nearby while the miner cannot join its network. Left empty, the
+    // one already set is kept; the dashboard's settings remove it.
     WiFiManagerParameter pWeb("webpass",
-                              "Web password, optional, leave empty: only to protect the dashboard's settings "
-                              "and firmware update on a shared network",
-                              settings.webPassword.c_str(), 40, "type='password'");
+                              "Web password, optional: only to protect the dashboard's settings and firmware "
+                              "update on a shared network. Leave empty to keep the current setting",
+                              "", 40, "type='password'");
     wm.addParameter(&pCoin);
     wm.addParameter(&pHost);
     wm.addParameter(&pPort);
@@ -484,7 +488,7 @@ void wifiSetup(bool forcePortal, void (*onPortal)()) {
         settings.beep = atoi(pBeep.getValue()) != 0;
         settings.timezone = pTz.getValue();
         settings.currency = pFiat.getValue();
-        settings.webPassword = pWeb.getValue();
+        if (pWeb.getValue()[0]) settings.webPassword = pWeb.getValue();
         settings.language = atoi(pLang.getValue());
         settingsSanitize();
         logf(settingsSave() ? "[cfg] settings saved\n" : "[cfg] settings could not be saved\n");

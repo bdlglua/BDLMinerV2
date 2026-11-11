@@ -147,8 +147,10 @@ function fleet(){const ul=document.getElementById('st-fleet');ul.innerHTML='';
  const seen=new Map((summary?.fleet||[]).map(f=>[f.board,f]));
  const known=new Set(BOARDS.map(b=>b.env));
  const label=env=>{const n=SHORT[env];return n?(lang=='fr'&&n[1]||n[0]):env};
+ // Counts end up in markup below: whatever the statistics answer holds, only a whole number gets there.
+ const whole=v=>Number.isSafeInteger(v)&&v>0?v:0;
  const rows=[...BOARDS.map(b=>b.env),...[...seen.keys()].filter(k=>!known.has(k))]
-  .map(env=>({env,name:label(env),online:seen.get(env)?.online||0,offline:seen.get(env)?.offline||0}))
+  .map(env=>({env,name:label(env),online:whole(seen.get(env)?.online),offline:whole(seen.get(env)?.offline)}))
   .sort((a,b)=>b.online-a.online||b.offline-a.offline);
  // Boards never seen yet stay folded behind a button, unless none was seen at all.
  const seenRows=rows.filter(r=>r.online||r.offline),hidden=rows.length-seenRows.length;

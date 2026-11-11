@@ -242,7 +242,8 @@ def handler(fleet, token, allowed_hosts, require_token=False):
                 return False
             supplied = self.headers.get('Authorization', '').removeprefix('Bearer ')
             protected = write or (require_token and self.path.startswith('/api/'))
-            if protected and not hmac.compare_digest(supplied, token):
+            # Bytes: compare_digest() raises on a non-ASCII str, which a header can hold.
+            if protected and not hmac.compare_digest(supplied.encode('latin-1', 'replace'), token.encode()):
                 self.reply(401, {'error': 'Hub token required'})
                 return False
             return True
