@@ -1,4 +1,4 @@
-"""Fill the public pages exported by the React/Next.js site (installer/site/) for one release channel."""
+"""Fill the public pages exported by the Rust site (installer/site/) for one release channel."""
 import html
 import hashlib
 import json
@@ -43,7 +43,7 @@ def build_pages(root, output, version, boards, content):
                                    'pulse-theme.css', 'pulse-chart.js', 'home-chart.js', 'navigation.js', 'vendor/chart.umd.min.js')}
     titles = {key: {'en': page[1], 'fr': page[2]} for key, page in PAGES.items()}
     for key, (filename, title, _) in PAGES.items():
-        # Complete pages rendered by the React/Next.js site (site/, `npm run build`).
+        # Complete pages rendered by the Rust generator (site/Cargo.toml).
         page = (root / 'installer/site' / filename).read_text(encoding='utf-8')
         data = {**content, 'page': key, 'page_titles': titles, 'legacy_sections': LEGACY_SECTIONS}
         page = page.replace('__PAGE_KEY__', key)

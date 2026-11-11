@@ -1,0 +1,15 @@
+[package]
+name = "bdlminer-site"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+publish = false
+description = "Rust static page generator for the BDLMiner public website"
+license = "GPL-3.0-only"
+
+# Keep the existing independent WebAssembly benchmark and its target directory.
+[workspace]
+exclude = ["stats-wasm"]
+
+[profile.release]
+opt-level = 2

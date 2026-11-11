@@ -30,22 +30,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: |
-            test/web/package-lock.json
-            site/package-lock.json
-      # The public pages are React components (site/) exported to installer/site/:
-      # the committed export must match the sources.
-      - run: npm ci --prefix site
-      - run: npm run typecheck --prefix site
-      - run: npm run stats:test --prefix site
-      - run: npm run stats:benchmark --prefix site
-      - run: npm run build --prefix site
-        env:
-          NEXT_TELEMETRY_DISABLED: "1"
+          cache-dependency-path: test/web/package-lock.json
+      - run: cargo fmt --manifest-path site/Cargo.toml -- --check
+      - run: cargo clippy --locked --manifest-path site/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --locked --manifest-path site/Cargo.toml
+      - run: cargo test --locked --manifest-path site/stats-wasm/Cargo.toml
+      - run: cargo build --locked --manifest-path site/stats-wasm/Cargo.toml --release --target wasm32-unknown-unknown
+      - run: node site/stats-wasm/benchmark.mjs
+      - run: cargo run --locked --release --manifest-path site/Cargo.toml
+      - run: cargo run --locked --manifest-path site/Cargo.toml -- --check
       - run: git diff --exit-code -- installer/site
       - run: npm ci --prefix test/web
       # Use the browser and native dependencies supplied by the Ubuntu image.

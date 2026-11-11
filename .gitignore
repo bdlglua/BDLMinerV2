@@ -20,9 +20,13 @@ bdlhub.local.json
 /sdkconfig.defaults
 /sdkconfig.*
 
-# Public site (React/Next.js): dependencies and build output; the exported pages are in installer/site/.
+# Website tooling and retired Next build caches; installer/site/ stays tracked.
 site/node_modules/
 site/.next/
 site/out/
 site/next-env.d.ts
 site/stats-wasm/target/
+
+# Rust website generator build products
+site/target/
+dist/

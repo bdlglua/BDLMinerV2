@@ -42,24 +42,15 @@ visual problems; the product features and the section order were retained.
 
 ## Sources and verification
 
-Edit the React sources in `site/` and assets in `installer/assets/`, then run
-`npm run build` from `site/` to refresh the tracked `installer/site/` export.
-The release packager replaces version/board placeholders as before. No firmware
-behavior, API contract or deployment configuration was changed.
+The visual direction is unchanged by the Rust migration. Edit shared HTML in
+`site/templates/` and browser assets in `installer/assets/`. The dependency-free
+Rust binary (`site/Cargo.toml`) renders the tracked `installer/site/` export.
+Cargo unit tests, formatter and Clippy checks accompany the existing browser
+suite. Firmware, API contracts and visual assets remain independent.
 
-The companion BDL Pool implementation is in its own `bdlglua/bdl-pool` source
-checkout. It uses the same theme and locally served font assets. Its new shared
-`components/Home.tsx` renders both French and English; the existing BTC/BCH,
-configuration and monitoring tools keep their original identifiers and behavior.
-
-Validation covers production builds, TypeScript, the existing website browser
-suites, responsive layouts, both languages and themes, filters, menus and focus.
-Both TypeScript checks and production builds passed. The existing BDLMiner site
-suite passed; BDL Pool passed all 26 scenarios (four were rerun serially after
-parallel load timeouts). Visual checks at 1440 and 390 px found no horizontal
-overflow or homepage JavaScript errors, and both color themes were inspected.
-Hardware flashing is outside this visual pass. No production deployment is
-performed by this work.
+BDL Pool uses its own Rust generator and translated templates, the same visual
+theme, and the existing browser scripts. See each repository's `site/README.md`
+for build, test and deployment commands.
 
 Design method: **unslop by Damir Sokolovsky ([@heydamir](https://x.com/heydamir))**,
 licensed CC BY 4.0. https://heydamir.design/unslop

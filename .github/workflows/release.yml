@@ -165,17 +165,20 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Render website with Rust
+        run: cargo run --locked --release --manifest-path site/Cargo.toml
       - name: Stable root and opt-in beta channel
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tools/make_channels.py --repository "$GITHUB_REPOSITORY" --output site
+        run: python3 tools/make_channels.py --repository "$GITHUB_REPOSITORY" --output dist
       # Custom domain (DNS: miner CNAME bdlglua.github.io). An Actions deployment
       # takes it from Settings > Pages; the file records it with the site.
       - name: Custom domain
-        run: echo miner.bdl-pool.com > site/CNAME
+        run: echo miner.bdl-pool.com > dist/CNAME
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: site
+          path: dist
   pages:
     needs: installer
     runs-on: ubuntu-latest

@@ -52,14 +52,14 @@ button, a, summary { transition: color 160ms var(--ease), background-color 160ms
 code, .metric-value, .tile .value, .ticker-value, .sync-value, .node-numbers strong { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 /* Navigation is a quiet, full-width instrument rail. */
-.site-header, :is(body, #__next) > nav {
+.site-header, :is(body, #site-shell) > nav {
   position: sticky; top: 0; z-index: 1000; width: 100%; max-width: none; margin: 0;
   background: var(--bg); border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none;
   backdrop-filter: none; transition: transform 220ms var(--ease), opacity 160ms var(--ease);
 }
-.site-header.nav-hidden, :is(body, #__next) > nav.nav-hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
-.site-header.nav-focus-reveal, :is(body, #__next) > nav.nav-focus-reveal { transition: none; }
-.header-inner, :is(body, #__next) > nav > .wrap { height: 72px; min-height: 72px; gap: 16px; }
+.site-header.nav-hidden, :is(body, #site-shell) > nav.nav-hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+.site-header.nav-focus-reveal, :is(body, #site-shell) > nav.nav-focus-reveal { transition: none; }
+.header-inner, :is(body, #site-shell) > nav > .wrap { height: 72px; min-height: 72px; gap: 16px; }
 .brand { gap: 8px; flex-shrink: 0; font-size: 20px; font-weight: 500; letter-spacing: 0; text-decoration: none; color: var(--fg); }
 .brand > span { background: none; color: var(--fg); -webkit-text-fill-color: currentColor; white-space: nowrap; }
 .brand b, .brand-light { color: var(--label); font-weight: 400; margin-left: 0; }
@@ -245,11 +245,11 @@ table.market .bar i { background: var(--label); }
 .chat-bubble { color: var(--fg); background: var(--panel2); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: none; }
 .chat-bubble:hover { background: var(--panel); }
 .chat-icon svg { width: 18px; height: 18px; stroke-width: 1.5; }
-.site-footer, :is(body, #__next) > footer { margin-top: 0; padding-top: 0; border-top: 1px solid var(--border); background: var(--bg2); color: var(--label); }
+.site-footer, :is(body, #site-shell) > footer { margin-top: 0; padding-top: 0; border-top: 1px solid var(--border); background: var(--bg2); color: var(--label); }
 .footer-top { padding-block: 32px; }
 .footer-bottom { border-color: var(--border); padding-block: 24px; }
-:is(body, #__next) > footer .footer-nav { position: static; padding-block: 24px 16px; background: none; border: 0; gap: 24px; }
-:is(body, #__next) > footer > .wrap { padding-bottom: 24px; }
+:is(body, #site-shell) > footer .footer-nav { position: static; padding-block: 24px 16px; background: none; border: 0; gap: 24px; }
+:is(body, #site-shell) > footer > .wrap { padding-bottom: 24px; }
 .footer-pages a[aria-current="page"], .footer-pages a:hover { color: var(--fg); }
 
 @media (max-width: 1100px) {
@@ -284,7 +284,7 @@ table.market .bar i { background: var(--label); }
 @media (max-width: 520px) {
   :root { --anchor-offset: 80px; }
   .wrap { padding-inline: 20px; }
-  .header-inner, :is(body, #__next) > nav > .wrap { height: 64px; min-height: 64px; gap: 8px; }
+  .header-inner, :is(body, #site-shell) > nav > .wrap { height: 64px; min-height: 64px; gap: 8px; }
   .brand { font-size: 17px; gap: 8px; }
   .brand img, .brand > svg { width: 28px; height: 28px; }
   #theme, #menu, .theme-toggle { width: 36px; height: 36px; }

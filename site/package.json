@@ -1,24 +1,12 @@
 {
   "name": "bdlminer-site",
   "private": true,
-  "description": "BDLMiner V2 public website, written in React with Next.js and exported as static pages",
+  "description": "BDLMiner V2 public website, rendered to static HTML by Rust",
   "scripts": {
     "stats:test": "cargo test --manifest-path stats-wasm/Cargo.toml",
     "stats:benchmark": "cargo build --manifest-path stats-wasm/Cargo.toml --release --target wasm32-unknown-unknown && node stats-wasm/benchmark.mjs",
-    "typecheck": "tsc --noEmit",
-    "build": "next build && node scripts/export.mjs"
-  },
-  "dependencies": {
-    "next": "16.4.6",
-    "react": "19.3.1",
-    "react-dom": "19.3.1"
-  },
-  "overrides": {
-    "postcss": "8.5.32"
-  },
-  "devDependencies": {
-    "@types/node": "24.19.2",
-    "@types/react": "19.3.0",
-    "typescript": "5.9.3"
+    "typecheck": "cargo check --locked --manifest-path Cargo.toml",
+    "build": "cargo run --locked --release --manifest-path Cargo.toml",
+    "test": "cargo test --locked --manifest-path Cargo.toml"
   }
 }

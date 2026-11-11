@@ -92,9 +92,10 @@ with a firmware carrying a new key).
 
 Locally, `python3 tools/make_release.py [--version X.Y.Z] [board...]` writes
 `release/<version>/` (signed when `keys/release-signing-key.pem` exists) and
-`python3 tools/make_installer.py release/<version> site` the installer site. Its pages are React components in `site/` (Next.js, static export, see
-`installer/README.md`): after changing them, run `npm ci --prefix site` and
-`npm run build --prefix site`, then commit `installer/site/`. The *CI*
+`python3 tools/make_installer.py release/<version> site` the installer site. Its pages are rendered from `site/templates/` by the Rust generator in `site/`
+(see `installer/README.md`). After changing them, run
+`cargo run --locked --release --manifest-path site/Cargo.toml`, then commit
+`installer/site/`. The *CI*
 workflow runs the host tests and builds every board on each push and pull request.
 
 Both generators prepare their output in a temporary directory and replace the previous

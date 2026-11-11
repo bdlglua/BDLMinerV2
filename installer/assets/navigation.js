@@ -1,7 +1,7 @@
 /* Reveal the floating navigation on upward scroll or keyboard interaction. */
 (() => {
   'use strict';
-  const header = document.querySelector('.site-header, #__next > nav, body > nav');
+  const header = document.querySelector('.site-header, #site-shell > nav, body > nav');
   if (!header) return;
   const position = () => Math.max(0, Math.min(window.scrollY, document.documentElement.scrollHeight - innerHeight));
   let previous = position(), direction = 0, distance = 0, pending = false, focusFrame = 0;

@@ -41,7 +41,7 @@ async function main(){
   assert.equal(await page.locator('#nav-more').getAttribute('open'),null);
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await page.evaluate(()=>{document.activeElement.blur();scrollTo({top:600,behavior:'instant'})});
-  await page.waitForFunction(()=>document.querySelector('#__next>nav').classList.contains('nav-hidden'));
+  await page.waitForFunction(()=>document.querySelector('#site-shell>nav').classList.contains('nav-hidden'));
   await page.locator('main').evaluate(e=>{e.tabIndex=-1;e.focus({preventScroll:true})});
   const keyboardScroll=await page.evaluate(()=>scrollY);await page.keyboard.press('Shift+Tab');
   assert.equal(await page.evaluate(()=>scrollY),keyboardScroll,'returning to the header by keyboard must not scroll the page');

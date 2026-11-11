@@ -4,24 +4,25 @@
 update pointers. The same files are published at both the project Pages address
 and the account root. No firmware release is needed for website changes.
 
-The pages are written in React with Next.js and TypeScript (`.tsx`), in `site/`
-(pages router, static export). `site/components/Layout.tsx` holds the shared
-navigation, footer and chat; `site/pages/` holds one typed component per page.
-Run `npm run typecheck --prefix site` for strict TypeScript validation. The
-standalone scripts in `installer/assets/` remain JavaScript. The pages ship no Next.js runtime
-(`unstable_runtimeJS:false`): the behaviour stays in `assets/site.js` (language,
-flasher, live statistics and the home page's fleet table, chat) and
-`assets/discovery.js`, and the styles in `assets/site.css` and
-`assets/discovery.css`. After changing `site/`:
+The pages are rendered by a Rust generator in `site/`. Shared navigation,
+footer, chat and page templates live in `site/templates/`; `site/src/main.rs`
+selects the routes and their optional chart, flasher and remote-monitoring assets.
+The generator uses only the Rust standard library. React, Next.js and hydration
+are not needed to build or display the pages.
 
-```
-npm ci --prefix site
-npm run build --prefix site
+The existing browser scripts in `installer/assets/` retain language selection,
+Web Serial flashing, statistics, chat, discovery content and charts. After changing
+a template:
+
+```sh
+cargo test --locked --manifest-path site/Cargo.toml
+cargo run --locked --release --manifest-path site/Cargo.toml
+cargo run --locked --manifest-path site/Cargo.toml -- --check
 ```
 
 The build exports the complete pages to `installer/site/`, which is committed and
 checked by CI. `tools/make_site_pages.py` fills their placeholders (`__VERSION__`,
-`__BOARDS__`, `__SITE_DATA__`, page key and title) for each channel and writes
+`__BOARDS__`, `__SITE_DATA__`, page title) for each channel and writes
 `index.html`, `start.html`, `boards.html`, `flash.html`, `demo.html`, `faq.html`,
 `releases.html`, `stats.html`, `gallery.html` and `support.html`. Links stay
 relative, so the same files work at the account root, under `/BDLMinerV2` and

@@ -27,6 +27,6 @@ Validation:
 ```sh
 python3 -m unittest discover -s test/tools -p 'test_public_stats.py'
 node test/web/test_site.cjs
-npm run typecheck --prefix site
-npm run build --prefix site
+cargo test --locked --manifest-path site/Cargo.toml
+cargo run --locked --release --manifest-path site/Cargo.toml
 ```
