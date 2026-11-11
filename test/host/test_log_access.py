@@ -6,7 +6,7 @@ import tempfile
 
 root = Path(__file__).resolve().parents[2]
 source = (root / 'src/web.cpp').read_text()
-handlers = (source[source.index('bool fromOwnPage() {'):source.index('void restartSoon(')] +
+handlers = (source[source.index('bool ownHost(const String &host) {'):source.index('void restartSoon(')] +
             source[source.index('// The log names networks'):source.index('void buildPoolDiagnostics(')])
 prefix = r'''
 #include <cassert>
@@ -31,6 +31,7 @@ struct Server {
 } server;
 struct { String webPassword; } settings;
 String hostName = "bdlminer";
+unsigned long millis() { return 0; }
 String logText() { return "00:00:01 [boot] test\n"; }
 '''
 tests = r'''
@@ -49,6 +50,15 @@ int main() {
     request(nullptr); assert(server.status == 401 && server.challenged && server.body.empty());
     request("wrong"); assert(server.status == 401 && server.body.empty());
     request("secret"); assert(server.status == 200 && server.body.find("[boot]") != std::string::npos);
+    // A name of another site leading here is refused, and after a few of them so is the miner's own
+    // name under a foreign domain; its address keeps working.
+    settings.webPassword = "";
+    server.host = "bdlminer.fritz.box"; request(nullptr); assert(server.status == 200);
+    for (const char *guess : {"miner-1.evil.example", "miner-2.evil.example", "miner-3.evil.example"}) {
+        server.host = guess; request(nullptr); assert(server.status == 403 && server.body.find("[boot]") == std::string::npos);
+    }
+    server.host = "bdlminer.fritz.box"; request(nullptr); assert(server.status == 403);
+    server.host = "192.168.1.20"; request(nullptr); assert(server.status == 200);
     puts("Log access: open without a web password, password required when one is set, other sites refused passed");
 }
 '''

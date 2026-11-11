@@ -159,6 +159,11 @@ inline const void *settingValue(const SettingInfo &info, const Settings &values)
 
 // Name of the access point opened by the configuration portal.
 String portalApName();
+// Its password. PORTAL_AP_PASSWORD, which the guides print, until the miner
+// has a payout address: nothing is there to protect yet. Afterwards a password
+// of this miner alone (shown on its screen and in the dashboard's settings),
+// so that nobody nearby can reconfigure it while its network is down.
+String portalPassword();
 // "bdlminer-xxxx": mDNS name (bdlminer-xxxx.local) and DHCP host name.
 String deviceHostName();
 

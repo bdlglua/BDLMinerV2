@@ -75,6 +75,8 @@ uint32_t restartAt=0;
 int restarts=0;
 void restartSoon(const char *) { ++restarts;restartAt=1; }
 std::atomic<bool> settingsChanged{false};
+String portalApName() { return "BDLMinerV2-F4E1"; }
+String portalPassword() { return "k7mnp2qrst"; }
 int brightnessSets=0;
 void settingsSetBrightness(uint8_t) { ++brightnessSets; }
 struct {
@@ -92,6 +94,8 @@ int main() {
  assert(server.message.find(settings.remoteKey.c_str())==std::string::npos);
  JsonDocument response;assert(!deserializeJson(response,server.message));
  assert(response["values"]["remotekey"]==kSecretMask);
+ // The setup network's own password, for a miner without a screen.
+ assert(response["portal"]["name"]=="BDLMinerV2-F4E1"&&response["portal"]["password"]=="k7mnp2qrst");
  JsonDocument backup;settingValues(backup.to<JsonObject>(),true);
  assert(backup["remotekey"]==settings.remoteKey);
  assert(response["capabilities"]["user_agents"].size()==2);

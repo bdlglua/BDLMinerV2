@@ -4,6 +4,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
+#include <esp_random.h>
 #include <esp_wifi.h>
 #include <freertos/semphr.h>
 #include <atomic>
@@ -320,6 +321,30 @@ String deviceHostName() {
     return name;
 }
 
+String portalPassword() {
+    if (settings.btcAddress.isEmpty()) return PORTAL_AP_PASSWORD;
+    static String own;  // read or drawn once
+    if (own.length()) return own;
+    Preferences p;
+    // Its own namespace: a factory reset empties the settings, and with them
+    // the payout address, which brings the published password back anyway.
+    if (!p.begin("portal", false)) return PORTAL_AP_PASSWORD;
+    String saved = p.getString("pw", "");
+    if (saved.length() != 10) {
+        // Not derived from the MAC address, which the access point broadcasts.
+        static const char kLetters[] = "abcdefghjkmnpqrstuvwxyz23456789";  // none that read alike
+        char drawn[11];
+        for (int i = 0; i < 10; i++) drawn[i] = kLetters[esp_random() % (sizeof(kLetters) - 1)];
+        drawn[10] = 0;
+        // A password nobody could read back would lock the owner out.
+        saved = p.putString("pw", drawn) == 10 ? String(drawn) : String();
+    }
+    p.end();
+    if (saved.length() != 10) return PORTAL_AP_PASSWORD;
+    own = saved;
+    return own;
+}
+
 static bool shouldSave = false;
 
 // The portal's network, read once connected: fallbacks are joined without
@@ -422,10 +447,14 @@ void wifiSetup(bool forcePortal, void (*onPortal)()) {
                                settings.currency.c_str(), 4);
     WiFiManagerParameter pLang("lang", "Language: 0 English, 1 French (Francais)", lang, 1,
                                "type='number' min='0' max='1'");
+    // Never sent back to the portal: its access point has a published
+    // password, and the page would hand the web password (in its HTML) to
+    // anyone nearby while the miner cannot join its network. Left empty, the
+    // one already set is kept; the dashboard's settings remove it.
     WiFiManagerParameter pWeb("webpass",
-                              "Web password, optional, leave empty: only to protect the dashboard's settings "
-                              "and firmware update on a shared network",
-                              settings.webPassword.c_str(), 40, "type='password'");
+                              "Web password, optional: only to protect the dashboard's settings and firmware "
+                              "update on a shared network. Leave empty to keep the current setting",
+                              "", 40, "type='password'");
     wm.addParameter(&pCoin);
     wm.addParameter(&pHost);
     wm.addParameter(&pPort);
@@ -446,6 +475,7 @@ void wifiSetup(bool forcePortal, void (*onPortal)()) {
     wm.addParameter(&pWeb);
 
     String ap = portalApName();
+    const String apPassword = portalPassword();  // WiFi is on: the random source is seeded
     // The portal runs in this loop, which pauses between two passes, rather
     // than in WiFiManager's, which never does: a Gamma 601 restarted twice on
     // the task watchdog during its setup.
@@ -457,8 +487,8 @@ void wifiSetup(bool forcePortal, void (*onPortal)()) {
     // the same way; the next attempt turns the station back on.
     bool attempted = false;
     wm.setPreSaveConfigCallback([&attempted]() { attempted = true; });
-    bool connected = forcePortal ? wm.startConfigPortal(ap.c_str(), PORTAL_AP_PASSWORD)
-                                 : wm.autoConnect(ap.c_str(), PORTAL_AP_PASSWORD);
+    bool connected = forcePortal ? wm.startConfigPortal(ap.c_str(), apPassword.c_str())
+                                 : wm.autoConnect(ap.c_str(), apPassword.c_str());
     while (!connected && wm.getConfigPortalActive()) {
         connected = wm.process();  // false once the portal times out
         if (attempted && !connected) {
@@ -484,7 +514,7 @@ void wifiSetup(bool forcePortal, void (*onPortal)()) {
         settings.beep = atoi(pBeep.getValue()) != 0;
         settings.timezone = pTz.getValue();
         settings.currency = pFiat.getValue();
-        settings.webPassword = pWeb.getValue();
+        if (pWeb.getValue()[0]) settings.webPassword = pWeb.getValue();
         settings.language = atoi(pLang.getValue());
         settingsSanitize();
         logf(settingsSave() ? "[cfg] settings saved\n" : "[cfg] settings could not be saved\n");

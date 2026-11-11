@@ -147,8 +147,10 @@ function fleet(){const ul=document.getElementById('st-fleet');ul.innerHTML='';
  const seen=new Map((summary?.fleet||[]).map(f=>[f.board,f]));
  const known=new Set(BOARDS.map(b=>b.env));
  const label=env=>{const n=SHORT[env];return n?(lang=='fr'&&n[1]||n[0]):env};
+ // Counts end up in markup below: whatever the statistics answer holds, only a whole number gets there.
+ const whole=v=>Number.isSafeInteger(v)&&v>0?v:0;
  const rows=[...BOARDS.map(b=>b.env),...[...seen.keys()].filter(k=>!known.has(k))]
-  .map(env=>({env,name:label(env),online:seen.get(env)?.online||0,offline:seen.get(env)?.offline||0}))
+  .map(env=>({env,name:label(env),online:whole(seen.get(env)?.online),offline:whole(seen.get(env)?.offline)}))
   .sort((a,b)=>b.online-a.online||b.offline-a.offline);
  // Boards never seen yet stay folded behind a button, unless none was seen at all.
  const seenRows=rows.filter(r=>r.online||r.offline),hidden=rows.length-seenRows.length;
@@ -513,7 +515,7 @@ $c('chat-name').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefa
 const chatLinkTo=()=>location.origin+location.pathname+'#chat-code='+chatCode();
 let qrHide=0;
 function chatQrLib(){if(window.qrcode)return Promise.resolve();return new Promise((ok,fail)=>{const s=document.createElement('script');
- s.src='https://unpkg.com/qrcode-generator@1.4.4/qrcode.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s)})}
+ s.src='assets/vendor/qrcode-generator-1.4.4/qrcode.js';s.onload=ok;s.onerror=fail;document.head.appendChild(s)})}
 async function chatQr(show){const box=$c('chat-qr'),btn=$c('chat-qr-show');clearTimeout(qrHide);
  if(!show){box.hidden=true;$c('chat-qr-img').innerHTML='';btn.textContent=T('chatQrShow');btn.setAttribute('aria-expanded','false');return}
  try{await chatQrLib()}catch(e){chatNote(T('chatQrFailed'));return}

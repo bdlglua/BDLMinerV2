@@ -145,12 +145,20 @@ void sendAsset(const char *mime, const uint8_t *data, size_t size, bool gzip = t
     server.send_P(200, mime, reinterpret_cast<PGM_P>(data), size);
 }
 
+// Whether the request names the miner the way its own network does. Names
+// of another site that lead here are counted: after a few of them the
+// miner's name under a foreign domain is refused too (RebindingGuard). Only
+// the web task asks.
+bool ownHost(const String &host) {
+    static webvalidation::RebindingGuard guard;
+    return guard.allowed(host.c_str(), hostName.c_str(), millis());
+}
+
 // Whether the request comes from the miner's own pages: another site's page
 // (or a name of another site leading here) cannot change it or read its secrets.
 bool fromOwnPage() {
     String host = server.hostHeader();
-    return webvalidation::hostAllowed(host.c_str(), hostName.c_str()) &&
-           webvalidation::originAllowed(server.header("Origin").c_str(), host.c_str());
+    return ownHost(host) && webvalidation::originAllowed(server.header("Origin").c_str(), host.c_str());
 }
 
 // Settings, backups, firmware and crash reports: from the miner's own pages
@@ -219,8 +227,10 @@ void handlePoolDiagnostics() {
     String body;serializeJson(j,body);server.send(200,"application/json",body);
 }
 
-// What the dashboard shows; `history` adds the 24-hour chart.
-void buildStats(JsonDocument &j, bool history) {
+// What the dashboard shows; `history` adds the 24-hour chart. Without
+// `owner` (a page of another site is reading), what names the miner's owner
+// or network is left empty: payout address, WiFi name, addresses, crash.
+void buildStats(JsonDocument &j, bool history, bool owner = true) {
     const MinerStats stats = minerStats();
     j["board"] = board::modelName();
     j["api_version"] = 2;
@@ -316,7 +326,7 @@ void buildStats(JsonDocument &j, bool history) {
     if (pv.error) j["pool_view"]["error"] = pv.error;
     j["network"]["height"] = stats.blockHeight;
     j["network"]["difficulty"] = stats.networkDiff;
-    j["address"] = settings.btcAddress;
+    j["address"] = owner ? settings.btcAddress : String();
     j["coin"] = coin::ticker(settings.miningCoin);
     j["coin_name"] = coin::name(settings.miningCoin);
     j["algorithm"] = "SHA-256d";
@@ -382,7 +392,7 @@ void buildStats(JsonDocument &j, bool history) {
     if (minerThrottle() == Throttle::Reduced) j["throttle"] = "reduced";
     j["night"] = watchNight();
     j["boot_reason"] = bootReason();
-    if (crashPresent() || crashHasHistory()) {
+    if (owner && (crashPresent() || crashHasHistory())) {
         if (crashPresent()) {
             j["crash"]["summary"] = crashSummary();
             j["crash"]["size"] = crashSize();
@@ -392,7 +402,7 @@ void buildStats(JsonDocument &j, bool history) {
     j["firmware_trial"] = trialPending();
     NotifyStatus ns = notifyStatus();
     j["integrations"]["mqtt"] = mqttState();
-    if (!settings.mqttHost.isEmpty()) j["integrations"]["mqtt_host"] = settings.mqttHost + ":" + settings.mqttPort;
+    if (owner && !settings.mqttHost.isEmpty()) j["integrations"]["mqtt_host"] = settings.mqttHost + ":" + settings.mqttPort;
     j["integrations"]["notify"]["enabled"] = ns.enabled;
     if (ns.id) {
         j["integrations"]["notify"]["title"] = ns.title;
@@ -400,11 +410,11 @@ void buildStats(JsonDocument &j, bool history) {
         j["integrations"]["notify"]["webhook"] = ns.webhook;
     }
     j["accent"] = accentCss();
-    j["ip"] = WiFi.localIP().toString();
-    j["ssid"] = WiFi.SSID();
+    j["ip"] = owner ? WiFi.localIP().toString() : String();
+    j["ssid"] = owner ? WiFi.SSID() : String();
     j["rssi"] = WiFi.RSSI();
     JsonArray peers = j["peers"].to<JsonArray>();
-    for (int from = 0; from < (int)settings.peers.length();) {
+    for (int from = 0; owner && from < (int)settings.peers.length();) {
         int comma = settings.peers.indexOf(',', from);
         if (comma < 0) comma = settings.peers.length();
         String p = settings.peers.substring(from, comma);
@@ -469,14 +479,23 @@ void buildStats(JsonDocument &j, bool history) {
     up["notes"] = gu.installing ? String(gu.progress) + " %" : String(gu.error);
 }
 
+// The other miners' dashboards read this from their own pages (another
+// origin, on the local network) and get everything. A page of any other
+// site, or a name of another site leading here, gets the readings only.
 void handleStats() {
+    String origin = server.header("Origin");
+    bool local = origin.isEmpty() || webvalidation::originLocal(origin.c_str());
+    bool owner = ownHost(server.hostHeader()) && local;
     JsonDocument j;
-    buildStats(j, server.arg("history") != "0");
+    buildStats(j, server.arg("history") != "0", owner);
     String body;
     body.reserve(measureJson(j));
     serializeJson(j, body);
     server.sendHeader("Cache-Control", "no-store");
-    server.sendHeader("Access-Control-Allow-Origin", "*");  // read by the other miners' dashboards
+    if (!origin.isEmpty()) {
+        server.sendHeader("Access-Control-Allow-Origin", local ? origin : String("*"));
+        if (local) server.sendHeader("Vary", "Origin");
+    }
     server.send(200, "application/json", body);
 }
 
@@ -490,6 +509,11 @@ WiFiClient streams[kMaxStreams];
 bool streamDue = false;
 
 void handleEvents() {
+    // The stream carries everything the miner's own pages show.
+    if (!ownHost(server.hostHeader())) {
+        server.send(403, "text/plain", "Refused: open the miner's own page (http://its address/) to do this");
+        return;
+    }
     int slot = -1;
     for (int i = 0; i < kMaxStreams && slot < 0; i++)
         if (!streams[i].connected()) slot = i;
@@ -668,6 +692,9 @@ void handleGetSettings() {
 #else
     j["capabilities"]["thermal_steps"] = true;
 #endif
+    // The setup network this miner opens when it can join none (settings.h).
+    j["portal"]["name"] = portalApName();
+    j["portal"]["password"] = portalPassword();
     JsonArray schema = j["schema"].to<JsonArray>();
     JsonArray agents = j["capabilities"]["user_agents"].to<JsonArray>();
     agents.add(user_agent::kNerdMiner);

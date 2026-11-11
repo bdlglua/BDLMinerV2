@@ -29,6 +29,7 @@
 #include "tls.h"
 #include "trial.h"
 #include "update_key.h"
+#include "core/image_marker.h"
 #include "core/release_version.h"
 
 #ifndef FW_ENV
@@ -289,6 +290,13 @@ GithubInstallResult install() {
             break;
         }
         sha256Starts(&sha, 0);
+        // The signature says the file is a release, not which one: a signed
+        // image of another board or of an older version would pass it too
+        // (the answer naming the file is not signed, and its connection may
+        // be unverified). The image itself must say this board, this version.
+        static image_marker::Scanner boardMarker, versionMarker;  // off the task stack; set() starts afresh
+        boardMarker.set("", FW_ENV);
+        versionMarker.set("BDLMinerV1/", state.version);
         WiFiClient *stream = http.getStreamPtr();
         if (!stream) {
             Update.abort();
@@ -306,6 +314,8 @@ GithubInstallResult install() {
             }
             lastData = millis();
             sha256Update(&sha, buf, n);
+            boardMarker.feed(buf, n);
+            versionMarker.feed(buf, n);
             if (Update.write(buf, n) != (size_t)n) break;
             done += n;
             portENTER_CRITICAL(&stateMux);
@@ -324,6 +334,12 @@ GithubInstallResult install() {
         if (verifySignature(hash, sig, sigLen)) {
             Update.abort();
             setError("bad signature: update refused");
+            result = GithubInstallResult::Refused;
+            break;
+        }
+        if (!boardMarker.found() || !versionMarker.found()) {
+            Update.abort();
+            setError("not firmware %s for this board: update refused", state.version);
             result = GithubInstallResult::Refused;
             break;
         }

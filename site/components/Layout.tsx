@@ -19,7 +19,7 @@ export default function Layout({children,flasher=false,remote=false,chart=false}
    <meta name="viewport" content="width=device-width,initial-scale=1"/>
    {chart&&<link rel="preconnect" href="https://api.bdl-pool.com:36018" crossOrigin="anonymous"/>}
    {chart&&<script id="public-stats-bootstrap" dangerouslySetInnerHTML={{__html:statsBootstrap}}/>}
-   {flasher&&<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"/>}
+   {flasher&&<script type="module" src="assets/vendor/esp-web-tools-10.4.0/install-button.js"/>}
    {remote&&<meta name="referrer" content="no-referrer"/>}
    {remote&&<meta name="bdl-remote-api" content="https://api.bdl-pool.com:36018"/>}
    {remote&&<link rel="stylesheet" href="assets/remote.css"/>}
