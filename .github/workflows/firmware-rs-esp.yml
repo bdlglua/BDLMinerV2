@@ -1,0 +1,39 @@
+# Builds the Rust ESP32 firmware (firmware-rs/esp). Manual while that crate
+# has not yet been validated on hardware; see firmware-rs/README.md.
+name: Rust ESP32 firmware
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: xtensa-esp32-espidf
+            mcu: esp32
+          - target: xtensa-esp32s3-espidf
+            mcu: esp32s3
+    steps:
+      - uses: actions/checkout@v7
+      - uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          buildtargets: ${{ matrix.mcu }}
+          ldproxy: true
+      - name: Build
+        working-directory: firmware-rs/esp
+        env:
+          MCU: ${{ matrix.mcu }}
+        run: cargo build --release --target ${{ matrix.target }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bdlminer-esp-${{ matrix.mcu }}
+          path: firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp
+          if-no-files-found: error
+          retention-days: 7

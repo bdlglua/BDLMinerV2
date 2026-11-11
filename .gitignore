@@ -30,3 +30,9 @@ site/stats-wasm/target/
 # Rust website generator build products
 site/target/
 dist/
+
+# Rust firmware build products and host-run data
+firmware-rs/target/
+firmware-rs/esp/target/
+firmware-rs/esp/.embuild/
+bdlminer-data/
