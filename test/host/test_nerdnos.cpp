@@ -125,6 +125,20 @@ int main() {
     testMilliVolts = 1650; assert(std::fabs(temperature() - 25.0f) < 0.05f && std::fabs(status().temperature - 25.0f) < 0.05f);
     testMilliVolts = 0; assert(std::isnan(temperature()));
     testMilliVolts = 3300; assert(std::isnan(temperature()));
+    // Without a reading the hard stop sees nothing: after 10 s the ASIC is stopped, whatever the
+    // settings, and stays off until the sensor reads again.
+    reset(); testMilliVolts = 1650; temperature();
+    assert(initAsic(bm1397::kVersionMask) && powered && !sensorStopped(testMillis) && powered);
+    temperature(); testMilliVolts = 0; temperature();  // a last reading, then the NTC opens
+    testMillis += 10000; assert(!sensorStopped(testMillis) && powered);  // still within the grace
+    testMillis += 1; assert(sensorStopped(testMillis) && !powered && testPins[kReset] == HIGH && testPins[kPower] == LOW);
+    assert(!strcmp(status().state, "Temperature sensor not reading: ASIC stopped"));
+    testMillis += 60000; temperature(); assert(sensorStopped(testMillis) && !powered);
+    testMilliVolts = 1650; temperature(); assert(!sensorStopped(testMillis) && !sensorFault);
+    // A sensor that never read since the start: the same stop once the grace is over.
+    lastReading = 0; sensorFault = false;
+    assert(!sensorStopped(10000) && sensorStopped(10001) && sensorFault);
+    testMilliVolts = 1650; temperature(); sensorFault = false;
     // A lost job during chip detection must cut power without finishing startup.
     reset();testNerdDelayHook=[](uint32_t){if(testMillis>=1250)poolReady=false;};
     assert(!initAsic(bm1397::kVersionMask)&&!powered&&testPins[kReset]==HIGH&&testPins[kPower]==LOW&&testMillis<1300);

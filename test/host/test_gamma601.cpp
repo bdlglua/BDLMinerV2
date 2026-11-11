@@ -231,6 +231,24 @@ int main(){
     };
     assert(initAsic(w)&&live.running&&!latched&&temperature()==50&&diodeStrikes==0);
     reset();begin();testUartFail=true;assert(!initAsic(w));off("UART failed",true);assert(latched&&testReset==0);
+    // A start that fails with the ASIC powered and no safety limit involved (here the UART refuses
+    // writes): started again three times an hour, the failure kept as the last fault, then stopped.
+    reset();begin();testUartFail=true;stubWork=w;stubWork.shareDifficulty=1024;workBusy=false;
+    for(int i=1;i<=3;++i){
+        step();
+        assert(!latched&&!powered&&testReset==0&&autoRestarts==i&&!strcmp(live.state,"Restarting the ASIC"));
+        assert(strstr(lastFaultText,"BM1370 initialization failed")&&strstr(lastFaultText,"regulator status"));
+    }
+    step();assert(latched&&!powered&&testReset==0&&!strcmp(live.state,"BM1370 initialization failed"));
+    step();assert(latched&&!powered&&autoRestarts==3); // latched: no further attempt
+    // One failed start, then the chip answers: mining, nothing latched.
+    reset();begin();testUartFail=true;stubWork=w;stubWork.shareDifficulty=1024;workBusy=false;
+    step();assert(!latched&&!powered&&autoRestarts==1);
+    testUartFail=false;step();assert(powered&&live.running&&!latched&&testReset==1);
+    // A safety fault during the start still latches at once, without using a retry.
+    reset();begin();stubWork=w;stubWork.shareDifficulty=1024;workBusy=false;
+    testDelayHook=[](uint32_t){if(powered)testI2cFail=true;};
+    step();assert(latched&&!powered&&testReset==0&&autoRestarts==0);
     reset();begin();testTaskFailAt=testTaskStarts;assert(!start()&&latched&&testReset==0);
     assert(Settings().asicFrequency==525); // stock, as ESP-Miner
     assert(Settings().asicVoltage==1150); // stock, as ESP-Miner

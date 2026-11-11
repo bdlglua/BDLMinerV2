@@ -519,7 +519,9 @@ no memory of their own. Each one is tried up to 3 times, 30 seconds apart; while
 is not enough free memory for a TLS connection (54 KB, with a 24 KB block), no WiFi,
 or no synchronized clock yet for certificate validation, it waits up to 10
 minutes without using up those tries. Since 2.3.3, after one minute without
-NTP, a pool job can supply the time. NTP corrects the clock when it responds.
+NTP, a pool job can supply the time. NTP corrects the clock when it responds. A job time
+older than the firmware's own build is never used: it cannot be the real time, and would
+make an expired certificate look valid.
 
 ## Private remote monitoring
 
