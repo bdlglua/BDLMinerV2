@@ -118,6 +118,9 @@ bool Receiver::push(uint8_t byte, Response &out) {
     if (!std::memcmp(bytes.data(), kChipId, sizeof(kChipId))) {
         r.chipId = true;
     } else {
+        // Job ids are 0, 4 ... 124. With bit 7 set (a corrupted byte: the CRC
+        // is not checked) the slot would be 32..63, past the backend's table.
+        if (bytes[7] & 0x80) return false;
         std::memcpy(&r.nonce, bytes.data() + 2, 4);
         r.slot = (bytes[7] & 0xfc) >> 2;
         r.midstate = bytes[7] & 0x03;

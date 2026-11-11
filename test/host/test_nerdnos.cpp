@@ -85,6 +85,10 @@ int main() {
     r.nonce = 0x7c2bac1e; result(r, testMillis);  // corrupted: counted as an error, never submitted
     assert(candidates == 1 && windowBad == 1);
     r.midstate = 1; r.nonce = 0x7c2bac1d; result(r, testMillis);  // no such midstate in this job
+    { bm1397::Response outside = r; outside.midstate = 0;  // a slot past the table (corrupted frame): ignored
+      const uint32_t errorsBefore = windowBad, goodBefore = windowGood, resultsBefore = live.results;
+      for (unsigned s = bm1397::kSlots; s < 256; ++s) { outside.slot = uint8_t(s); result(outside, testMillis); }
+      assert(windowBad == errorsBefore && windowGood == goodBefore && live.results == resultsBefore); }
     assert(candidates == 1 && windowBad == 1);
     generation = 2; r.midstate = 0; slot.seenHead = 0; std::fill(std::begin(slot.seen), std::end(slot.seen), 0);
     result(r, testMillis);  // a new block made the job stale

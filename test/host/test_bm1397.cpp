@@ -103,5 +103,17 @@ int main() {
     rx.clear();  // the backend clears on a timeout
     for (uint8_t b : nonce) if (rx.push(b, r)) got.push_back(r);
     assert(got.size() == 1 && got[0].slot == 10);
+    // A corrupted job id (bit 7 set) names no slot: every slot a frame can give is one of the 32.
+    rx.clear(); got.clear();
+    for (int id = 0; id < 256; ++id) {
+        uint8_t frame[] = {0xaa, 0x55, 0x78, 0x56, 0x34, 0x12, 0x01, uint8_t(id), 0x99};
+        bool complete = false;
+        for (uint8_t b : frame) complete = rx.push(b, r);
+        assert(complete == (id < 128));
+        if (complete) assert(r.slot == id / 4 && r.slot < kSlots && r.midstate == id % 4);
+    }
+    // The receiver stays in step after a dropped frame.
+    for (uint8_t b : nonce) if (rx.push(b, r)) got.push_back(r);
+    assert(got.size() == 1 && got[0].slot == 10);
     puts("BM1397: command and PLL vectors, version rolling, chip-side midstate hashing for 4 versions and 4 nonces, frames and resync passed");
 }

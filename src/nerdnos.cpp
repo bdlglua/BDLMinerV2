@@ -122,6 +122,7 @@ bool initAsic(uint32_t versionMask) {
 // A result: verified by hashing, counted as the work it stands for, then
 // handed to the miner, which submits it if it meets the pool's difficulty.
 void result(const bm1397::Response &r, uint32_t now) {
+    if (r.slot >= bm1397::kSlots) return;  // never index past the table, whatever the UART delivered
     Slot &slot = slots[r.slot];
     if (!slot.valid || r.midstate >= slot.count || now - slot.sent > 2000 || !minerAsicCurrent(slot.work.generation)) return;
     uint64_t proof = uint64_t(r.midstate) << 32 | r.nonce;
