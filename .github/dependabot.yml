@@ -1,14 +1,15 @@
-# Weekly dependency updates for the Rust firmware (both lockfiles are
-# audited by CI with cargo-audit).
+# Weekly dependency updates for the Rust firmware's host workspace.
+#
+# firmware-rs/esp is not listed: its rust-toolchain.toml selects the Xtensa
+# "esp" toolchain, which Dependabot's updater does not have, so every update
+# there fails with "custom toolchain 'esp' ... is not installed". Its updates
+# (esp-idf-svc and ESP-IDF) also change APIs and need an ESP32 build, so they
+# are done by hand. Known vulnerabilities in its lockfile are still reported
+# weekly by .github/workflows/security-audit.yml (cargo-audit).
 version: 2
 updates:
   - package-ecosystem: cargo
     directory: /firmware-rs
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-  - package-ecosystem: cargo
-    directory: /firmware-rs/esp
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
