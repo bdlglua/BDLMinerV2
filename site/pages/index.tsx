@@ -41,7 +41,7 @@ export default function HomePage(){
  <div className="hero-product">
  <figure className="hardware-figure">
   <img className="hardware-photo" src="assets/boards/gamma.webp" width="826" height="960" alt="Bitaxe Gamma mining board with its display, ESP32 module and cooling fan" data-alt="heroHardwareAlt" fetchPriority="high"/>
-  <figcaption><span>Bitaxe Gamma 601</span><span>ASIC · SHA-256</span></figcaption>
+  <figcaption><span>Bitaxe Gamma</span><span>ASIC · SHA-256</span></figcaption>
  </figure>
  <aside className="hero-mini" aria-label="BDLMiner network">
   <div className="hero-mini-head"><span data-t="heroNetwork">BDLMiner network</span><span className="hero-mini-period">24 h</span></div>
