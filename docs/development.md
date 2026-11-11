@@ -194,3 +194,14 @@ npm test --prefix test/web
 Use `BDL_CHROMIUM_PATH` to select an existing Chromium executable. These tests do
 not connect to a physical miner; the host tests also execute the production upload
 callbacks with simulated flash/HTTP interfaces.
+
+## Rust firmware (experimental)
+
+`firmware-rs/` holds a Rust rewrite of the firmware: the portable mining core,
+the hardware-independent application (settings, pool sessions, statistics,
+dashboard API), a host build that mines on a PC, and an ESP-IDF build for
+ESP32 boards. `cargo test --manifest-path firmware-rs/Cargo.toml` runs its
+tests. What is ported, and what is not yet, is listed in
+[firmware-rs/README.md](../firmware-rs/README.md); the C++ firmware in `src/`
+stays the released one meanwhile. CI failures and their fixes:
+[firmware-rs-ci-troubleshooting.md](firmware-rs-ci-troubleshooting.md).

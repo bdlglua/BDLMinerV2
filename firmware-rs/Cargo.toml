@@ -1,0 +1,30 @@
+# Rust rewrite of the BDLMiner V2 firmware.
+#   core  portable mining core (SHA-256d, Stratum V1/V2, addresses, ASIC wire protocols)
+#   app   hardware-independent firmware logic (settings, miner state, pool sessions, web API)
+#   host  the same miner on a PC (software SHA-256d), for development and tests
+#   esp   the ESP32 firmware (ESP-IDF); built with the esp toolchain, see README.md
+[workspace]
+resolver = "2"
+members = ["core", "app", "host"]
+exclude = ["esp"]
+
+[workspace.package]
+version = "2.6.1"
+edition = "2021"
+rust-version = "1.85"
+license = "GPL-3.0-only"
+publish = false
+
+[workspace.dependencies]
+bdlminer-core = { path = "core" }
+bdlminer-app = { path = "app" }
+serde_json = "1"
+secp256k1 = { version = "0.33", default-features = false, features = ["alloc"] }
+chacha20poly1305 = { version = "0.10", default-features = false, features = ["alloc"] }
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+
+[profile.test]
+opt-level = 2

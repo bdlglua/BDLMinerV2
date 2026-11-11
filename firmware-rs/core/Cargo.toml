@@ -1,0 +1,24 @@
+[package]
+name = "bdlminer-core"
+description = "Portable BDLMiner mining core: SHA-256d, Stratum V1/V2, addresses and ASIC wire protocols"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["sv2-noise"]
+# Stratum V2 Noise_NX (secp256k1 EllSwift + ChaCha20-Poly1305).
+sv2-noise = ["dep:secp256k1", "dep:chacha20poly1305"]
+# Hardware-specific Stratum V2 identities and version-rolling requirements.
+asic = []
+
+[dependencies]
+serde_json = { workspace = true }
+secp256k1 = { workspace = true, optional = true }
+chacha20poly1305 = { workspace = true, optional = true }
+
+[[bench]]
+name = "sha256d"
+harness = false

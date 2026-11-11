@@ -1,0 +1,3 @@
+[toolchain]
+# Installed by espup (https://github.com/esp-rs/espup); provides the Xtensa targets.
+channel = "esp"
