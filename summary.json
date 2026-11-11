@@ -1,18 +1,18 @@
 {
-  "at": 1794382482671,
+  "at": 1794411424241,
   "boards": [
     {
-      "hashrate": 1070000000000,
+      "hashrate": 1080000000000,
       "miners": 1,
       "name": "bitaxe-gamma-601"
     },
     {
-      "hashrate": 6098000,
-      "miners": 7,
+      "hashrate": 3069500,
+      "miners": 4,
       "name": "esp32-headless"
     },
     {
-      "hashrate": 997000,
+      "hashrate": 1010000,
       "miners": 1,
       "name": "m5stickc-plus2"
     },
@@ -22,49 +22,44 @@
       "name": "esp32s3-headless"
     },
     {
-      "hashrate": 355000,
+      "hashrate": 356000,
       "miners": 1,
       "name": "m5stack-s3"
     }
   ],
   "coins": [
     {
-      "hashrate": 1070000997000,
+      "hashrate": 1080001010000,
       "miners": 2,
       "name": "BCH"
     },
     {
-      "hashrate": 4803000,
-      "miners": 7,
+      "hashrate": 2785500,
+      "miners": 5,
       "name": "BTC"
-    },
-    {
-      "hashrate": 1010000,
-      "miners": 1,
-      "name": "DGB"
     },
     {
       "hashrate": 1000000,
       "miners": 1,
-      "name": "PPC"
+      "name": "DGB"
     }
   ],
   "current_hour": {
-    "at": 1794380400000,
-    "average_miners": 10.679062222222221,
-    "end_at": 1794382200000,
-    "first_at": 1794380700000,
-    "hashrate": 1067044878652.9393,
+    "at": 1794409200000,
+    "average_miners": 8.123864285714285,
+    "end_at": 1794411300000,
+    "first_at": 1794409500000,
+    "hashrate": 1064086766515.8645,
     "interval_ms": 3600000,
-    "miners": 11,
+    "miners": 8,
     "missing": false,
-    "samples": 6
+    "samples": 7
   },
   "fleet": [
     {
       "board": "esp32-headless",
-      "offline": 0,
-      "online": 7
+      "offline": 3,
+      "online": 4
     },
     {
       "board": "m5stack-s3",
@@ -87,96 +82,8 @@
       "online": 1
     }
   ],
-  "hashrate": 1070007810000,
+  "hashrate": 1080004795500,
   "history": [
-    {
-      "at": 1793779200000,
-      "average_miners": 12.802195000000003,
-      "end_at": 1793782800000,
-      "first_at": 1793779500000,
-      "hashrate": 1216636976443.55,
-      "interval_ms": 3600000,
-      "miners": 13,
-      "missing": false,
-      "samples": 12
-    },
-    {
-      "at": 1793782800000,
-      "average_miners": 12.884448055555554,
-      "end_at": 1793786400000,
-      "first_at": 1793783100000,
-      "hashrate": 1218974808389.5554,
-      "interval_ms": 3600000,
-      "miners": 13,
-      "missing": false,
-      "samples": 12
-    },
-    {
-      "at": 1793786400000,
-      "average_miners": 12.31793861111111,
-      "end_at": 1793790000000,
-      "first_at": 1793786700000,
-      "hashrate": 1226796247829.1936,
-      "interval_ms": 3600000,
-      "miners": 12,
-      "missing": false,
-      "samples": 12
-    },
-    {
-      "at": 1793790000000,
-      "average_miners": 11.141360833333335,
-      "end_at": 1793793600000,
-      "first_at": 1793790300000,
-      "hashrate": 1119295294778.6472,
-      "interval_ms": 3600000,
-      "miners": 11,
-      "missing": false,
-      "samples": 12
-    },
-    {
-      "at": 1793793600000,
-      "average_miners": 11.388408055555557,
-      "end_at": 1793797200000,
-      "first_at": 1793793900000,
-      "hashrate": 1240460606749.8577,
-      "interval_ms": 3600000,
-      "miners": 11,
-      "missing": false,
-      "samples": 12
-    },
-    {
-      "at": 1793797200000,
-      "average_miners": 11.440100555555555,
-      "end_at": 1793800800000,
-      "first_at": 1793797500000,
-      "hashrate": 1210176214308.5676,
-      "interval_ms": 3600000,
-      "miners": 11,
-      "missing": false,
-      "samples": 12
-    },
-    {
-      "at": 1793800800000,
-      "average_miners": 11.89447388888889,
-      "end_at": 1793804400000,
-      "first_at": 1793801100000,
-      "hashrate": 1214115484867.471,
-      "interval_ms": 3600000,
-      "miners": 12,
-      "missing": false,
-      "samples": 12
-    },
-    {
-      "at": 1793804400000,
-      "average_miners": 11.936205555555555,
-      "end_at": 1793808000000,
-      "first_at": 1793804700000,
-      "hashrate": 1270512572478.345,
-      "interval_ms": 3600000,
-      "miners": 12,
-      "missing": false,
-      "samples": 12
-    },
     {
       "at": 1793808000000,
       "average_miners": 11.109454444444445,
@@ -1925,25 +1832,113 @@
       "miners": 11,
       "missing": false,
       "samples": 12
+    },
+    {
+      "at": 1794380400000,
+      "average_miners": 10.732468611111111,
+      "end_at": 1794384000000,
+      "first_at": 1794380700000,
+      "hashrate": 1063018513565.918,
+      "interval_ms": 3600000,
+      "miners": 11,
+      "missing": false,
+      "samples": 12
+    },
+    {
+      "at": 1794384000000,
+      "average_miners": 10.46260472222222,
+      "end_at": 1794387600000,
+      "first_at": 1794384300000,
+      "hashrate": 1065245644519.724,
+      "interval_ms": 3600000,
+      "miners": 10,
+      "missing": false,
+      "samples": 12
+    },
+    {
+      "at": 1794387600000,
+      "average_miners": 9.334116111111113,
+      "end_at": 1794391200000,
+      "first_at": 1794387900000,
+      "hashrate": 969576890575.0078,
+      "interval_ms": 3600000,
+      "miners": 9,
+      "missing": false,
+      "samples": 12
+    },
+    {
+      "at": 1794391200000,
+      "average_miners": 9.281880555555555,
+      "end_at": 1794394800000,
+      "first_at": 1794391500000,
+      "hashrate": 1065081838507.1733,
+      "interval_ms": 3600000,
+      "miners": 9,
+      "missing": false,
+      "samples": 12
+    },
+    {
+      "at": 1794394800000,
+      "average_miners": 10.406856944444444,
+      "end_at": 1794398400000,
+      "first_at": 1794395100000,
+      "hashrate": 1054674426263.25,
+      "interval_ms": 3600000,
+      "miners": 10,
+      "missing": false,
+      "samples": 12
+    },
+    {
+      "at": 1794398400000,
+      "average_miners": 10.508829999999998,
+      "end_at": 1794402000000,
+      "first_at": 1794398700000,
+      "hashrate": 1059366294886.1094,
+      "interval_ms": 3600000,
+      "miners": 11,
+      "missing": false,
+      "samples": 12
+    },
+    {
+      "at": 1794402000000,
+      "average_miners": 9.218936944444446,
+      "end_at": 1794405600000,
+      "first_at": 1794402300000,
+      "hashrate": 976928745026.2103,
+      "interval_ms": 3600000,
+      "miners": 9,
+      "missing": false,
+      "samples": 12
+    },
+    {
+      "at": 1794405600000,
+      "average_miners": 8.432675555555557,
+      "end_at": 1794409200000,
+      "first_at": 1794405900000,
+      "hashrate": 1008863131222.5917,
+      "interval_ms": 3600000,
+      "miners": 8,
+      "missing": false,
+      "samples": 12
     }
   ],
-  "miners": 11,
+  "miners": 8,
   "models": [
     {
       "board": "bitaxe-gamma-601",
-      "hashrate": 1070000000000,
+      "hashrate": 1080000000000,
       "miners": 1,
       "model": null
     },
     {
       "board": "esp32-headless",
-      "hashrate": 6098000,
-      "miners": 7,
+      "hashrate": 3069500,
+      "miners": 4,
       "model": null
     },
     {
       "board": "m5stickc-plus2",
-      "hashrate": 997000,
+      "hashrate": 1010000,
       "miners": 1,
       "model": null
     },
@@ -1955,867 +1950,91 @@
     },
     {
       "board": "m5stack-s3",
-      "hashrate": 355000,
+      "hashrate": 356000,
       "miners": 1,
       "model": "M5StickS3"
     }
   ],
   "periods": {
     "1": {
-      "average_hashrate": 1062471054910.4352,
-      "average_miners": 10.7412025,
+      "average_hashrate": 1005978166292.5054,
+      "average_miners": 8.249165,
       "expected_samples": 12,
-      "first_at": 1794378900000,
-      "from": 1794378882671,
-      "last_at": 1794382200000,
-      "maximum_hashrate": 1079320946765.2607,
-      "maximum_miners": 10.939870000000003,
-      "minimum_hashrate": 1044622784745.1886,
-      "minimum_miners": 9.84810666666667,
+      "first_at": 1794408000000,
+      "from": 1794407824241,
+      "last_at": 1794411300000,
+      "maximum_hashrate": 1076530019971.6023,
+      "maximum_miners": 9.064340000000001,
+      "minimum_hashrate": 688647560540.522,
+      "minimum_miners": 7.6235366666666655,
       "samples": 12,
-      "to": 1794382482671,
-      "variation_percent": 0.8657558110959857
+      "to": 1794411424241,
+      "variation_percent": 13.131573081779749
     },
     "168": {
-      "average_hashrate": 942346784300.3441,
-      "average_miners": 9.281350280316872,
+      "average_hashrate": 955998594597.474,
+      "average_miners": 9.33265793995858,
       "expected_samples": 2016,
       "first_at": 1794218400000,
-      "from": 1793777682671,
-      "last_at": 1794382200000,
+      "from": 1793806624241,
+      "last_at": 1794411300000,
       "maximum_hashrate": 1137613719966.2805,
       "maximum_miners": 11.374463333333333,
       "minimum_hashrate": 0,
       "minimum_miners": 0,
-      "samples": 547,
-      "to": 1794382482671,
-      "variation_percent": 35.60790881653036
+      "samples": 644,
+      "to": 1794411424241,
+      "variation_percent": 32.92496622890075
     },
     "24": {
-      "average_hashrate": 995418137677.8878,
-      "average_miners": 9.894359108796287,
+      "average_hashrate": 1012031546757.733,
+      "average_miners": 9.985578692129627,
       "expected_samples": 288,
-      "first_at": 1794296100000,
-      "from": 1794296082671,
-      "last_at": 1794382200000,
-      "maximum_hashrate": 1090526625770.7546,
+      "first_at": 1794325200000,
+      "from": 1794325024241,
+      "last_at": 1794411300000,
+      "maximum_hashrate": 1093994165378.5815,
       "maximum_miners": 11.374463333333333,
-      "minimum_hashrate": 0,
-      "minimum_miners": 0,
+      "minimum_hashrate": 6377238.8599999985,
+      "minimum_miners": 6.111330000000001,
       "samples": 288,
-      "to": 1794382482671,
-      "variation_percent": 21.69038329378545
+      "to": 1794411424241,
+      "variation_percent": 17.22687951558923
     },
     "6": {
-      "average_hashrate": 1042920509718.8901,
-      "average_miners": 10.673341018518519,
+      "average_hashrate": 1038583647700.9436,
+      "average_miners": 9.371679120370366,
       "expected_samples": 72,
-      "first_at": 1794360900000,
-      "from": 1794360882671,
-      "last_at": 1794382200000,
-      "maximum_hashrate": 1082674381486.3069,
-      "maximum_miners": 11.181963333333332,
-      "minimum_hashrate": 480009223414.06836,
-      "minimum_miners": 9.378143333333336,
+      "first_at": 1794390000000,
+      "from": 1794389824241,
+      "last_at": 1794411300000,
+      "maximum_hashrate": 1093994165378.5815,
+      "maximum_miners": 10.956669999999999,
+      "minimum_hashrate": 357030353367.3696,
+      "minimum_miners": 6.397543333333333,
       "samples": 72,
-      "to": 1794382482671,
-      "variation_percent": 7.995054319253427
+      "to": 1794411424241,
+      "variation_percent": 10.467663312576143
     }
   },
   "pools": [
     {
-      "hashrate": 1070003425000,
-      "miners": 6,
+      "hashrate": 1080002430500,
+      "miners": 5,
       "name": "other"
     },
     {
-      "hashrate": 4030000,
-      "miners": 4,
+      "hashrate": 2009000,
+      "miners": 2,
       "name": "public-pool.io"
     },
     {
-      "hashrate": 355000,
+      "hashrate": 356000,
       "miners": 1,
       "name": "nerdminer.io"
     }
   ],
   "recent": [
-    {
-      "at": 1794296100000,
-      "average_miners": 9.890413333333331,
-      "hashrate": 1058449505871.7894,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794296400000,
-      "average_miners": 9.893923333333332,
-      "hashrate": 1072381159759.9169,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794296700000,
-      "average_miners": 9.915706666666663,
-      "hashrate": 1035743943627.4716,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794297000000,
-      "average_miners": 9.906389999999998,
-      "hashrate": 1053755250578.9052,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794297300000,
-      "average_miners": 9.910369999999999,
-      "hashrate": 1068983526175.5485,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794297600000,
-      "average_miners": 9.742763333333334,
-      "hashrate": 1070034708315.9447,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794297900000,
-      "average_miners": 9.700993333333333,
-      "hashrate": 1064307182260.353,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794298200000,
-      "average_miners": 9.903710000000002,
-      "hashrate": 1067058268412.3837,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794298500000,
-      "average_miners": 9.89302,
-      "hashrate": 1063561926436.0165,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794298800000,
-      "average_miners": 9.8966,
-      "hashrate": 1060897838929.6486,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794299100000,
-      "average_miners": 9.905333333333335,
-      "hashrate": 1063451257374.0898,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794299400000,
-      "average_miners": 9.899663333333335,
-      "hashrate": 1056530897762.2402,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794299700000,
-      "average_miners": 9.570286666666666,
-      "hashrate": 1053867529151.0677,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794300000000,
-      "average_miners": 9.917513333333334,
-      "hashrate": 1049650662909.6805,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794300300000,
-      "average_miners": 9.901733333333336,
-      "hashrate": 1043781657176.0934,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794300600000,
-      "average_miners": 9.905436666666667,
-      "hashrate": 1063663969601.2751,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794300900000,
-      "average_miners": 9.505693333333333,
-      "hashrate": 392191716616.80524,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794301200000,
-      "average_miners": 9.716343333333334,
-      "hashrate": 836727274020.6132,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794301500000,
-      "average_miners": 9.528806666666668,
-      "hashrate": 1059493284368.465,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794301800000,
-      "average_miners": 9.89925,
-      "hashrate": 1060256936599.2399,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794302100000,
-      "average_miners": 9.889633333333334,
-      "hashrate": 1073599682083.8184,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794302400000,
-      "average_miners": 9.921933333333333,
-      "hashrate": 1074639135716.0453,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794302700000,
-      "average_miners": 8.976023333333334,
-      "hashrate": 1057320252667.6495,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794303000000,
-      "average_miners": 9.846566666666668,
-      "hashrate": 1065640056195.87,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794303300000,
-      "average_miners": 9.863463333333335,
-      "hashrate": 1061399482136.8282,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794303600000,
-      "average_miners": 9.600843333333334,
-      "hashrate": 1061359330641.3406,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794303900000,
-      "average_miners": 9.863076666666666,
-      "hashrate": 1068302149155.8845,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794304200000,
-      "average_miners": 9.921533333333334,
-      "hashrate": 1069565928184.38,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794304500000,
-      "average_miners": 9.896513333333333,
-      "hashrate": 1043816995373.865,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794304800000,
-      "average_miners": 0,
-      "hashrate": 0,
-      "interval_ms": 300000,
-      "miners": 0,
-      "samples": 1
-    },
-    {
-      "at": 1794305100000,
-      "average_miners": 0,
-      "hashrate": 0,
-      "interval_ms": 300000,
-      "miners": 0,
-      "samples": 1
-    },
-    {
-      "at": 1794305400000,
-      "average_miners": 0,
-      "hashrate": 0,
-      "interval_ms": 300000,
-      "miners": 0,
-      "samples": 1
-    },
-    {
-      "at": 1794305700000,
-      "average_miners": 0.12691000000000002,
-      "hashrate": 126910,
-      "interval_ms": 300000,
-      "miners": 0,
-      "samples": 1
-    },
-    {
-      "at": 1794306000000,
-      "average_miners": 4.6043199999999995,
-      "hashrate": 4613305.899999999,
-      "interval_ms": 300000,
-      "miners": 5,
-      "samples": 1
-    },
-    {
-      "at": 1794306300000,
-      "average_miners": 6.264493333333333,
-      "hashrate": 492401717281.115,
-      "interval_ms": 300000,
-      "miners": 6,
-      "samples": 1
-    },
-    {
-      "at": 1794306600000,
-      "average_miners": 9.665073333333334,
-      "hashrate": 1066731652405.4432,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794306900000,
-      "average_miners": 8.949589999999999,
-      "hashrate": 1066067996080.6951,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794307200000,
-      "average_miners": 9.652396666666666,
-      "hashrate": 1056075225718.253,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794307500000,
-      "average_miners": 9.818756666666669,
-      "hashrate": 1055926562939.5421,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794307800000,
-      "average_miners": 9.954089999999999,
-      "hashrate": 1083786991805.4081,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794308100000,
-      "average_miners": 9.845403333333334,
-      "hashrate": 1069999971586.3735,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794308400000,
-      "average_miners": 9.913253333333333,
-      "hashrate": 1056977708659.1519,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794308700000,
-      "average_miners": 9.91577666666667,
-      "hashrate": 1068847585144.6417,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794309000000,
-      "average_miners": 9.21353,
-      "hashrate": 744374728920.7434,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794309300000,
-      "average_miners": 8.886399999999997,
-      "hashrate": 1059770111665.3582,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794309600000,
-      "average_miners": 8.94978,
-      "hashrate": 1070112104263.0083,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794309900000,
-      "average_miners": 8.178703333333333,
-      "hashrate": 1053323718542.6345,
-      "interval_ms": 300000,
-      "miners": 8,
-      "samples": 1
-    },
-    {
-      "at": 1794310200000,
-      "average_miners": 8.890533333333332,
-      "hashrate": 1054100131926.0312,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794310500000,
-      "average_miners": 8.898806666666667,
-      "hashrate": 1083177379598.5007,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794310800000,
-      "average_miners": 8.633276666666667,
-      "hashrate": 1062776098210.0466,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794311100000,
-      "average_miners": 8.58196,
-      "hashrate": 1057828569755.2318,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794311400000,
-      "average_miners": 8.917250000000001,
-      "hashrate": 1045250789827.3383,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794311700000,
-      "average_miners": 9.086673333333334,
-      "hashrate": 1075994297889.4167,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794312000000,
-      "average_miners": 8.993773333333332,
-      "hashrate": 1061062058367.6832,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794312300000,
-      "average_miners": 8.911489999999999,
-      "hashrate": 1075541433788.4805,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794312600000,
-      "average_miners": 8.338046666666669,
-      "hashrate": 1061675778379.6426,
-      "interval_ms": 300000,
-      "miners": 8,
-      "samples": 1
-    },
-    {
-      "at": 1794312900000,
-      "average_miners": 8.205710000000002,
-      "hashrate": 1078335611493.35,
-      "interval_ms": 300000,
-      "miners": 8,
-      "samples": 1
-    },
-    {
-      "at": 1794313200000,
-      "average_miners": 8.332989999999999,
-      "hashrate": 1065727536302.3016,
-      "interval_ms": 300000,
-      "miners": 8,
-      "samples": 1
-    },
-    {
-      "at": 1794313500000,
-      "average_miners": 8.489143333333335,
-      "hashrate": 1074472095816.0431,
-      "interval_ms": 300000,
-      "miners": 8,
-      "samples": 1
-    },
-    {
-      "at": 1794313800000,
-      "average_miners": 8.847869999999999,
-      "hashrate": 1064648090316.4938,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794314100000,
-      "average_miners": 8.716996666666667,
-      "hashrate": 1063094607563.135,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794314400000,
-      "average_miners": 7.904063333333334,
-      "hashrate": 1071674394820.32,
-      "interval_ms": 300000,
-      "miners": 8,
-      "samples": 1
-    },
-    {
-      "at": 1794314700000,
-      "average_miners": 9.094209999999997,
-      "hashrate": 1054629681604.6312,
-      "interval_ms": 300000,
-      "miners": 9,
-      "samples": 1
-    },
-    {
-      "at": 1794315000000,
-      "average_miners": 10.522453333333333,
-      "hashrate": 1057591187705.8755,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794315300000,
-      "average_miners": 10.357213333333329,
-      "hashrate": 1056011225500.834,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794315600000,
-      "average_miners": 10.946996666666667,
-      "hashrate": 1053854325753.9825,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794315900000,
-      "average_miners": 10.897760000000002,
-      "hashrate": 1054999191632.8884,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794316200000,
-      "average_miners": 10.901753333333332,
-      "hashrate": 1060812842431.0901,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794316500000,
-      "average_miners": 10.545829999999999,
-      "hashrate": 1068186157465.7683,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794316800000,
-      "average_miners": 10.909946666666665,
-      "hashrate": 1086149127543.4667,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794317100000,
-      "average_miners": 10.898286666666667,
-      "hashrate": 1060853016476.6617,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794317400000,
-      "average_miners": 10.629653333333335,
-      "hashrate": 1089011679470.9584,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794317700000,
-      "average_miners": 10.786669999999997,
-      "hashrate": 1060686874170.3969,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794318000000,
-      "average_miners": 10.91588,
-      "hashrate": 1050059331493.0466,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794318300000,
-      "average_miners": 10.613363333333332,
-      "hashrate": 1090526625770.7546,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794318600000,
-      "average_miners": 10.871033333333335,
-      "hashrate": 1062976991525.3726,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794318900000,
-      "average_miners": 10.902296666666668,
-      "hashrate": 1069042017256.7467,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794319200000,
-      "average_miners": 10.58262,
-      "hashrate": 1080203753491.2734,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794319500000,
-      "average_miners": 10.257613333333333,
-      "hashrate": 1073681365079.4385,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794319800000,
-      "average_miners": 10.543776666666666,
-      "hashrate": 1068334698539.6418,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794320100000,
-      "average_miners": 10.868176666666669,
-      "hashrate": 1053198575174.15,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794320400000,
-      "average_miners": 10.703316666666666,
-      "hashrate": 1084702143523.8073,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794320700000,
-      "average_miners": 10.903369999999999,
-      "hashrate": 1065649974512.7728,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794321000000,
-      "average_miners": 10.657806666666664,
-      "hashrate": 1087653052087.2113,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794321300000,
-      "average_miners": 8.058576666666667,
-      "hashrate": 567728025986.4752,
-      "interval_ms": 300000,
-      "miners": 8,
-      "samples": 1
-    },
-    {
-      "at": 1794321600000,
-      "average_miners": 10.727976666666667,
-      "hashrate": 882158394261.395,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794321900000,
-      "average_miners": 10.893453333333333,
-      "hashrate": 1054805693071.63,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794322200000,
-      "average_miners": 10.595826666666666,
-      "hashrate": 1064022787778.7982,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794322500000,
-      "average_miners": 10.865376666666666,
-      "hashrate": 1059835558395.798,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794322800000,
-      "average_miners": 10.04325,
-      "hashrate": 1056792336650.5636,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794323100000,
-      "average_miners": 10.331823333333334,
-      "hashrate": 1065170734852.2938,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794323400000,
-      "average_miners": 10.837283333333332,
-      "hashrate": 1058807384455.273,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794323700000,
-      "average_miners": 10.917656666666668,
-      "hashrate": 1064417208436.3774,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794324000000,
-      "average_miners": 10.460499999999998,
-      "hashrate": 1055265448262.8121,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794324300000,
-      "average_miners": 10.881476666666666,
-      "hashrate": 1060527448185.8317,
-      "interval_ms": 300000,
-      "miners": 11,
-      "samples": 1
-    },
-    {
-      "at": 1794324600000,
-      "average_miners": 10.111516666666667,
-      "hashrate": 1057412863870.0416,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
-    {
-      "at": 1794324900000,
-      "average_miners": 10.15653,
-      "hashrate": 1068793173686.2833,
-      "interval_ms": 300000,
-      "miners": 10,
-      "samples": 1
-    },
     {
       "at": 1794325200000,
       "average_miners": 10.889100000000001,
@@ -4345,10 +3564,786 @@
       "samples": 1
     },
     {
-      "at": 1794382482671,
-      "hashrate": 1070007810000,
+      "at": 1794382500000,
+      "average_miners": 10.593626666666664,
+      "hashrate": 1057135624019.7666,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794382800000,
+      "average_miners": 10.91644,
+      "hashrate": 1055227483104.1368,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794383100000,
+      "average_miners": 10.882476666666669,
+      "hashrate": 1063069403679.5767,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794383400000,
+      "average_miners": 10.888790000000002,
+      "hashrate": 1065040135694.4102,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794383700000,
+      "average_miners": 10.555273333333332,
+      "hashrate": 1058666619794.0499,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794384000000,
+      "average_miners": 10.878643333333335,
+      "hashrate": 1054813624581.4397,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794384300000,
+      "average_miners": 10.704640000000001,
+      "hashrate": 1069502187526.63,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794384600000,
+      "average_miners": 10.051733333333333,
+      "hashrate": 1081936571499.8593,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794384900000,
+      "average_miners": 9.935186666666667,
+      "hashrate": 1070585552388.4341,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794385200000,
+      "average_miners": 10.657626666666665,
+      "hashrate": 1061057075298.0499,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794385500000,
+      "average_miners": 10.569449999999996,
+      "hashrate": 1063307160365.435,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794385800000,
+      "average_miners": 10.927323333333332,
+      "hashrate": 1068879960023.2682,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794386100000,
+      "average_miners": 10.873353333333332,
+      "hashrate": 1067371419724.4032,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794386400000,
+      "average_miners": 10.565099999999997,
+      "hashrate": 1079758056761.0289,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794386700000,
+      "average_miners": 10.889186666666667,
+      "hashrate": 1069567648740.8246,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794387000000,
+      "average_miners": 10.230443333333332,
+      "hashrate": 1066478249332.8882,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794387300000,
+      "average_miners": 9.822099999999999,
+      "hashrate": 1053295223874.0234,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794387600000,
+      "average_miners": 10.325113333333334,
+      "hashrate": 1031208628701.8416,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794387900000,
+      "average_miners": 10.953936666666664,
+      "hashrate": 1028361803771.9497,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794388200000,
+      "average_miners": 9.928816666666666,
+      "hashrate": 1025459016452.2874,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794388500000,
+      "average_miners": 10.5205,
+      "hashrate": 1046114954243.9849,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794388800000,
+      "average_miners": 10.323263333333333,
+      "hashrate": 808239866001.0618,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794389100000,
+      "average_miners": 8.466376666666667,
+      "hashrate": 249144921530.00998,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794389400000,
+      "average_miners": 9.211006666666666,
+      "hashrate": 1067188718609.3665,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794389700000,
+      "average_miners": 8.901806666666667,
+      "hashrate": 1059971368298.5592,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794390000000,
+      "average_miners": 8.869796666666668,
+      "hashrate": 1062287155321.274,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794390300000,
+      "average_miners": 8.65956,
+      "hashrate": 1075960154940.9999,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794390600000,
+      "average_miners": 8.929486666666667,
+      "hashrate": 1065920185264.5829,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794390900000,
+      "average_miners": 8.928566666666667,
+      "hashrate": 1065793581047.5391,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794391200000,
+      "average_miners": 8.316276666666667,
+      "hashrate": 1080480961418.4783,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794391500000,
+      "average_miners": 8.49536,
+      "hashrate": 1061410518493.0366,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794391800000,
+      "average_miners": 8.938629999999998,
+      "hashrate": 1057253010517.1368,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794392100000,
+      "average_miners": 8.582196666666666,
+      "hashrate": 1072515295837.6891,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794392400000,
+      "average_miners": 8.873153333333335,
+      "hashrate": 1063486157002.7045,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794392700000,
+      "average_miners": 8.423076666666667,
+      "hashrate": 1063345094293.555,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794393000000,
+      "average_miners": 8.42768,
+      "hashrate": 1063838273333.8483,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794393300000,
+      "average_miners": 8.908299999999999,
+      "hashrate": 1072054898035.1483,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794393600000,
+      "average_miners": 8.906059999999998,
+      "hashrate": 1071768908163.4218,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794393900000,
+      "average_miners": 9.65173333333333,
+      "hashrate": 1056026330495.0402,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794394200000,
+      "average_miners": 10.40974333333333,
+      "hashrate": 1065411094781.3739,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794394500000,
+      "average_miners": 10.885563333333332,
+      "hashrate": 1077169970325.1113,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794394800000,
+      "average_miners": 10.88107,
+      "hashrate": 1056702510808.0145,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794395100000,
+      "average_miners": 10.84525333333333,
+      "hashrate": 1065381565525.7134,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794395400000,
+      "average_miners": 10.847676666666665,
+      "hashrate": 1044229505922.7017,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794395700000,
+      "average_miners": 10.60501,
+      "hashrate": 1057488568586.802,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794396000000,
+      "average_miners": 10.20222,
+      "hashrate": 1065331515443.7777,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794396300000,
+      "average_miners": 9.09709,
+      "hashrate": 1033457092924.5521,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794396600000,
+      "average_miners": 9.37899,
+      "hashrate": 1064183018587.8129,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794396900000,
+      "average_miners": 10.883306666666668,
+      "hashrate": 1042973353600.4088,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794397200000,
+      "average_miners": 10.895803333333332,
+      "hashrate": 1041973582446.6653,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794397500000,
+      "average_miners": 10.896463333333333,
+      "hashrate": 1050462115667.7614,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794397800000,
+      "average_miners": 10.5785,
+      "hashrate": 1066477896606.3054,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794398100000,
+      "average_miners": 10.685399999999998,
+      "hashrate": 1065953103511.9484,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794398400000,
+      "average_miners": 9.966569999999999,
+      "hashrate": 1058181796334.5509,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794398700000,
+      "average_miners": 10.726416666666665,
+      "hashrate": 1063180168797.114,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794399000000,
+      "average_miners": 10.881626666666666,
+      "hashrate": 1064902078278.3351,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794399300000,
+      "average_miners": 10.592473333333334,
+      "hashrate": 1068912193702.5934,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794399600000,
+      "average_miners": 9.982096666666665,
+      "hashrate": 1092229418635.2817,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794399900000,
+      "average_miners": 9.766106666666667,
+      "hashrate": 1068582632633,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794400200000,
+      "average_miners": 10.956669999999999,
+      "hashrate": 1065928110263.3348,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794400500000,
+      "average_miners": 10.560613333333333,
+      "hashrate": 1063374846358.4768,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794400800000,
+      "average_miners": 10.803236666666667,
+      "hashrate": 1045442757386.8516,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794401100000,
+      "average_miners": 9.968043333333334,
+      "hashrate": 1071260392733.8434,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794401400000,
+      "average_miners": 10.898913333333333,
+      "hashrate": 1064334235721.2913,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794401700000,
+      "average_miners": 10.573726666666664,
+      "hashrate": 1066042611200.0184,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794402000000,
+      "average_miners": 10.396036666666665,
+      "hashrate": 978206092923.1733,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794402300000,
+      "average_miners": 8.932730000000001,
+      "hashrate": 1079433094053.4934,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794402600000,
+      "average_miners": 7.928190000000002,
+      "hashrate": 1047640288877.245,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794402900000,
+      "average_miners": 6.397543333333333,
+      "hashrate": 357030353367.3696,
+      "interval_ms": 300000,
+      "miners": 6,
+      "samples": 1
+    },
+    {
+      "at": 1794403200000,
+      "average_miners": 8.247496666666667,
+      "hashrate": 698698222406.4303,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794403500000,
+      "average_miners": 8.889733333333332,
+      "hashrate": 1066546185942.6482,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794403800000,
+      "average_miners": 8.80372,
+      "hashrate": 1076190279377.68,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794404100000,
+      "average_miners": 8.765476666666666,
+      "hashrate": 1082516919355.6613,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794404400000,
+      "average_miners": 9.971363333333333,
+      "hashrate": 1072812483862.792,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794404700000,
+      "average_miners": 10.72323,
+      "hashrate": 1058829057172.1934,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794405000000,
+      "average_miners": 10.783256666666668,
+      "hashrate": 1061103612243.5138,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794405300000,
+      "average_miners": 10.885480000000001,
+      "hashrate": 1058732333464.421,
+      "interval_ms": 300000,
+      "miners": 11,
+      "samples": 1
+    },
+    {
+      "at": 1794405600000,
+      "average_miners": 10.299023333333333,
+      "hashrate": 1063612110191.0752,
+      "interval_ms": 300000,
+      "miners": 10,
+      "samples": 1
+    },
+    {
+      "at": 1794405900000,
+      "average_miners": 7.97138,
+      "hashrate": 1093994165378.5815,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794406200000,
+      "average_miners": 8.545813333333333,
+      "hashrate": 1074858694466.6382,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794406500000,
+      "average_miners": 8.705563333333332,
+      "hashrate": 1062405067426.5267,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794406800000,
+      "average_miners": 9.122443333333335,
+      "hashrate": 1055846096425.0765,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794407100000,
+      "average_miners": 8.925506666666669,
+      "hashrate": 1073012648325.5067,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794407400000,
+      "average_miners": 8.05257,
+      "hashrate": 1061504378136.0667,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794407700000,
+      "average_miners": 7.745900000000001,
+      "hashrate": 1061605894613.6901,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794408000000,
+      "average_miners": 9.064340000000001,
+      "hashrate": 1071442117690.175,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794408300000,
+      "average_miners": 8.9712,
+      "hashrate": 1076530019971.6023,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794408600000,
+      "average_miners": 8.368386666666666,
+      "hashrate": 1051682569645.8307,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794408900000,
+      "average_miners": 7.710363333333333,
+      "hashrate": 688647560540.522,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794409200000,
+      "average_miners": 8.00864,
+      "hashrate": 734828362050.885,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794409500000,
+      "average_miners": 8.90092,
+      "hashrate": 1063643740733.8456,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794409800000,
+      "average_miners": 8.587390000000001,
+      "hashrate": 1068557144809.2311,
+      "interval_ms": 300000,
+      "miners": 9,
+      "samples": 1
+    },
+    {
+      "at": 1794410100000,
+      "average_miners": 7.941670000000001,
+      "hashrate": 1066390636261.6466,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794410400000,
+      "average_miners": 7.6235366666666655,
+      "hashrate": 1069499959689.288,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794410700000,
+      "average_miners": 7.961080000000001,
+      "hashrate": 1056836511893.0054,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794411000000,
+      "average_miners": 7.922993333333334,
+      "hashrate": 1068191315858.165,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794411300000,
+      "average_miners": 7.92946,
+      "hashrate": 1055488056365.87,
+      "interval_ms": 300000,
+      "miners": 8,
+      "samples": 1
+    },
+    {
+      "at": 1794411424241,
+      "hashrate": 1080004795500,
       "live": true,
-      "miners": 11
+      "miners": 8
     }
   ],
   "record": {
@@ -4357,19 +4352,19 @@
   },
   "versions": [
     {
-      "hashrate": 1070004780000,
-      "miners": 8,
-      "name": "2.5.9"
+      "hashrate": 1080002796500,
+      "miners": 6,
+      "name": "2.6.1"
     },
     {
-      "hashrate": 2020000,
-      "miners": 2,
-      "name": "2.5.4"
-    },
-    {
-      "hashrate": 1010000,
+      "hashrate": 1000000,
       "miners": 1,
       "name": "2.5.7"
+    },
+    {
+      "hashrate": 999000,
+      "miners": 1,
+      "name": "2.6.0"
     }
   ]
 }
