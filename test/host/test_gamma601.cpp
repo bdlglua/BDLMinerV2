@@ -1,6 +1,7 @@
 #define BOARD_GAMMA601 1
 #define BOARD_ASIC 1
 #include "../../src/gamma601.cpp"
+#include "core/mining_safety.h"
 #include <cassert>
 #include <string>
 void logf(const char *, ...) {}
@@ -35,6 +36,7 @@ static void reset(){
     latched=powered=configured=forceStock=false;autoRestarts=0;autoRestartSince=0;diodeStrikes=0;lastDiode=NAN;lastFaultText[0]=0;lastFaultTime=0;Preferences::data.clear();settings=Settings();settings.asicFrequency=525;
     live={NAN,NAN,NAN,NAN,NAN,0,0,0,false,"Starting",525,false,"",-1,-1,100,false,true,"Startup or stopped ASIC"};publish();
     fanSetting=100|(65u<<16);fanPolicy=mining::FanControl();appliedFanDuty=255;testFanWriteIgnored=false;
+    diodeReady=false;boardTemperature=NAN;
     testI2c.clear();testI2cWrites.clear();testI2cFail=testUartFail=false;testFailRegister=-1;
     testUartTx.clear();testUartTxTimes.clear();testUartRx.clear();testDelayHook=nullptr;testMillis=1000;testReset=1;power=100;generation=1;poolReady=true;powerUntil=UINT32_MAX;
     bytes(0x4c,0xfd,{0x16});bytes(0x24,0xad,{6,0x54,0x49,0x54,0x6d,0x24,0x41});bytes(0x24,0x20,{0x97});health(); // relative limits, exponent -9: the TPS546 default
@@ -42,6 +44,16 @@ static void reset(){
     for(int crc=0;crc<32;++crc){testChipReply[10]=crc;if(bm1370::crc5(testChipReply.data()+2,9)==0)break;}
 }
 int main(){
+    // An unpowered ASIC has not routed its diode. Its floating input can
+    // repeatedly report a plausible or high value while waiting for a pool.
+    reset();bytes(0x4c,1,{106});begin();
+    for(int i=0;i<6;++i){
+        assert(collect(false)&&!latched&&!powered&&std::isnan(live.temperature));
+        assert(temperature()==35&&!strcmp(temperatureSource(),"board"));
+        assert(live.fanPercent==100&&live.fanOverride);
+    }
+    bytes(0x4c,1,{50});AsicWork initial;initial.generation=1;initial.versionMask=bm1370::kVersionMask;
+    assert(initAsic(initial)&&powered&&live.running&&temperature()==50);
     reset();begin();assert(configured&&!latched&&testReset==0);
     assert(testI2c[std::make_pair(0x24,1)][0]==0);
     assert(testI2c[std::make_pair(0x4c,0x4c)][0]==63);
@@ -87,9 +99,41 @@ int main(){
      char out[192];lastFault(out,sizeof(out));assert(saved==out);}
     assert(testI2c[std::make_pair(0x24,1)][0]==0&&testI2c[std::make_pair(0x4c,0x4c)][0]==63);
     reset();begin();assert(initAsic(w));off("Thermal pause");assert(!latched&&testReset==0);
-    bytes(0x4c,1,{40});assert(collect(false)&&temperature()==40); // cooldown still observable while unpowered
+    bytes(0x4c,1,{40});assert(collect(false)&&temperature()==35); // board sensor observes cooldown while unpowered
+    bytes(0x4c,1,{106});
+    for(int i=0;i<6;++i)assert(collect(false)&&!latched&&!powered&&temperature()==35);
+    bytes(0x4c,0,{70});assert(collect(false)&&temperature()==70); // real board heat is still visible
+    bytes(0x4c,0,{35});
     // A silent diode (ASIC off) reads as the board's own temperature, not as a lost sensor.
     bytes(0x4c,1,{0x7f});bytes(0x4c,0x10,{0xe0});assert(collect(false)&&!latched&&temperature()==35);
+    word(0x8d,bm1370::encodeLinear11(105));
+    assert(!collect(false)&&latched&&!powered&&testReset==0); // regulator protection still applies while paused
+    // The reported 65 C case: full cooling precedes the configured thermal
+    // pause. A cooler board sensor cannot bypass the two-minute hold, and a
+    // still-hot board cannot resume even after that hold expires.
+    reset();begin();assert(initAsic(w));setFanControl(false,30,65);
+    {
+        mining::ThermalPolicy heat;heat.steps=false;heat.holdMs=120000;
+        bytes(0x4c,1,{64});assert(collect(true)&&live.fanPercent==100&&live.fanOverride);
+        power=heat.power(temperature(),65,100,false,testMillis);assert(power==100);
+        bytes(0x4c,1,{65});assert(collect(true)&&live.fanPercent==100);
+        uint32_t pausedAt=testMillis;
+        power=heat.power(temperature(),65,100,false,testMillis);assert(power==0);
+        step();assert(!powered&&!latched&&testReset==0);
+        assert(testI2c[std::make_pair(0x24,0x01)][0]==0);
+        assert(live.fanPercent==100&&live.fanOverride);
+        bytes(0x4c,1,{106}); // floating external diode after core power-off
+        for(int i=0;i<3;++i)assert(collect(false)&&!latched&&temperature()==35);
+        testMillis=pausedAt+119999;
+        power=heat.power(temperature(),65,100,false,testMillis);assert(power==0);
+        step();assert(!powered&&!latched&&live.fanPercent==100);
+        testMillis=pausedAt+120000;bytes(0x4c,0,{61});assert(collect(false));
+        power=heat.power(temperature(),65,100,false,testMillis);assert(power==0);
+        bytes(0x4c,0,{60});assert(collect(false));
+        power=heat.power(temperature(),65,100,false,testMillis);assert(power==100);
+        bytes(0x4c,1,{50});stubWork=w;stubWork.shareDifficulty=1024;workBusy=false;
+        step();assert(powered&&live.running&&!latched&&testReset==1);
+    }
     // A regulator that does not answer (no 5 V yet) or does not hold a setting: not
     // configured, the ASIC stays off, and the task tries again (not latched).
     reset();bytes(0x24,0xad,{6,0,0,0,0,0,0});begin();assert(!configured&&!latched&&testReset==0);

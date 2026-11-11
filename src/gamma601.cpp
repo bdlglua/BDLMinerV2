@@ -320,7 +320,11 @@ bool collect(bool requireDiode) {
     int e = voltageMode & 31; if (e & 16) e -= 32;
     live.regulatorStatus = status;
     boardTemperature = internal < 0x80 ? float(internal) : NAN;  // two's complement; below 0 C is not a reading here
-    float diode = powered && !diodeReady ? NAN : bm1370::diodeTemperature(msb, lsb);
+    // The ASIC's analog mux is only trustworthy while its core is powered
+    // and its routing register has been initialized. Off/paused readings
+    // can float to 106 C and must not latch an overheat or prevent cooldown.
+    // The EMC2101 board sensor and regulator interlocks stay active then.
+    float diode = powered && diodeReady ? bm1370::diodeTemperature(msb, lsb) : NAN;
     bool suspect = std::isfinite(diode) ? diode >= bm1370::kAsicMaxC : requireDiode;
     bool unconfirmed = suspect && ++diodeStrikes < kDiodeConfirm;
     if (unconfirmed) {
