@@ -15,7 +15,7 @@ regex = "1"
 semver = "1"
 tempfile = "3"
 percent-encoding = "2"
-ureq = { version = "2.12", features = ["json"] }
+ureq = { version = "2.12", features = ["json", "proxy-from-env", "native-certs"] }
 
 # Keep the existing independent WebAssembly benchmark and its target directory.
 [workspace]

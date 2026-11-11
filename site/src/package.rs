@@ -697,13 +697,37 @@ pub fn snapshot(output: &Path) -> io::Result<()> {
         .unwrap_or_default()
         .as_secs_f64()
         * 1000.0;
-    let response = ureq::get("https://api.bdl-pool.com:36018/api/summary")
-        .set("User-Agent", "BDLMiner-public-snapshot/2 (Rust)")
-        .set("Accept", "application/json")
-        .set("Cache-Control", "no-cache")
-        .timeout(Duration::from_secs(15))
-        .call()
-        .map_err(|_| invalid("Public statistics request failed"))?;
+    let mut response = None;
+    for attempt in 0..2 {
+        match ureq::get("https://api.bdl-pool.com:36018/api/summary")
+            .set("User-Agent", "BDLMiner-public-snapshot/2 (Rust)")
+            .set("Accept", "application/json")
+            .set("Cache-Control", "no-cache")
+            .timeout(Duration::from_secs(15))
+            .call()
+        {
+            Ok(value) => {
+                response = Some(value);
+                break;
+            }
+            Err(error) => {
+                let retry = matches!(&error, ureq::Error::Transport(_))
+                    || matches!(&error,ureq::Error::Status(status,_) if *status==429 || *status>=500);
+                if attempt == 1 || !retry {
+                    return Err(invalid(match error {
+                        ureq::Error::Status(status, _) => {
+                            format!("Public statistics HTTP {status}")
+                        }
+                        ureq::Error::Transport(error) => {
+                            format!("Public statistics transport {:?}", error.kind())
+                        }
+                    }));
+                }
+                std::thread::sleep(Duration::from_secs(1));
+            }
+        }
+    }
+    let response = response.ok_or_else(|| invalid("Public statistics unavailable"))?;
     let mut raw = Vec::new();
     response
         .into_reader()
