@@ -1,0 +1,30 @@
+# Security audit of the Rust firmware's dependencies: RustSec advisories
+# (cargo-audit) for the host and ESP32 lockfiles. Also weekly, so a new
+# advisory against an unchanged lockfile is reported without a push.
+name: Security audit
+
+on:
+  push:
+    branches: [main, "v2/**"]
+    paths: ["firmware-rs/**", ".github/workflows/security-audit.yml"]
+  pull_request:
+    paths: ["firmware-rs/**", ".github/workflows/security-audit.yml"]
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-audit
+      - name: RustSec advisories, host workspace
+        run: cargo audit --file firmware-rs/Cargo.lock
+      - name: RustSec advisories, ESP32 firmware
+        run: cargo audit --file firmware-rs/esp/Cargo.lock

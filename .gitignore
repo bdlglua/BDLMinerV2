@@ -35,3 +35,8 @@ dist/
 /installer/assets/wasm/
 
 /site/browser/target/
+# Rust firmware build products and host-run data
+firmware-rs/target/
+firmware-rs/esp/target/
+firmware-rs/esp/.embuild/
+bdlminer-data/

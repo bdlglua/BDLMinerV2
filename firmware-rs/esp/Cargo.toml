@@ -1,0 +1,44 @@
+# The ESP32 firmware. Not part of the host workspace: it needs the esp Rust
+# toolchain (espup) and builds ESP-IDF on its first build. See ../README.md.
+[package]
+name = "bdlminer-esp"
+description = "BDLMiner V2 firmware for ESP32 boards (ESP-IDF)"
+version = "2.6.1"
+edition = "2021"
+rust-version = "1.85"
+license = "GPL-3.0-only"
+publish = false
+
+[[bin]]
+name = "bdlminer-esp"
+harness = false
+
+[features]
+default = []
+# Boards with an M5 IMU near the battery default to a 65 C thermal limit.
+m5 = []
+
+[dependencies]
+bdlminer-core = { path = "../core" }
+bdlminer-app = { path = "../app" }
+esp-idf-svc = { version = "0.51", features = ["std", "alloc", "binstart"] }
+log = "0.4"
+anyhow = "1"
+serde_json = "1"
+
+[build-dependencies]
+embuild = "0.33"
+
+[profile.release]
+opt-level = "s"
+codegen-units = 1
+lto = "fat"
+
+[profile.dev]
+debug = true
+opt-level = "z"
+
+# The mining kernel is built for speed, the rest for size (tools/optimize.py
+# does the same for the C++ firmware).
+[profile.release.package.bdlminer-core]
+opt-level = 3

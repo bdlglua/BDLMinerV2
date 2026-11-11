@@ -56,6 +56,25 @@ jobs:
       - run: node test/web/test_hub.cjs
       - run: node test/web/test_flash.cjs
 
+  firmware-rs:
+    # Rust rewrite of the firmware: portable core and application, host build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.1
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --manifest-path firmware-rs/Cargo.toml --all -- --check
+      - run: cargo fmt --manifest-path firmware-rs/esp/Cargo.toml -- --check
+      - run: cargo clippy --locked --manifest-path firmware-rs/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --locked --manifest-path firmware-rs/Cargo.toml
+      - run: cargo build --locked --release --manifest-path firmware-rs/Cargo.toml -p bdlminer-host
+      # The reference set must be exactly what its independent generator gives.
+      - name: Reference set up to date
+        run: |
+          python3 firmware-rs/core/tests/fixtures/make_golden.py > firmware-rs/core/tests/fixtures/golden.json
+          git diff --exit-code -- firmware-rs/core/tests/fixtures/golden.json
+
   test:
     runs-on: ubuntu-latest
     steps:
