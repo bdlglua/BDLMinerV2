@@ -80,7 +80,8 @@ constexpr float kAsicMaxC = 75, kRegulatorMaxC = 105;
 // which latches until a restart.
 constexpr uint8_t kMaxUserTempC = uint8_t(kAsicMaxC) - 2;
 constexpr uint16_t kStatusOff = 0x0040, kStatusVinUv = 0x0008;
-constexpr uint16_t kStatusFaults = 0x0020 | 0x0010 | 0x0004;  // VOUT_OV, IOUT_OC, TEMP
+constexpr uint16_t kStatusIoutOc = 0x0010;
+constexpr uint16_t kStatusFaults = 0x0020 | kStatusIoutOc | 0x0004;  // VOUT_OV, IOUT_OC, TEMP
 struct Health {
     float temperature, regulatorTemperature, inputVoltage, coreVoltage, current;
     uint16_t rpm, status;

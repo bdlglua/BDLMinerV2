@@ -98,6 +98,15 @@ int main(){
     {std::string saved=lastFaultText;lastFaultText[0]=0;loadFault();assert(saved==lastFaultText);
      char out[192];lastFault(out,sizeof(out));assert(saved==out);}
     assert(testI2c[std::make_pair(0x24,1)][0]==0&&testI2c[std::make_pair(0x4c,0x4c)][0]==63);
+    // Real 2.5.8 report: the regulator latched IOUT_OC and turned its output
+    // off. The resulting 0.027 V must not hide its overcurrent diagnosis.
+    reset();begin();assert(initAsic(w));
+    word(0x79,0x4851);word(0x88,bm1370::encodeLinear11(5.38));word(0x8b,14);
+    word(0x8c,bm1370::encodeLinear11(-0.3));bytes(0x4c,1,{72});bytes(0x4c,0x10,{0xa0});
+    assert(!collect(true)&&latched&&!powered&&testReset==0);
+    assert(!strcmp(live.state,"Regulator output overcurrent; restart required"));
+    assert(strstr(lastFaultText,"regulator status 0x4851")&&strstr(lastFaultText,"core 0.027 V"));
+    assert(live.fanPercent==100&&testI2c[std::make_pair(0x24,1)][0]==0);
     reset();begin();assert(initAsic(w));off("Thermal pause");assert(!latched&&testReset==0);
     bytes(0x4c,1,{40});assert(collect(false)&&temperature()==35); // board sensor observes cooldown while unpowered
     bytes(0x4c,1,{106});

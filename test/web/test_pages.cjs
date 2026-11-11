@@ -985,6 +985,12 @@ check('Gamma stopped ASIC overrides pool-online status and escapes fault text',(
  assert.equal(await f.page.locator('#device-grid script').count(),0);
  assert.match(await f.page.locator('#device-grid').textContent(),/— V/);
 }));
+check('Gamma regulator overcurrent is shown in French despite a connected pool',()=>run({language:'fr',stats:{asic:{model:'BM1370',running:false,state:'Regulator output overcurrent; restart required',frequency_mhz:0,fan_rpm:8837,core_v:.027,current_a:-.3,input_v:5.38,regulator_temp_c:62.5}}},async f=>{
+ await f.page.goto(f.url);await f.page.waitForSelector('#device-grid .t');
+ assert.equal(await f.page.locator('#health').textContent(),'Surintensité en sortie du régulateur ; redémarrage nécessaire');
+ assert.equal(await f.page.locator('#health').getAttribute('data-level'),'bad');
+ assert.match(await f.page.locator('#device-grid').textContent(),/Surintensité en sortie du régulateur/);
+}));
 
 check('Gamma manual fan defaults to full speed and applies live on mobile',()=>run({gamma:true,mobile:true,postText:'{"restart":false,"changed":1}'},async f=>{
   await loaded(f);const slider=f.page.locator('#k_fanpct');

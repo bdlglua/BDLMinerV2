@@ -89,6 +89,14 @@ int main() {
         h=healthy;h.status=flag;assert(!h.fault(true)&&!h.fault(false,false));
     }
     h=healthy;h.status=0x0840;h.coreVoltage=0;assert(!h.fault(false));assert(h.fault(true));
+    // Reported regulator shutdown: identify its latched overcurrent instead
+    // of blaming the low voltage/current sampled after the output was cut.
+    h=healthy;h.status=0x4851;h.inputVoltage=5.38f;h.coreVoltage=.027f;h.current=-.3f;h.temperature=72.6f;
+    assert(!strcmp(h.fault(true),"Regulator output overcurrent; restart required"));
+    assert(!strcmp(h.fault(false,false),"Regulator output overcurrent; restart required"));
+    h.status=0x4841;assert(!strcmp(h.fault(true),"Regulator reports a fault; restart required"));
+    assert(!h.fault(false,false)); // expected OFF while intentionally unpowered
+    h.status=0;assert(!strcmp(h.fault(true),"ASIC voltage fault; restart required"));
     // Whole numbers as ESP-Miner encodes them.
     assert(encodeLinear11Int(0)==0&&encodeLinear11Int(3)==3&&encodeLinear11Int(105)==105&&encodeLinear11Int(650)==650);
     assert(encodeLinear11Int(2000)==(1<<11|1000)&&linear11(encodeLinear11Int(2000))==2000);

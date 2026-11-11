@@ -146,12 +146,15 @@ const char *Health::fault(bool powered, bool requireDiode) const {
         return "5V supply fault; restart required";
     if (powered && rpm < 500) return "Fan stopped; restart required";
     if (!std::isfinite(current) || current < -1 || current >= 30) return "ASIC current fault; restart required";
+    // A hardware fault can already have disabled the output: diagnose that
+    // status before its resulting near-zero core voltage masks the cause.
+    if (status & kStatusIoutOc) return "Regulator output overcurrent; restart required";
+    if (status & (powered ? kStatusFaults | kStatusOff | kStatusVinUv : kStatusFaults))
+        return "Regulator reports a fault; restart required";
     // Around the chosen voltage: 1.00-1.25 V at the stock 1150 mV (0.5 mV for float rounding).
     float target = coreTarget > 0 ? coreTarget : kStockMv / 1000.0f;
     if (powered && (!std::isfinite(coreVoltage) || coreVoltage < target - 0.1505f || coreVoltage > target + 0.1005f))
         return "ASIC voltage fault; restart required";
-    if (status & (powered ? kStatusFaults | kStatusOff | kStatusVinUv : kStatusFaults))
-        return "Regulator reports a fault; restart required";
     return nullptr;
 }
 const char *Health::notReady() const {
