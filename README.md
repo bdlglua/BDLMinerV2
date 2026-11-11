@@ -1,9 +1,9 @@
 # BDLMiner V2
 
 [![Install BDLMinerV2](https://img.shields.io/badge/INSTALL-BDLMinerV2-f7931a?style=for-the-badge&logo=espressif&logoColor=white)](https://miner.bdl-pool.com/flash.html)
-[![Stable v2.5.7](https://img.shields.io/badge/STABLE-v2.5.7-2ea44f?style=for-the-badge)](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.7)
+[![Stable v2.5.8](https://img.shields.io/badge/STABLE-v2.5.8-2ea44f?style=for-the-badge)](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.8)
 
-**[Install in your browser (Chrome / Edge)](https://miner.bdl-pool.com/flash.html)** · **[Stable v2.5.7 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.7)** · [Installation guide](docs/guide.md#install-a-release-no-build-tools)
+**[Install in your browser (Chrome / Edge)](https://miner.bdl-pool.com/flash.html)** · **[Stable v2.5.8 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.8)** · [Installation guide](docs/guide.md#install-a-release-no-build-tools)
 
 Solo SHA-256d mining firmware for ESP32 boards and experimental ASIC boards,
 with a local dashboard and a Linux/Raspberry Pi fleet hub.
@@ -12,7 +12,7 @@ with a local dashboard and a Linux/Raspberry Pi fleet hub.
 [Website](https://miner.bdl-pool.com/) ·
 [Interactive demos](https://miner.bdl-pool.com/demo.html) ·
 [Statistics](https://miner.bdl-pool.com/stats.html) ·
-**[Stable v2.5.7](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.7)**
+**[Stable v2.5.8](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.5.8)**
 
 Mine **BTC, BCH, BSV, eCash (XEC), DigiByte SHA-256d (DGB) or Peercoin (PPC, PoW)** with a matching
 pool and payout address or account. BTC supports Stratum V1 and native Stratum V2.
@@ -65,7 +65,7 @@ Both projects make solo Bitcoin mining approachable on small ESP32 devices. Choo
 
 ## Install and update
 
-**Recommended: [Install BDLMinerV2 stable v2.5.7 with the Web Flasher](https://miner.bdl-pool.com/flash.html).** Do not use older v1.x releases for a new V2 installation.
+**Recommended: [Install BDLMinerV2 stable v2.5.8 with the Web Flasher](https://miner.bdl-pool.com/flash.html).** Do not use older v1.x releases for a new V2 installation.
 
 
 1. Open the **[Flasher](https://miner.bdl-pool.com/flash.html)** in Chrome or Edge
@@ -106,7 +106,7 @@ Solo mining is educational: a payout requires finding a valid block.
 - [My miners remotely](https://miner.bdl-pool.com/remote.html) · [Setup](docs/remote-access.md) / [Français](docs/remote-access.fr.md)
 - [Troubleshooting FAQ](https://miner.bdl-pool.com/faq.html) · [Shares explained](docs/guide.md#pool-shares-and-local-records)
 - [Coin and pool setup](docs/mining-coins.md)
-- [Stable v2.5.7 release notes](docs/releases/v2.5.7.md) / [Français](docs/releases/v2.5.7.fr.md) · [All releases](https://github.com/bdlglua/BDLMinerV2/releases)
+- [Stable v2.5.8 release notes](docs/releases/v2.5.8.md) / [Français](docs/releases/v2.5.8.fr.md) · [All releases](https://github.com/bdlglua/BDLMinerV2/releases)
 - [Build from source](docs/development.md) · [Contribute](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ### Pools for ESP32
