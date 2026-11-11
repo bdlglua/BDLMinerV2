@@ -29,7 +29,7 @@ where this option was introduced with a disabled default. Only the connected poo
 is reported, including the backup when active. Recognised public hosts are mapped
 to a fixed group; every other host becomes *Other / private pool* on the device.
 The groups are Public Pool, Nerdminers.org, NerdMiner.io, CKPool, OCEAN, Braiins Pool,
-ViaBTC, F2Pool and AntPool; from the version after 2.6.0 also BDL Pool, SoloPool.org,
+ViaBTC, F2Pool and AntPool; from 2.6.1 also BDL Pool, SoloPool.org,
 KanoPool, AtlasPool, Solomining.de, Satoshi Radio, Noderunners, D-Central, Mining-Dutch,
 Luxor, NiceHash, SECPOOL, SpiderPool, HMPool, Molepool and Peermining.
 The configured hostname, port, Bitcoin address and worker are never sent. Older
