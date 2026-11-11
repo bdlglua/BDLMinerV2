@@ -102,6 +102,12 @@ int main() {
     assert(!strcmp(publicPoolGroup("pool.nerdminer.io"), "nerdminer.io"));
     for (const char *domain : {"ckpool.org", "ocean.xyz", "braiins.com", "viabtc.com", "f2pool.com", "antpool.com"})
         assert(!strcmp(publicPoolGroup(domain), domain));
+    for (const char *domain : {"bdl-pool.com", "solopool.org", "kano.is", "atlaspool.io", "solomining.de", "satoshiradio.nl", "noderunners.network", "d-central.tech", "mining-dutch.nl", "luxor.tech", "nicehash.com", "secpool.com", "spiderpool.com", "hmpool.io", "molepool.com", "peermining.org"})
+        assert(!strcmp(publicPoolGroup(domain), domain));
+    assert(!strcmp(publicPoolGroup("stratum.bdl-pool.com"), "bdl-pool.com"));
+    assert(!strcmp(publicPoolGroup("eu3.solopool.org"), "solopool.org") && !strcmp(publicPoolGroup("Stratum.Kano.IS."), "kano.is"));
+    for (const char *host : {"notbdl-pool.com", "bdl-pool.com.evil.test", "kano.is.example", "xkano.is"})
+        assert(!strcmp(publicPoolGroup(host), "other"));
     for (const char *host : {"", "192.168.1.40", "miner.local", "pool.home.example", "notpublic-pool.io",
                              "public-pool.io.evil.test", "https://secret@public-pool.io", "public-pool.io:3333",
                              ".public-pool.io", "x..public-pool.io", "x/public-pool.io", "[fd00::1]"}) {
