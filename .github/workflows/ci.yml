@@ -48,7 +48,12 @@ jobs:
           NEXT_TELEMETRY_DISABLED: "1"
       - run: git diff --exit-code -- installer/site
       - run: npm ci --prefix test/web
-      - run: test/web/node_modules/.bin/playwright install --with-deps chromium
+      # Use the browser and native dependencies supplied by the Ubuntu image.
+      - name: Use runner Chrome for browser tests
+        run: |
+          bdl_chrome_path="$(command -v google-chrome)"
+          "$bdl_chrome_path" --version
+          printf 'BDL_CHROMIUM_PATH=%s\n' "$bdl_chrome_path" >> "$GITHUB_ENV"
       - run: npm test --prefix test/web
       - run: node test/web/test_hub.cjs
 
