@@ -21,6 +21,7 @@
 #include "tls.h"
 #include "runtime.h"
 #include "block_status.h"
+#include "core/build_time.h"
 
 namespace {
 
@@ -444,11 +445,23 @@ bool refreshPoolStats() {
 // notification, market or update request could ever be made: after a minute
 // without NTP, the pool's job time (within minutes of the real time) sets
 // it. NTP keeps trying and corrects it whenever it answers.
+//
+// The job time is the pool's word, over a connection that Stratum V1 does not
+// protect: a time before this firmware was built is never the real one, and
+// would let a certificate that has since expired pass as valid.
 void clockFromPool() {
     static bool done = false;
+    static const uint32_t kOldest = build_time::oldestPlausible(__DATE__, 1700000000);
     if (done || tlsClockSet() || millis() < 60000) return;
     uint32_t jobTime = minerJobTime();
-    if (jobTime < 1700000000) return;
+    if (jobTime < kOldest) {
+        static bool refused = false;
+        if (jobTime && !refused) {
+            refused = true;
+            logf("[time] the pool's job time is older than this firmware: not used to set the clock\n");
+        }
+        return;
+    }
     timeval now{time_t(jobTime), 0};
     if (settimeofday(&now, nullptr) != 0) return;
     done = true;

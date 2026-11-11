@@ -44,7 +44,9 @@ repository name different header pins, probably another revision.
   cuts power at 80 °C. Since 2.3.4 the driver does the same whatever that setting (even
   0 = off): the ASIC stops at **80 °C** on the NTC and restarts once it reads 70 °C or less. Since v1.9.10 there are no 50 % / 25 % steps below the limit (each
   power change restarts the ASIC), and once hot it stays paused at least two minutes.
-  The NTC reads with the ASIC off as well. A broken sensor limits mining to 25 %.
+  The NTC reads with the ASIC off as well. The hard stop needs a reading: when the NTC
+  gives none for 10 s (open or shorted sensor), the ASIC is stopped whatever the setting,
+  and starts again by itself once the sensor reads.
 - **Watchdog**: no verified result for a minute restarts the chip.
 - **Pool**: defaults to `public-pool.io:3333`, Stratum V1, suggested difficulty
   **1024**. Since v1.9.8 a pool difficulty below 16 no longer stops the ASIC: its filter

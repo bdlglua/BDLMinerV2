@@ -122,7 +122,9 @@ partition layout; do not try to upload an AxeOS app through BDLMiner's OTA form.
   again). The fallback never changes the voltage.
   At stock, an ASIC that stops answering or whose counter stalls is reset and started
   again automatically, up to **3 times an hour** (the reading at each one is kept as the
-  last fault); a fourth failure within the hour stops mining until restart.
+  last fault); a fourth failure within the hour stops mining until restart. A start that
+  does not complete with the ASIC powered (the chip not answering its identification, a
+  UART write refused) uses the same retries instead of stopping at the first failure.
   Temperature/fan/supply/sensor faults keep their latched shutdown behavior and never
   use this retry path.
 * The dashboard shows requested/actual frequency, measured hardware-error percentage

@@ -258,6 +258,20 @@ void instability(const char *reason) {
         off("Restarting the ASIC");
     } else off(reason, true);
 }
+// A start that does not complete with the ASIC powered (the chip not answering
+// its identification, a UART write refused) involves no safety limit either:
+// those stop inside the start, latched, with the power already off. One such
+// failure used to stop mining until someone restarted the board; it now gets
+// the same bounded retries as a chip that stops answering while mining.
+void initFailed() {
+    const char *reason = "BM1370 initialization failed";
+    if (!autoRestart(millis())) { off(reason, true); return; }
+    saveFault(reason);
+    logf("[gamma] %s: ASIC started again automatically (%u of %u this hour)\n", reason,
+         (unsigned)autoRestarts, (unsigned)kAutoRestarts);
+    off("Restarting the ASIC");
+    delay(500);
+}
 void registerResult(const bm1370::Response &r) {
     if (!powered || r.address) return;
     uint32_t now=millis();
@@ -553,7 +567,7 @@ void step() {
             }
             if (!powered) {
                 if (!initAsic(next)) {
-                    if (!latched && powered) off("BM1370 initialization failed", true);
+                    if (!latched && powered) initFailed();
                     else if (!powered) delay(500);  // waiting for the supply, the fan or the pool
                     return;
                 }

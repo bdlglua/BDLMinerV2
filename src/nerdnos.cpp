@@ -2,6 +2,7 @@
 #ifdef BOARD_NERDNOS
 #include <Arduino.h>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstring>
 #include "core/bm1397.h"
@@ -47,6 +48,14 @@ uint32_t lastResult = 0, windowGood = 0, windowBad = 0;
 // 10 C of hysteresis, whatever the settings and the thermal policy.
 constexpr float kHardMaxC = 80, kHardResumeC = 70;
 bool overheated = false;
+// That hard stop needs a reading. Without one for this long (an open or
+// shorted NTC, or a main loop that no longer samples it) the ASIC is stopped
+// as well, whatever the user limit: nothing else would see it overheat. It
+// starts again by itself once the sensor reads.
+constexpr uint32_t kSensorGraceMs = 10000;
+std::atomic<uint32_t> lastReading{0};  // millis() of the last valid reading, 0: none yet
+bool sensorFault = false;
+bool sensorLost(uint32_t now) { return now - lastReading.load() > kSensorGraceMs; }
 
 void publish() { portENTER_CRITICAL(&mux); snapshot = live; portEXIT_CRITICAL(&mux); }
 bool send(const bm1397::Packet &p) { return p.size && uart.write(p.bytes.data(), p.size) == p.size; }
@@ -161,6 +170,20 @@ bool tooHot() {
     return overheated;
 }
 
+// True while the temperature sensor gives no reading: the ASIC stays off.
+bool sensorStopped(uint32_t now) {
+    bool lost = sensorLost(now);
+    if (lost && (!sensorFault || powered)) {
+        if (!sensorFault) logf("[nerdnos] no temperature reading for %u s: ASIC stopped until the sensor reads\n",
+                               (unsigned)(kSensorGraceMs / 1000));
+        off("Temperature sensor not reading: ASIC stopped");
+    } else if (!lost && sensorFault) {
+        logf("[nerdnos] temperature sensor reads again\n");
+    }
+    sensorFault = lost;
+    return lost;
+}
+
 void worker(void *) {
     uint32_t sent = 0;
     AsicWork next;
@@ -177,6 +200,7 @@ void worker(void *) {
             }
             delay(100); continue;
         }
+        if (sensorStopped(now)) { delay(100); continue; }
         if (!powered || now - sent >= kJobMs) {
             if (!minerAsicWork(next)) {
                 if (powered) off("Waiting for pool");
@@ -250,6 +274,7 @@ float temperature() {
         if (!(t > -40 && t < 150)) t = NAN;
     }
     portENTER_CRITICAL(&mux); live.temperature = snapshot.temperature = t; portEXIT_CRITICAL(&mux);
+    if (std::isfinite(t)) lastReading = millis();
     return t;
 }
 }  // namespace nerdnos
