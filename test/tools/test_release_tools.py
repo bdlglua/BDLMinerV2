@@ -12,7 +12,6 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 import make_release
-import make_installer
 import miner_stats
 import build_output
 
@@ -207,29 +206,6 @@ class ReleaseToolsTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 make_release.signing_key()
 
-    def test_installer_failure_keeps_previous_site_and_success_removes_stale_boards(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            release = root / "1.5.2"
-            release.mkdir()
-            site = root / "site"
-            site.mkdir()
-            (site / "index.html").write_text("previous site")
-            (site / "stale-factory.bin").write_bytes(b"old board")
-            chips = {"esp32-headless": "esp32", "esp32c3-headless": "esp32c3"}
-            (release / "boards.json").write_text(json.dumps(chips))
-            (release / "esp32-headless-factory.bin").write_bytes(b"factory")
-            with patch.object(sys, "argv", ["make_installer.py", str(release), str(site)]):
-                with self.assertRaisesRegex(ValueError, "Missing factory image"):
-                    make_installer.main()
-                self.assertEqual((site / "index.html").read_text(), "previous site")
-                self.assertTrue((site / "stale-factory.bin").exists())
-                (release / "esp32c3-headless-factory.bin").write_bytes(b"factory c3")
-                with contextlib.redirect_stdout(io.StringIO()):
-                    make_installer.main()
-            self.assertFalse((site / "stale-factory.bin").exists())
-            self.assertEqual(len(list(site.glob("manifest-*.json"))), 2)
-            self.assertIn('"env": "esp32c3-headless"', (site / "index.html").read_text())
 
     def test_output_publish_failure_rolls_back_directory(self):
         with tempfile.TemporaryDirectory() as temp:

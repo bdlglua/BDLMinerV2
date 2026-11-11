@@ -1,45 +1,23 @@
 # Public website
 
-`tools/make_channels.py` builds the stable installer, opt-in beta installer and
-update pointers. The same files are published at both the project Pages address
-and the account root. No firmware release is needed for website changes.
+The native Rust packager builds the stable installer, opt-in beta installer and
+signed update pointers. The browser application is Rust compiled to WebAssembly.
+See [build and test instructions](../site/README.md).
 
-The pages are rendered by a Rust generator in `site/`. Shared navigation,
-footer, chat and page templates live in `site/templates/`; `site/src/main.rs`
-selects the routes and their optional chart, flasher and remote-monitoring assets.
-The generator uses only the Rust standard library. React, Next.js and hydration
-are not needed to build or display the pages.
-
-The existing browser scripts in `installer/assets/` retain language selection,
-Web Serial flashing, statistics, chat, discovery content and charts. After changing
-a template:
-
-```sh
-cargo test --locked --manifest-path site/Cargo.toml
-cargo run --locked --release --manifest-path site/Cargo.toml
-cargo run --locked --manifest-path site/Cargo.toml -- --check
-```
-
-The build exports the complete pages to `installer/site/`, which is committed and
-checked by CI. `tools/make_site_pages.py` fills their placeholders (`__VERSION__`,
-`__BOARDS__`, `__SITE_DATA__`, page title) for each channel and writes
-`index.html`, `start.html`, `boards.html`, `flash.html`, `demo.html`, `faq.html`,
-`releases.html`, `stats.html`, `gallery.html` and `support.html`. Links stay
-relative, so the same files work at the account root, under `/BDLMinerV2` and
-under `/beta`. The header/footer navigation and language preference are shared.
-Old home-page section links redirect to their matching page. The board comparison
-links to `flash.html?board=<profile>`, where only known profiles can be selected.
-The site opens in the dark theme; a button in the bar selects the light theme.
+Shared HTML templates live in `site/templates/`; Rust browser modules and their
+French/English dictionaries live in `site/browser/`. Generated pages work at the
+custom domain, under `/BDLMinerV2/` and under `/beta/`. Navigation and preferences
+are shared. Board links open `flash.html?board=<profile>` with a validated profile.
 
 ## Discovery content
 
 `content.json` supplies the board comparison, donation destination, release
 highlights and reviewed community gallery. The site's English/French copy is
-in `assets/discovery.js`. Keep measured hashrates tied to the evidence linked in
+in `../site/browser/discovery.json`. Keep measured hashrates tied to the evidence linked in
 each board entry; leave unmeasured targets without a `rate` value.
 
 `pool_names` and `pool_links` describe the recognised public pool groups and their
-official website links. Keep them aligned with `BDLMiner-stats/src/pools.js`.
+official website links. Keep them aligned with the Rust pool catalog in `BDLMiner-stats`.
 Links must use HTTPS on the group's public domain, without credentials, query or
 fragment. Never add links for `other` or `unknown`, or use an endpoint from a report.
 
@@ -77,17 +55,15 @@ reuse other people's photos without permission.
 
 ## Interactive demos
 
-`tools/make_site_demo.py` copies the actual miner dashboard, settings/log pages
-and fleet hub browser assets into `demo/miner/` and `demo/hub/`. Demo-only
-`demo.js` supplies fictional in-memory responses and simulated settings. It
-never forwards API calls. A Content Security Policy with `connect-src 'none'`
-blocks network connections from those documents. Maintenance actions are not
-offered in the miner demo; hub hardware-only operations explain that a real
-miner is required.
+The Rust packager reuses the miner dashboard, settings/log HTML and fleet hub
+HTML/CSS in `demo/miner/` and `demo/hub/`. `site/browser/src/demo.rs` supplies
+fictional in-memory state. A Content Security Policy restricts connections to
+the same origin, permitting WASM loading while blocking external and LAN APIs.
+Hardware-only actions explain that a real miner is required.
 
 The demo banner, reserved example addresses and fictional boot ID distinguish
-these readings from real measurements. These generated copies do not modify
-the firmware interfaces or expose a local miner through the public site.
+these readings from measurements. The firmware UI itself is unchanged.
 
-Run the packaged-site browser checks with `node test/web/test_site.cjs`, and
-the builder tests with `python3 -m unittest discover -s test/tools -p test_site_builder.py`.
+Run `node test/web/test_site.cjs` for both packaged channels and hosting prefixes.
+Native packaging contracts are tested with `cargo test --locked --manifest-path
+site/Cargo.toml`.

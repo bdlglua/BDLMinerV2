@@ -85,7 +85,7 @@ you tested on a real board, say which one and what you saw in the pull request.
   `test: …`, `build: …`, `chore: …`, with a short body explaining why.
 - Update the README or `docs/` when behaviour or settings change.
 - Adding a board: a `[env:…]` in `platformio.ini`, its pins in `src/board.cpp`,
-  an entry in `tools/make_installer.py` and in the CI build matrix
+  an entry in `site/src/package.rs` and in the CI build matrix
   (`.github/workflows/ci.yml`), a row in the README table, and hardware notes in
   `docs/hardware/` for anything experimental.
 

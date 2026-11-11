@@ -27,22 +27,22 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.99.1
-        with:
-          targets: wasm32-unknown-unknown
-          components: rustfmt, clippy
+      - uses: ./.github/actions/rust-web
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: test/web/package-lock.json
+      - run: cargo fmt --manifest-path site/browser/Cargo.toml -- --check
+      - run: cargo clippy --locked --manifest-path site/browser/Cargo.toml --target wasm32-unknown-unknown -- -D warnings
+      - run: cargo test --locked --manifest-path site/browser/Cargo.toml
       - run: cargo fmt --manifest-path site/Cargo.toml -- --check
       - run: cargo clippy --locked --manifest-path site/Cargo.toml --all-targets -- -D warnings
+      - run: cargo run --locked --release --manifest-path site/Cargo.toml
       - run: cargo test --locked --manifest-path site/Cargo.toml
       - run: cargo test --locked --manifest-path site/stats-wasm/Cargo.toml
       - run: cargo build --locked --manifest-path site/stats-wasm/Cargo.toml --release --target wasm32-unknown-unknown
       - run: node site/stats-wasm/benchmark.mjs
-      - run: cargo run --locked --release --manifest-path site/Cargo.toml
       - run: cargo run --locked --manifest-path site/Cargo.toml -- --check
       - run: git diff --exit-code -- installer/site
       - run: npm ci --prefix test/web
@@ -54,6 +54,7 @@ jobs:
           printf 'BDL_CHROMIUM_PATH=%s\n' "$bdl_chrome_path" >> "$GITHUB_ENV"
       - run: npm test --prefix test/web
       - run: node test/web/test_hub.cjs
+      - run: node test/web/test_flash.cjs
 
   test:
     runs-on: ubuntu-latest

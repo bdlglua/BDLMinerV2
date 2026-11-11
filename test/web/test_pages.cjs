@@ -78,7 +78,7 @@ async function fixture(options={}){
     if(req.method==='POST')state.posts.push({url:req.url,body});
     if(req.url==='/site'){
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});
-      return res.end(fs.readFileSync(path.join(__dirname,'../../installer/site/index.html'),'utf8').replaceAll('__PAGE_KEY__','home').replaceAll('__PAGE_TITLE__','BDLMiner V2: demo').replace('__BOARDS__',JSON.stringify([{env:'m5stickc-plus2',name:'M5StickC Plus2'}])).replaceAll('__VERSION__','test'));
+      return res.end(fs.readFileSync(path.join(__dirname,'../../installer/site/index.html'),'utf8').replaceAll('__PAGE_KEY__','home').replaceAll('__PAGE_TITLE__','BDLMiner V2: demo').replace('__BOARDS__',JSON.stringify([{env:'m5stickc-plus2',name:'M5StickC Plus2'}])).replaceAll('__VERSION__','test').replace('__SITE_DATA__',fs.readFileSync(path.join(__dirname,'../../installer/content.json'),'utf8')));
     }
     if(['/', '/settings', '/log'].includes(req.url)){
       const page=req.url==='/'?'dashboard':req.url==='/settings'?'settings':'log';
@@ -87,8 +87,8 @@ async function fixture(options={}){
     }
     if(req.url.startsWith('/assets/')){
       const name=req.url.slice('/assets/'.length).split('?')[0];
-      if(['site.js','site.css','discovery.js','discovery.css','pulse-theme.css','pulse-chart.js','home-chart.js','navigation.js','vendor/chart.umd.min.js'].includes(name)){
-        res.writeHead(200,{'Content-Type':name.endsWith('.css')?'text/css':'text/javascript'});
+      if(['site.css','discovery.css','pulse-theme.css'].includes(name)||['wasm/boot.js','wasm/bdlminer_browser.js','wasm/bdlminer_browser_bg.wasm'].includes(name)){
+        res.writeHead(200,{'Content-Type':name.endsWith('.wasm')?'application/wasm':name.endsWith('.css')?'text/css':'text/javascript'});
         return res.end(fs.readFileSync(path.join(__dirname,'../../installer/assets',name)));
       }
       if(!['style.css','common.js','dashboard.js','settings.js','log.js'].includes(name)){res.writeHead(404);return res.end()}
@@ -163,18 +163,17 @@ check('site chat keeps only the 100 newest message elements during a long sessio
   await loadSite(f);
   const result=await f.page.evaluate(()=>{
     for(let id=1;id<=125;++id)__siteSocket.onmessage({data:JSON.stringify({type:'message',message:{id,name:'Test',text:'message '+id,t:1793500000000+id}})});
-    return {stored:chat.messages.length,rows:document.querySelectorAll('#chat-log>li').length,first:document.querySelector('#chat-log>li').dataset.id};
+    return {rows:document.querySelectorAll('#chat-log>li').length,first:document.querySelector('#chat-log>li').dataset.id};
   });
-  assert.deepEqual(result,{stored:100,rows:100,first:'26'});
+  assert.deepEqual(result,{rows:100,first:'26'});
 }));
 check('site voice decoding closes its audio context even for corrupt media',()=>run({},async f=>{
+  await f.page.addInitScript(()=>{window.__closedAudio=0;window.AudioContext=class {async decodeAudioData(){throw Error('corrupt audio')}async close(){window.__closedAudio++}};});
   await loadSite(f);
-  const result=await f.page.evaluate(async()=>{
-    let closed=0;
-    window.AudioContext=class {async decodeAudioData(){throw Error('corrupt audio')}async close(){closed++}};
-    const peaks=await voicePeaks(new Blob(['invalid audio']),'test');
-    return {closed,bars:peaks.length,finite:peaks.every(Number.isFinite)};
-  });
+  await f.page.route('**/media/**',route=>route.fulfill({status:200,contentType:'audio/webm',headers:{'Access-Control-Allow-Origin':'*'},body:'invalid audio'}));
+  await f.page.evaluate(()=>__siteSocket.onmessage({data:JSON.stringify({type:'message',message:{id:1,name:'Test',text:'',t:1793500000000,media:{id:'0123456789abcdef01234567',kind:'audio',mime:'audio/webm',size:13}}})}));
+  await f.page.waitForFunction(()=>window.__closedAudio===1);
+  const result=await f.page.evaluate(()=>{const bars=[...document.querySelectorAll('.vwave i')];return {closed:window.__closedAudio,bars:bars.length,finite:bars.every(b=>Number.isFinite(parseFloat(b.style.height)))}});
   assert.deepEqual(result,{closed:1,bars:36,finite:true});
 }));
 

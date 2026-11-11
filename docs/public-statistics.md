@@ -14,7 +14,7 @@ snapshots older than 30 minutes. The direct API request and its retries run
 independently if the file is absent, invalid, old or unavailable. Snapshot commits
 do not build or release firmware and do not redeploy the website.
 
-`tools/export_public_stats.py` reads only the anonymous public summary. It
+The Rust `snapshot` command in `site/src/package.rs` reads only the anonymous public summary. It
 checks timestamps, numbers and payload size, and includes only public summary
 fields. It does not call report or private-viewer endpoints.
 
@@ -25,7 +25,7 @@ bounded backoff. Local `?statsApi=go` previews do not load the production snapsh
 Validation:
 
 ```sh
-python3 -m unittest discover -s test/tools -p 'test_public_stats.py'
+cargo test --locked --manifest-path site/Cargo.toml
 node test/web/test_site.cjs
 cargo test --locked --manifest-path site/Cargo.toml
 cargo run --locked --release --manifest-path site/Cargo.toml

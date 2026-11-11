@@ -92,7 +92,7 @@ with a firmware carrying a new key).
 
 Locally, `python3 tools/make_release.py [--version X.Y.Z] [board...]` writes
 `release/<version>/` (signed when `keys/release-signing-key.pem` exists) and
-`python3 tools/make_installer.py release/<version> site` the installer site. Its pages are rendered from `site/templates/` by the Rust generator in `site/`
+`cargo run --locked --release --manifest-path site/Cargo.toml -- installer release/<version> dist` the installer site. Its pages are rendered from `site/templates/` by the Rust generator in `site/`
 (see `installer/README.md`). After changing them, run
 `cargo run --locked --release --manifest-path site/Cargo.toml`, then commit
 `installer/site/`. The *CI*

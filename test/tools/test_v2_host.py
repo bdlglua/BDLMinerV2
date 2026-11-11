@@ -21,7 +21,6 @@ from bdlhost.calibration import Calibrator
 from bdlhost.hub import Fleet, handler
 from firmware_image import CHIPS, ENV_CHIPS, inspect_app
 from assemble_release import assemble
-from make_channels import build_channels, download_release_assets
 import make_release
 import hardware_suite
 
@@ -591,28 +590,7 @@ class HostTests(unittest.TestCase):
 
 
 class ArtifactTests(unittest.TestCase):
-    def test_channel_asset_download_retries_only_transient_server_errors(self):
-        responses = iter([
-            Mock(returncode=1, stdout='', stderr='HTTP 500 (asset API)'),
-            Mock(returncode=1, stdout='', stderr='HTTP 503 (asset API)'),
-            Mock(returncode=0, stdout='', stderr=''),
-        ])
-        run = Mock(side_effect=lambda *args, **kwargs: next(responses))
-        sleep = Mock()
-        with tempfile.TemporaryDirectory() as tmp:
-            download_release_assets('v2.5.6', Path(tmp), 'bdlglua/BDLMinerV2', run, sleep)
-        self.assertEqual(run.call_count, 3)
-        self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
-        self.assertIn('--clobber', run.call_args.args[0])
 
-    def test_channel_asset_download_surfaces_permanent_errors_without_retry(self):
-        run = Mock(return_value=Mock(returncode=1, stdout='', stderr='HTTP 404 (missing asset)'))
-        sleep = Mock()
-        with tempfile.TemporaryDirectory() as tmp, patch('sys.stderr'):
-            with self.assertRaisesRegex(subprocess.CalledProcessError, 'exit status 1'):
-                download_release_assets('v2.5.6', Path(tmp), 'bdlglua/BDLMinerV2', run, sleep)
-        run.assert_called_once()
-        sleep.assert_not_called()
 
     def test_missing_board_never_enters_the_central_signing_step(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -646,23 +624,6 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaises(ValueError): inspect_app(binary, 'bitaxe-gamma-601', '2.0.0-beta.1')
         with self.assertRaises(ValueError): inspect_app(binary[:-1] + b'x', 'm5stickc-plus2', '2.0.0-beta.1')
 
-    def test_beta_publication_keeps_default_installer_stable_and_signed_pairs(self):
-        releases = [{'tag_name': 'v1.9.15'}, {'tag_name': 'v2.0.0-beta.1', 'prerelease': True},
-                    {'tag_name': 'v3.0.0', 'draft': True}]
-        def fetch(tag, root):
-            (root / 'boards.json').write_text(json.dumps({'m5stickc-plus2': 'esp32'}))
-            (root / 'm5stickc-plus2-factory.bin').write_bytes(b'fixture')
-            base = 'https://github.com/bdlglua/BDLMinerV2/releases/download/' + tag + '/'
-            assets = [{'name': 'm5stickc-plus2-firmware.bin' + suffix,
-                       'browser_download_url': base + 'm5stickc-plus2-firmware.bin' + suffix} for suffix in ('', '.sig')]
-            (root / 'update.json').write_text(json.dumps({'tag_name': tag, 'assets': assets}))
-        with tempfile.TemporaryDirectory() as tmp:
-            stable, beta = build_channels(releases, fetch, tmp, 'bdlglua/BDLMinerV2')
-            self.assertEqual(stable, 'v1.9.15')
-            self.assertEqual(beta, 'v2.0.0-beta.1')
-            self.assertEqual(json.loads((Path(tmp) / 'manifest-m5stickc-plus2.json').read_text())['version'], '1.9.15')
-            self.assertEqual(json.loads((Path(tmp) / 'beta/manifest-m5stickc-plus2.json').read_text())['version'], '2.0.0-beta.1')
-            self.assertEqual(json.loads((Path(tmp) / 'updates/beta.json').read_text())['tag_name'], beta)
 
 
 if __name__ == '__main__':

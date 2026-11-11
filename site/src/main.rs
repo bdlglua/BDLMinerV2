@@ -1,4 +1,5 @@
 mod html;
+mod package;
 
 use std::{env, fs, io, path::Path};
 
@@ -104,13 +105,37 @@ fn build(check: bool) -> io::Result<()> {
 
 fn main() -> io::Result<()> {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
-    if arguments.iter().any(|arg| arg != "--check") {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "usage: bdlminer-site [--check]",
-        ));
+    let option = |key: &str| {
+        arguments
+            .windows(2)
+            .find(|pair| pair[0] == key)
+            .map(|pair| pair[1].as_str())
+    };
+    let required = |key: &str| {
+        option(key)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, format!("missing {key}")))
+    };
+    match arguments.first().map(String::as_str) {
+        None => { package::browser()?; build(false) },
+        Some("--check") if arguments.len() == 1 => build(true),
+        Some("channels") => { package::browser()?; build(false)?; package::channels(required("--repository")?, Path::new(required("--output")?)) },
+        Some("installer") if arguments.len() >= 3 => {
+            if !arguments.iter().any(|arg| arg == "--reuse-browser") { package::browser()?; }
+            let release = Path::new(&arguments[1]).canonicalize()?;
+            let output = Path::new(&arguments[2]);
+            let channels = option("--channels").map(fs::read).transpose()?.map(|raw| serde_json::from_slice::<serde_json::Value>(&raw)).transpose()? .unwrap_or(serde_json::Value::Null);
+            package::staged(output, Some(&release), |staged| { package::installer(&release, staged, option("--channel").unwrap_or("stable"), &channels)?; Ok(()) })
+        },
+        Some("pages") => {
+            let boards = serde_json::from_str(required("--boards")?)?;
+            let content = serde_json::from_str(required("--content")?)?;
+            package::pages(Path::new(required("--output")?), required("--version")?, &boards, &content)
+        },
+        Some("demos") if arguments.len() == 3 => package::demos(Path::new(&arguments[1]), &arguments[2]),
+        Some("content") if arguments.len() >= 2 => { println!("{}", package::content(&arguments[1], option("--channel").unwrap_or("stable"), &serde_json::Value::Null)?); Ok(()) },
+        Some("snapshot") => package::snapshot(Path::new(required("--output")?)),
+        _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "usage: bdlminer-site [--check|channels --repository OWNER/REPO --output PATH|installer RELEASE OUTPUT|pages|demos OUTPUT VERSION|snapshot --output PATH]")),
     }
-    build(arguments.iter().any(|arg| arg == "--check"))
 }
 
 #[cfg(test)]
@@ -127,12 +152,13 @@ mod tests {
             assert!(document.starts_with("<!doctype html>"));
             assert!(document.contains("<main id=\"main\""));
             assert!(document.contains("__SITE_DATA__"));
-            assert!(document.contains("__VERSION__"));
+            assert!(document.contains("id=\"site-boards\""));
             assert!(!document.contains("_next/"));
             assert!(!document.contains("__NEXT_DATA__"));
-            assert_eq!(document.contains("public-stats-bootstrap"), page.chart);
-            assert_eq!(document.contains("install-button.js"), page.flasher);
-            assert_eq!(document.contains("assets/remote.js"), page.remote);
+            assert_eq!(document.contains("rel=\"preconnect\""), page.chart);
+            assert_eq!(document.contains("id=\"installer\""), page.flasher);
+            assert!(document.contains("assets/wasm/boot.js"));
+            assert_eq!(document.contains("bdl-remote-api"), page.remote);
         }
         assert_eq!(files.len(), 11);
     }

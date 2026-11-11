@@ -7,7 +7,7 @@ name: Site
 on:
   push:
     branches: [main]
-    paths: ["site/**", "installer/**", "web/**", "tools/bdlhost/web/**", "tools/make_installer.py", "tools/make_site_demo.py", "tools/make_site_pages.py", "tools/make_channels.py", "tools/release_version.py", ".github/workflows/site.yml"]
+    paths: ["site/**", "installer/**", "web/**", "tools/bdlhost/web/**", ".github/actions/rust-web/**", ".github/workflows/site.yml"]
   workflow_dispatch:
   release:
     types: [published]
@@ -32,16 +32,11 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: main
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - uses: dtolnay/rust-toolchain@1.99.1
-      - name: Render website with Rust
-        run: cargo run --locked --release --manifest-path site/Cargo.toml
+      - uses: ./.github/actions/rust-web
       - name: Stable installer and opt-in beta
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tools/make_channels.py --repository "$GITHUB_REPOSITORY" --output dist
+        run: cargo run --locked --release --manifest-path site/Cargo.toml -- channels --repository "$GITHUB_REPOSITORY" --output dist
       # Custom domain (DNS: miner CNAME bdlglua.github.io). An Actions deployment
       # takes it from Settings > Pages; the file records it with the site.
       - name: Custom domain

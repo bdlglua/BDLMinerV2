@@ -10,7 +10,7 @@
   ping-<env>.txt      2 bytes each miner downloads once a day: the download
                       counts are the anonymous usage count (tools/miner_stats.py)
   SHA256SUMS.txt
-  boards.json         the chip of each board, for tools/make_installer.py
+  boards.json         the chip of each board, for site/src/package.rs
   update.json         compact discovery metadata for GitHub firmware updates
 
     python3 tools/make_release.py [--version X.Y.Z] [env ...]

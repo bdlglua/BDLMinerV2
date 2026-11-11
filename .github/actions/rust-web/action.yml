@@ -1,0 +1,17 @@
+name: Rust website toolchain
+description: Compile the native packager and browser WebAssembly from Rust.
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@1.99.1
+      with:
+        targets: wasm32-unknown-unknown
+        components: rustfmt, clippy
+    - uses: actions/cache@v6
+      id: bindings
+      with:
+        path: ~/.cargo/bin/wasm-bindgen
+        key: ${{ runner.os }}-wasm-bindgen-0.2.105-rust-1.99.1
+    - if: steps.bindings.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo install wasm-bindgen-cli --version 0.2.105 --locked

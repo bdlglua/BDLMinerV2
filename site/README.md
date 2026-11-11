@@ -1,28 +1,47 @@
 # BDLMiner website in Rust
 
-The Rust binary renders public pages from shared HTML templates to the tracked
-`installer/site/` export. It uses only the Rust standard library and requires no
-Node, React or Next.js to render the website.
+`site/src/` builds all eleven public pages, the USB installer, stable/beta release
+channels, isolated demos and anonymous statistics snapshots. `site/browser/src/`
+implements the browser application in Rust compiled to WebAssembly: languages,
+navigation, Canvas charts, statistics, private viewer, chat and Web Serial.
+HTML templates and CSS remain the presentation formats. The only published
+JavaScript is generated `wasm-bindgen` bindings and a generated module loader.
 
 ```sh
-cargo test --locked --manifest-path site/Cargo.toml
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli --version 0.2.105 --locked
 cargo run --locked --release --manifest-path site/Cargo.toml
+cargo test --locked --manifest-path site/Cargo.toml
+cargo test --locked --manifest-path site/browser/Cargo.toml
 cargo run --locked --manifest-path site/Cargo.toml -- --check
+# Requires gh authenticated for the release repository:
+cargo run --locked --release --manifest-path site/Cargo.toml -- channels --repository bdlglua/BDLMinerV2 --output dist
 ```
 
-Edit `site/templates/pages/` for page content, and the shared document,
-navigation, footer, chat and head templates for common elements. The typed route
-catalog in `site/src/main.rs` selects chart, flasher and remote-viewer assets.
-Bindings are checked at build time and text metadata is HTML-escaped.
+The normal build regenerates tracked `installer/site/` templates and ignored
+`installer/assets/wasm/`. Publication fills channel metadata and generates
+SHA-256 manifests directly from release factory images. A staged export preserves
+the previous directory on failure. Firmware signatures and release assets remain
+unchanged. Browser tests use intentionally invalid, non-flashable fixtures;
+`test_flash.cjs` uses deterministic wire-simulator images exclusively on loopback.
 
-The release packager still fills version, board and site-data placeholders and
-publishes stable/beta channels. Both website publication workflows run Rust
-before packaging. `dist/` is their output, keeping `site/` sources intact.
+```sh
+npm ci --prefix test/web
+npm test --prefix test/web
+node test/web/test_hub.cjs
+node test/web/test_flash.cjs
+```
 
-Browser features remain in `installer/assets/*.js`: Web Serial/ESP Web Tools,
-statistics, Chart.js, language selection, chat and the remote viewer. Node is
-needed for the existing Playwright tests and optional statistics benchmark,
-not page generation. Firmware and Python release/API services are separate.
+The flash simulator exercises the actual Rust SLIP/ROM/stub protocol on ESP32,
+S2, S3 and C3, chip detection before erase, chunk writes, checksum verification,
+USB/UART reset and cleanup. Physical hardware validation is still required.
+RAM stub provenance and its licence are in `browser/stubs/`.
 
-The independent Rust/WebAssembly statistics project remains in `stats-wasm/`
-with its existing build and benchmark paths.
+Demos reuse the firmware HTML/CSS with a Rust in-memory model. Their CSP permits
+only same-origin resources, blocking access to real LAN miners. Firmware and its
+local UI are separate from the public websites. `stats-wasm/` remains an
+independent numerical benchmark; it is not a second application runtime.
+
+The native APIs live in the `bdl-pool/services`, `BDLMiner-stats` and
+`BDLMiner-chat` repositories. Deploying static WASM does not restart these services;
+see each repository's activation and rollback procedure.

@@ -30,3 +30,8 @@ site/stats-wasm/target/
 # Rust website generator build products
 site/target/
 dist/
+
+# Generated Rust/WebAssembly bindings
+/installer/assets/wasm/
+
+/site/browser/target/

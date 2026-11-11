@@ -10,6 +10,8 @@ async function main(){
  try{
   browser=await chromium.launch({headless:true,executablePath:process.env.BDL_CHROMIUM_PATH||(fs.existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox']});
   const context=await browser.newContext({viewport:{width:1440,height:1000},locale:'en-US'}),page=await context.newPage(),errors=[],requests=[];
+  // A WASM module finishes mounting after the static document has loaded.
+  for(const name of ['goto','waitForURL']){const original=page[name].bind(page);page[name]=async(...args)=>{const result=await original(...args);if(await page.locator('body').getAttribute('data-runtime'))await page.waitForFunction(()=>document.body.dataset.runtime==='ready');return result};}
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
   if(process.env.BDL_VERBOSE)page.on('console',message=>{if(message.type()==='error')console.error('BROWSER:',message.text())});
   await page.route('https://**/*',route=>route.fulfill({status:200,contentType:'text/javascript',body:''}));
@@ -127,7 +129,9 @@ async function main(){
    for(const [key,name]of Object.entries(pages)){
     const response=await page.request.get(base+'/'+name);assert.equal(response.status(),200,name+' must be a real page');
     const html=await response.text();assert.ok(html.includes('data-page="'+key+'"'));assert.ok(!html.includes('__PAGE_CONTENT__'));
-    assert.equal(html.includes('src="assets/vendor/esp-web-tools-10.4.0/install-button.js"'),key==='flash','load the USB tool only on its own page');
+    assert.equal(html.includes('id="installer"'),key==='flash','USB controls belong only on their own page');
+    assert.ok(html.includes('assets/wasm/boot.js'),'the browser application is compiled from Rust');
+    assert.equal(html.includes('esp-web-tools'),false,'the JavaScript flasher is retired');
     assert.ok(!/<script[^>]+src="(?:https?:)?\/\//.test(html),name+' must load no script from another site');
    }
    await page.goto(base+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));await page.locator('#st-pools tbody tr').first().waitFor();
@@ -166,21 +170,19 @@ async function main(){
   const period={from:stamp-3600000,to:stamp,samples:6,expected_samples:12,average_hashrate:1e12,minimum_hashrate:.9e12,maximum_hashrate:1.1e12,variation_percent:8.16496580927726,average_miners:7,minimum_miners:6,maximum_miners:8,first_at:measured[0].at,last_at:measured.at(-1).at};
   Object.assign(communityStats,{at:stamp,hashrate:1.05e12,miners:7,recent:[...measured,{at:stamp,hashrate:1.05e12,miners:7,live:true}],history:[],periods:{1:period,6:{...period,expected_samples:72},24:{...period,expected_samples:288},168:{...period,expected_samples:2016}}});
   await page.goto(url);
-  await page.waitForFunction(()=>window.Chart?.getChart(document.getElementById('cryptoChart')));
-  const chartData=await page.evaluate(()=>Chart.getChart(document.getElementById('cryptoChart')).data.datasets[0].data.map(p=>({at:p.x,hashrate:p.y})));
+  await page.locator('#cryptoChart').waitFor({state:'visible'});
+  const chartData=await page.evaluate(()=>JSON.parse(document.getElementById('cryptoChart').dataset.readings).map(([at,hashrate])=>({at,hashrate})));
   assert.deepEqual(chartData,communityStats.recent.map(p=>({at:p.at,hashrate:p.hashrate})),'the template chart must use the actual public measurements');
   assert.match(await page.locator('#hero-network-rate').innerText(),/1[,.]05 TH\/s/,'the hero card must display the real network hashrate');
   assert.ok((await page.locator('#hero-network-spark .hero-spark-line').getAttribute('d')).startsWith('M'),'measurements must populate the hero curve');
-  const gap=await page.evaluate(()=>{
-   const canvas=document.getElementById('cryptoChart');
-   BDLPulseChart.render(canvas,[{t:0,value:1e6},{t:300000,value:2e6},{t:1500000,value:3e6}],{gapMs:750000});
-   const dataset=Chart.getChart(canvas).data.datasets[0];
-   return {hasGap:dataset.data.some(p=>p.y===null),spanGaps:dataset.spanGaps};
-  });
-  assert.deepEqual(gap,{hasGap:true,spanGaps:false},'missing intervals must not be joined');
+  const actualRecent=communityStats.recent;
+  communityStats.recent=[{at:stamp-1500000,hashrate:1e6},{at:stamp-1200000,hashrate:2e6},{at:stamp,hashrate:3e6}];
+  await page.evaluate(()=>refresh());
+  assert.equal(await page.locator('#cryptoChart').getAttribute('data-segments'),'2','missing intervals must not be joined');
+  communityStats.recent=actualRecent;
   await page.goto(url+'/stats.html');await page.waitForFunction(()=>!statsLoading&&(fetchedAt>0||statsFailed));
-  await page.waitForFunction(()=>window.Chart?.getChart(document.getElementById('cryptoChart')));
-  const statsChartData=await page.evaluate(()=>Chart.getChart(document.getElementById('cryptoChart')).data.datasets[0].data.map(p=>({at:p.x,hashrate:p.y})));
+  await page.locator('#cryptoChart').waitFor({state:'visible'});
+  const statsChartData=await page.evaluate(()=>JSON.parse(document.getElementById('cryptoChart').dataset.readings).map(([at,hashrate])=>({at,hashrate})));
   assert.deepEqual(statsChartData,chartData,'the statistics page must display the same measured history as the home page');
   assert.equal(await page.locator('#st-chart,[data-range],[data-st-metric],.period-statistics').count(),0,'the previous statistics chart is replaced');
   assert.equal(await page.locator('#st-performance a[href="stats.html"]').count(),0,'the full statistics page must not link back to itself');
@@ -192,7 +194,7 @@ async function main(){
   await page.keyboard.press('End');assert.match(await page.locator('#home-history-inspect').textContent(),/1,05 TH\/s/);
   await page.locator('#cryptoChart').scrollIntoViewIfNeeded();
   const chartBox=await page.locator('#cryptoChart').boundingBox();await page.mouse.move(chartBox.x+chartBox.width/2,chartBox.y+60);
-  await page.waitForFunction(()=>Chart.getChart(document.getElementById('cryptoChart')).tooltip.opacity>0);
+  assert.match(await page.locator('#home-history-inspect').textContent(),/H\/s/);
   const initialTheme=await page.locator('html').getAttribute('data-theme')||'light';await page.locator('#theme').click();
   const toggledTheme=await page.locator('html').getAttribute('data-theme')||'light';assert.notEqual(toggledTheme,initialTheme);
   assert.equal(await page.locator('#theme').getAttribute('aria-pressed'),String(toggledTheme==='dark'));
@@ -212,10 +214,10 @@ async function main(){
   assert.match(await page.locator('#home-history-caption').textContent(),/1 mesures/);
   communityStats.recent=[{at:stamp-900000,hashrate:1e12},{at:stamp-600000,hashrate:1.1e12,missing:true},{at:stamp-300000,hashrate:1.2e12}];
   await page.evaluate(()=>refresh());
-  assert.deepEqual(await page.evaluate(()=>Chart.getChart(document.getElementById('cryptoChart')).data.datasets[0].data.map(p=>p.y)),[1e12,null,1.2e12],'missing readings must leave a gap in the shared history');
+  assert.deepEqual(await page.evaluate(()=>JSON.parse(document.getElementById('cryptoChart').dataset.readings).map(p=>p[1])),[1e12,null,1.2e12],'missing readings must leave a gap in the shared history');
   communityStats.recent=[];
   await page.evaluate(()=>refresh());await page.locator('#home-history-empty').filter({hasText:/En attente/}).waitFor();
-  assert.equal(await page.evaluate(()=>!!Chart.getChart(document.getElementById('cryptoChart'))),false);
+  assert.equal(await page.locator('#cryptoChart').isVisible(),false);
   assert.equal(await page.locator('#home-history-caption').textContent(),'');
   communityStats=originalStats;
   communityStats.coins=[{name:'BSV',miners:1,hashrate:1e6},{name:'XEC',miners:1,hashrate:1e6},{name:'DGB',miners:1,hashrate:5e5},{name:'PPC',miners:1,hashrate:1e6}];

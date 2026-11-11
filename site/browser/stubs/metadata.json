@@ -1,0 +1,22 @@
+{
+  "esp32": {
+    "entry": 1074521580,
+    "text_start": 1074520064,
+    "data_start": 1073605544
+  },
+  "esp32s2": {
+    "entry": 1073907716,
+    "text_start": 1073905664,
+    "data_start": 1073622012
+  },
+  "esp32s3": {
+    "entry": 1077381760,
+    "text_start": 1077379072,
+    "data_start": 1070279676
+  },
+  "esp32c3": {
+    "entry": 1077413584,
+    "text_start": 1077411840,
+    "data_start": 1070164916
+  }
+}

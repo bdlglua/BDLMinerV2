@@ -49,9 +49,13 @@ jobs:
           cache: npm
           cache-dependency-path: test/web/package-lock.json
       - run: npm ci --prefix test/web
-      - run: test/web/node_modules/.bin/playwright install --with-deps chromium
+      - uses: ./.github/actions/rust-web
+      - run: cargo run --locked --release --manifest-path site/Cargo.toml
+      - name: Use runner Chrome
+        run: printf 'BDL_CHROMIUM_PATH=%s\n' "$(command -v google-chrome)" >> "$GITHUB_ENV"
       - run: npm test --prefix test/web
       - run: node test/web/test_hub.cjs
+      - run: node test/web/test_flash.cjs
   test:
     runs-on: ubuntu-latest
     steps:
@@ -165,13 +169,11 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
-      - uses: dtolnay/rust-toolchain@1.99.1
-      - name: Render website with Rust
-        run: cargo run --locked --release --manifest-path site/Cargo.toml
+      - uses: ./.github/actions/rust-web
       - name: Stable root and opt-in beta channel
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tools/make_channels.py --repository "$GITHUB_REPOSITORY" --output dist
+        run: cargo run --locked --release --manifest-path site/Cargo.toml -- channels --repository "$GITHUB_REPOSITORY" --output dist
       # Custom domain (DNS: miner CNAME bdlglua.github.io). An Actions deployment
       # takes it from Settings > Pages; the file records it with the site.
       - name: Custom domain

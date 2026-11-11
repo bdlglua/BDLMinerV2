@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["tools/export_public_stats.py", ".github/workflows/public-stats.yml"]
+    paths: ["site/src/package.rs", "site/Cargo.*", ".github/workflows/public-stats.yml"]
 
 permissions:
   contents: write
@@ -18,11 +18,12 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - name: Read anonymous public statistics
-        run: python3 tools/export_public_stats.py --output "$RUNNER_TEMP/public-summary.json"
+      - uses: dtolnay/rust-toolchain@1.99.1
+      - name: Read anonymous public statistics with Rust
+        run: cargo run --locked --release --manifest-path site/Cargo.toml -- snapshot --output "$RUNNER_TEMP/public-summary.json"
       - name: Publish the reading on the data branch
         run: |
           git fetch --depth=1 --no-tags origin public-stats:refs/remotes/origin/public-stats

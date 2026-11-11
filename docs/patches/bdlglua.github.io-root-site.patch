@@ -40,7 +40,7 @@ index 0000000..4045ef0
 +      - name: Build the stable and beta USB installers
 +        env:
 +          GH_TOKEN: ${{ github.token }}
-+        run: python3 source/tools/make_channels.py --repository bdlglua/BDLMinerV2 --output site
++        run: cargo run --locked --release --manifest-path source/site/Cargo.toml -- channels --repository bdlglua/BDLMinerV2 --output site
 +      - name: Preserve the BDLXS website
 +        run: |
 +          cp -R website/bdlxs site/bdlxs
