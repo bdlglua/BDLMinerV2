@@ -87,7 +87,8 @@ warnings`, the tests and a release build of `bdlminer-host`. The security
 audit workflow, `security-audit.yml`, runs `cargo audit` (RustSec advisories)
 on both lockfiles on every change to
 `firmware-rs/`, and weekly, so new advisories surface without a push.
-Dependabot proposes weekly updates of both lockfiles. The ESP32 build has its own manual workflow,
+Dependabot proposes weekly updates of the host workspace; the `esp` crate
+is updated by hand (its toolchain and ESP-IDF updates need an ESP32 build). The ESP32 build has its own manual workflow,
 `firmware-rs-esp.yml`, with the third-party toolchain action pinned by commit.
 
 Common CI and build failures, the reference set and the benchmark:

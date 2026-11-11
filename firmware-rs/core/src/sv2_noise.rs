@@ -1,7 +1,7 @@
 //! Stratum V2 Noise_NX initiator (Noise_NX_Secp256k1+EllSwift_ChaChaPoly_SHA256).
 //! Transport independent; the pool's authority key is mandatory.
 
-use chacha20poly1305::aead::{AeadInPlace, KeyInit};
+use chacha20poly1305::aead::{AeadInOut, KeyInit};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce, Tag};
 use secp256k1::ellswift::{ElligatorSwift, Party};
 use secp256k1::{schnorr, PublicKey, SecretKey, XOnlyPublicKey};
@@ -54,9 +54,9 @@ pub(crate) fn nonce(counter: u64) -> Nonce {
 }
 
 pub(crate) fn seal(key: &[u8; 32], counter: u64, ad: &[u8], plain: &[u8]) -> Vec<u8> {
-    let cipher = ChaCha20Poly1305::new(Key::from_slice(key));
+    let cipher = ChaCha20Poly1305::new(&Key::from(*key));
     let mut buf = plain.to_vec();
-    let tag = cipher.encrypt_in_place_detached(&nonce(counter), ad, &mut buf).expect("bounded record");
+    let tag = cipher.encrypt_inout_detached(&nonce(counter), ad, buf.as_mut_slice().into()).expect("bounded record");
     buf.extend_from_slice(&tag);
     buf
 }
@@ -65,10 +65,11 @@ pub(crate) fn open(key: &[u8; 32], counter: u64, ad: &[u8], sealed: &[u8]) -> Op
     if sealed.len() < TAG_LEN {
         return None;
     }
-    let cipher = ChaCha20Poly1305::new(Key::from_slice(key));
+    let cipher = ChaCha20Poly1305::new(&Key::from(*key));
     let (body, tag) = sealed.split_at(sealed.len() - TAG_LEN);
+    let tag = Tag::try_from(tag).ok()?;
     let mut buf = body.to_vec();
-    cipher.decrypt_in_place_detached(&nonce(counter), ad, &mut buf, Tag::from_slice(tag)).ok()?;
+    cipher.decrypt_inout_detached(&nonce(counter), ad, buf.as_mut_slice().into(), &tag).ok()?;
     Some(buf)
 }
 
