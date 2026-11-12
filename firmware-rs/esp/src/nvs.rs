@@ -44,19 +44,19 @@ impl Storage for NvsStorage {
 
     fn set(&mut self, namespace: &str, key: &str, value: &[u8]) -> bool {
         let (Some(h), Ok(key)) = (Handle::open(namespace, true), CString::new(key)) else { return false };
-        unsafe { nvs_set_blob(h.0, key.as_ptr(), value.as_ptr().cast(), value.len()) == ESP_OK }
-        &&h.commit()
+        let ok = unsafe { nvs_set_blob(h.0, key.as_ptr(), value.as_ptr().cast(), value.len()) } == ESP_OK;
+        ok && h.commit()
     }
 
     fn remove(&mut self, namespace: &str, key: &str) -> bool {
         let (Some(h), Ok(key)) = (Handle::open(namespace, true), CString::new(key)) else { return false };
-        unsafe { nvs_erase_key(h.0, key.as_ptr()) == ESP_OK }
-        &&h.commit()
+        let ok = unsafe { nvs_erase_key(h.0, key.as_ptr()) } == ESP_OK;
+        ok && h.commit()
     }
 
     fn clear(&mut self, namespace: &str) -> bool {
         let Some(h) = Handle::open(namespace, true) else { return false };
-        unsafe { nvs_erase_all(h.0) == ESP_OK }
-        &&h.commit()
+        let ok = unsafe { nvs_erase_all(h.0) } == ESP_OK;
+        ok && h.commit()
     }
 }

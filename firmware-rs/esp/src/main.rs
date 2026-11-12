@@ -30,7 +30,6 @@ use esp_idf_svc::hal::cpu::Core;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_svc::hal::task::thread::ThreadSpawnConfiguration;
 use esp_idf_svc::http::client::{Configuration as HttpConfiguration, EspHttpConnection};
-use esp_idf_svc::io::Write;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sntp::EspSntp;
 use esp_idf_svc::wifi::{BlockingWifi, ClientConfiguration, Configuration as Wifi, EspWifi};
