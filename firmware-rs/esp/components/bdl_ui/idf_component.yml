@@ -1,0 +1,4 @@
+# M5GFX, the graphics library of the C++ firmware (platformio.ini pins the
+# same version), from the ESP Component Registry.
+dependencies:
+  m5stack/m5gfx: "0.2.35"

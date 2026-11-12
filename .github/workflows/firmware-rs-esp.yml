@@ -10,30 +10,70 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # ESP-IDF 5.3's esp-clang links libxml2.so.2, which newer images lack.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: xtensa-esp32-espidf
             mcu: esp32
+            board: esp32
+            features: ""
+            partitions: min_spiffs.csv
+            flash: 4mb
+          - target: xtensa-esp32-espidf
+            mcu: esp32
+            board: m5stickc-plus2
+            features: m5stickc-plus2
+            # 8 MB of flash: the C++ firmware's layout (NVS at the same place).
+            partitions: default_8MB.csv
+            flash: 8mb
           - target: xtensa-esp32s3-espidf
             mcu: esp32s3
+            board: esp32s3
+            features: ""
+            partitions: min_spiffs.csv
+            flash: 4mb
     steps:
       - uses: actions/checkout@v7
       - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7.0
         with:
+          # Espressif's latest stable fork. Its 1.99.0.0 does not build std
+          # for ESP-IDF (`AT_FDCWD` missing from libc); there is no 1.99.1
+          # fork. The host workspace uses Rust 1.99.1.
+          version: 1.97.0.0
           default: true
           buildtargets: ${{ matrix.mcu }}
           ldproxy: true
+      - name: Espressif GCC on PATH
+        run: |
+          which xtensa-${{ matrix.mcu }}-elf-gcc
+          xtensa-${{ matrix.mcu }}-elf-gcc --version | head -1
       - name: Build
         working-directory: firmware-rs/esp
         env:
           MCU: ${{ matrix.mcu }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      # One image to flash at 0x0 (bootloader, partition table, app), e.g.
+      # with https://espressif.github.io/esptool-js/ or
+      # `espflash write-bin 0x0 bdlminer-esp-<board>.bin`.
+      - name: Install espflash
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q libudev-dev
+          cargo install espflash@3.3.0 --locked
+      - name: Flashable image
+        working-directory: firmware-rs/esp
+        run: >
+          espflash save-image --chip ${{ matrix.mcu }} --merge --flash-size ${{ matrix.flash }}
+          --partition-table ../../partitions/${{ matrix.partitions }}
+          target/${{ matrix.target }}/release/bdlminer-esp
+          target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
       - uses: actions/upload-artifact@v7
         with:
-          name: bdlminer-esp-${{ matrix.mcu }}
-          path: firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp
+          name: bdlminer-esp-${{ matrix.board }}
+          path: |
+            firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp
+            firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
           if-no-files-found: error
           retention-days: 7

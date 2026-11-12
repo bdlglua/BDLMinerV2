@@ -10,7 +10,7 @@ use bdlminer_app::settings;
 use bdlminer_app::App;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_svc::http::Method;
-use esp_idf_svc::io::{Read, Write};
+use esp_idf_svc::io::Write;
 use esp_idf_svc::wifi::{
     AccessPointConfiguration, AuthMethod, BlockingWifi, ClientConfiguration, Configuration as Wifi, EspWifi,
 };
@@ -170,6 +170,5 @@ pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
     } else {
         app.log("[wifi] not configured, restarting");
     }
-    unsafe { esp_idf_svc::sys::esp_restart() };
-    unreachable!()
+    unsafe { esp_idf_svc::sys::esp_restart() }
 }

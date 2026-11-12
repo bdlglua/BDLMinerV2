@@ -6,7 +6,7 @@ use bdlminer_app::web::{self, Method, Request};
 use bdlminer_app::App;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer};
 use esp_idf_svc::http::Method as HttpMethod;
-use esp_idf_svc::io::{Read, Write};
+use esp_idf_svc::io::Write;
 
 const MAX_BODY: usize = 16 * 1024;
 

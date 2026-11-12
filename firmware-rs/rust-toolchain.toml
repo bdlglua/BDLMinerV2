@@ -1,0 +1,5 @@
+# The host workspace (core, app, host) and its CI use this release. The ESP32
+# crate (esp/) has its own file: Espressif's Xtensa fork, see esp/.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]

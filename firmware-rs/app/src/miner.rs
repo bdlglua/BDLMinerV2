@@ -3,7 +3,7 @@
 //! SHA peripheral, ASIC drivers) all report through `Miner`.
 
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -182,6 +182,37 @@ pub struct MinerStats {
     pub start_millis: u32,
 }
 
+/// A 64-bit hash counter outside the stats lock. The original ESP32 (Xtensa
+/// LX6) has no 64-bit atomics: there it is a short lock instead.
+#[cfg(target_has_atomic = "64")]
+#[derive(Default)]
+struct HashCounter(std::sync::atomic::AtomicU64);
+
+#[cfg(target_has_atomic = "64")]
+impl HashCounter {
+    fn add(&self, n: u64) {
+        self.0.fetch_add(n, Ordering::Relaxed);
+    }
+    fn get(&self) -> u64 {
+        self.0.load(Ordering::Relaxed)
+    }
+}
+
+#[cfg(not(target_has_atomic = "64"))]
+#[derive(Default)]
+struct HashCounter(Mutex<u64>);
+
+#[cfg(not(target_has_atomic = "64"))]
+impl HashCounter {
+    fn add(&self, n: u64) {
+        let mut h = self.0.lock().unwrap();
+        *h = h.wrapping_add(n);
+    }
+    fn get(&self) -> u64 {
+        *self.0.lock().unwrap()
+    }
+}
+
 /// Work with what is needed to check its results.
 #[derive(Clone, Debug)]
 pub struct MiningWork {
@@ -265,7 +296,7 @@ pub struct Miner {
     queue_signal: Condvar,
     inner: Mutex<Inner>,
     /// Per-engine hash counters, outside the lock for the hot path.
-    hashes: [AtomicU64; MAX_MINERS],
+    hashes: [HashCounter; MAX_MINERS],
     safety: SafetyLease,
     battery_limited: AtomicBool,
     ota_busy: AtomicBool,
@@ -387,7 +418,7 @@ impl Miner {
 
     pub fn add_hashes(&self, engine: usize, count: u64) {
         if let Some(h) = self.hashes.get(engine) {
-            h.fetch_add(count, Ordering::Relaxed);
+            h.add(count);
         }
     }
 
@@ -742,7 +773,7 @@ impl Miner {
     pub fn stats(&self) -> MinerStats {
         let mut s = self.inner().stats.clone();
         for (i, h) in s.hashes.iter_mut().enumerate() {
-            *h = self.hashes[i].load(Ordering::Relaxed);
+            *h = self.hashes[i].get();
         }
         s
     }
@@ -822,7 +853,7 @@ impl Miner {
             let count = inner.stats.miner_count;
             let mut deltas = [0u64; MAX_MINERS];
             for (i, d) in deltas.iter_mut().enumerate().take(count) {
-                let h = self.hashes[i].load(Ordering::Relaxed);
+                let h = self.hashes[i].get();
                 *d = h.wrapping_sub(inner.last_hashes[i]);
                 inner.last_hashes[i] = h;
             }
@@ -1236,12 +1267,60 @@ fn decode_history(r: &[u8]) -> Option<(u32, Vec<HistoryPoint>)> {
 }
 
 // ---------------------------------------------------------------------------
-// The portable software worker.
+// Mining threads.
 
-/// Hashes on one thread until `Miner::shutdown`. `scan` hashes `count`
-/// nonces from `first` and reports candidates; the default is the portable
-/// kernel, ESP32 builds may pass a faster one.
+/// Hardware batch between two looks at the job board: about 67 ms of the
+/// original ESP32's SHA loop. Divides 2^32 like `BATCH_SW`.
+pub const BATCH_HW: u32 = 65536;
+
+/// What a mining thread hashes with: the portable software kernel, or a
+/// board's SHA peripheral (with its own software fallback).
+pub trait Engine {
+    /// New work was fetched (prepare the hardware with its header). An
+    /// engine that hashes a second work alongside fetches it from `miner`.
+    fn start(&mut self, _miner: &Miner, _work: &MiningWork) {}
+    /// Hashes nonce positions from `first`. `left` is the number of
+    /// positions left in this work's 2^32 nonce space (0: all of them).
+    /// Returns how many positions were done, never 0.
+    fn batch(&mut self, miner: &Miner, work: &MiningWork, first: u32, left: u32) -> u32;
+    /// Paused or without work: release whatever `batch` may hold.
+    fn idle(&mut self) {}
+}
+
+/// The portable kernel over nonces `first..first + BATCH_SW`.
+pub struct SoftwareEngine;
+
+impl Engine for SoftwareEngine {
+    fn batch(&mut self, miner: &Miner, w: &MiningWork, first: u32, _left: u32) -> u32 {
+        let limit = w.work.quick_limit.max(BEST_DIFF_FILTER);
+        for n in first..first.wrapping_add(BATCH_SW) {
+            if let Some(hash) = w.work.mid.scan(n, limit) {
+                miner.on_candidate(n, &hash, w);
+            }
+        }
+        BATCH_SW
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct WorkerOptions {
+    /// Alone on its core: it pauses only every 10 s instead of after every
+    /// batch.
+    pub owns_core: bool,
+    /// The pause. FreeRTOS needs a real sleep (one tick) for lower-priority
+    /// tasks, the idle task included, to run; zero yields to equal-priority
+    /// threads only (host builds).
+    pub pause: Duration,
+}
+
+/// A mining thread with the portable kernel, until `Miner::shutdown`.
 pub fn software_worker(miner: &Miner, engine: usize, owns_core: bool) {
+    run_worker(miner, engine, &mut SoftwareEngine, WorkerOptions { owns_core, pause: Duration::ZERO });
+}
+
+/// A mining thread: fetches work, hashes it with `hasher` in batches, and
+/// follows the safety lease, the power limit and new jobs.
+pub fn run_worker(miner: &Miner, engine: usize, hasher: &mut dyn Engine, options: WorkerOptions) {
     let clock = miner.clock.clone();
     let mut current: Option<(MiningWork, u32)> = None;
     let mut nonce: u32 = 0;
@@ -1249,6 +1328,7 @@ pub fn software_worker(miner: &Miner, engine: usize, owns_core: bool) {
     while !miner.stopping() {
         if !miner.board_valid() {
             current = None;
+            hasher.idle();
             let started = clock.millis();
             clock.sleep(Duration::from_millis(100));
             miner.profile(engine, |p| p.waiting_ms += clock.millis().wrapping_sub(started) as u64);
@@ -1256,6 +1336,7 @@ pub fn software_worker(miner: &Miner, engine: usize, owns_core: bool) {
         }
         let power = miner.power_percent();
         if power == 0 {
+            hasher.idle();
             let started = clock.millis();
             clock.sleep(Duration::from_millis(200));
             miner.profile(engine, |p| p.paused_ms += clock.millis().wrapping_sub(started) as u64);
@@ -1263,28 +1344,29 @@ pub fn software_worker(miner: &Miner, engine: usize, owns_core: bool) {
         }
         let batch_start = clock.millis();
         let started = std::time::Instant::now();
+        // New job, or the whole 32-bit nonce space of this work is done.
         if current.as_ref().is_none_or(|(_, seq)| *seq != miner.board_seq()) {
             current = miner.fetch_work();
             nonce = 0;
-            if current.is_none() {
-                continue;
+            match &current {
+                Some((w, _)) => hasher.start(miner, w),
+                None => {
+                    hasher.idle();
+                    continue;
+                }
             }
         }
         let (w, _) = current.as_ref().unwrap();
-        let limit = w.work.quick_limit.max(BEST_DIFF_FILTER);
-        for n in nonce..nonce.wrapping_add(BATCH_SW) {
-            if let Some(hash) = w.work.mid.scan(n, limit) {
-                miner.on_candidate(n, &hash, w);
-            }
-        }
-        miner.add_hashes(engine, BATCH_SW as u64);
+        let done = hasher.batch(miner, w, nonce, 0u32.wrapping_sub(nonce)).max(1);
+        miner.add_hashes(engine, done as u64);
         miner.profile(engine, |p| p.hashing_us += started.elapsed().as_micros() as u64);
-        nonce = nonce.wrapping_add(BATCH_SW);
+        nonce = nonce.wrapping_add(done);
         if nonce == 0 {
             current = None; // 2^32 nonces done
         }
         if power < 100 {
             let rest_started = clock.millis();
+            hasher.idle(); // release the hardware before sleeping
             let mut rest = safety::rest_ms(clock.millis().wrapping_sub(batch_start), power);
             let seq = miner.board_seq();
             while rest > 0 {
@@ -1298,11 +1380,19 @@ pub fn software_worker(miner: &Miner, engine: usize, owns_core: bool) {
             last_pause = clock.millis();
             miner.profile(engine, |p| p.rest_ms += clock.millis().wrapping_sub(rest_started) as u64);
         }
-        if !owns_core || clock.millis().wrapping_sub(last_pause) >= 10_000 {
-            std::thread::yield_now();
+        // Let the idle task and lower-priority tasks run.
+        if !options.owns_core || clock.millis().wrapping_sub(last_pause) >= 10_000 {
+            let rest_started = clock.millis();
+            if options.pause.is_zero() {
+                std::thread::yield_now();
+            } else {
+                clock.sleep(options.pause);
+            }
             last_pause = clock.millis();
+            miner.profile(engine, |p| p.rest_ms += last_pause.wrapping_sub(rest_started) as u64);
         }
     }
+    hasher.idle();
 }
 
 #[cfg(test)]

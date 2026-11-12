@@ -17,6 +17,8 @@ harness = false
 default = []
 # Boards with an M5 IMU near the battery default to a 65 C thermal limit.
 m5 = []
+# M5StickC Plus2: power hold on GPIO4, MPU6886 temperature.
+m5stickc-plus2 = ["m5"]
 
 [dependencies]
 bdlminer-core = { path = "../core" }
@@ -25,6 +27,18 @@ esp-idf-svc = { version = "0.51", features = ["std", "alloc", "binstart"] }
 log = "0.4"
 anyhow = "1"
 serde_json = "1"
+# Stratum V2 (Noise): libsecp256k1 with small precomputed tables. The
+# default ones (about 1 MB) did not fit the 1.9 MB app partition; a
+# handshake only takes a few milliseconds longer.
+secp256k1 = { version = "0.33", default-features = false, features = ["lowmemory"] }
+
+# The C++ firmware's hardware SHA engine and assembly kernels (src/hwsha.rs).
+[[package.metadata.esp-idf-sys.extra_components]]
+component_dirs = ["components/bdl_hwsha"]
+
+# The C++ firmware's screen renderer on M5GFX (src/display.rs, M5StickC Plus2).
+[[package.metadata.esp-idf-sys.extra_components]]
+component_dirs = ["components/bdl_ui"]
 
 [build-dependencies]
 embuild = "0.33"

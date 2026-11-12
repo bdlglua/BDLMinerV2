@@ -1,10 +1,16 @@
 //! BDLMiner V2 for ESP32 boards, in Rust on ESP-IDF.
 //!
 //! Boot: settings from NVS, WiFi (saved network, fallbacks, else the setup
-//! portal), SNTP, one software mining thread per core, the pool task, the
-//! dashboard, then the once-a-second supervision loop.
+//! portal), SNTP, the hardware SHA miner on the last core and a software
+//! miner on the others, the pool task, the dashboard, then the once-a-second
+//! supervision loop.
 
+#[cfg(feature = "m5stickc-plus2")]
+mod display;
 mod http;
+mod hwsha;
+#[cfg(feature = "m5stickc-plus2")]
+mod m5stickc;
 mod nvs;
 mod portal;
 mod system;
@@ -15,7 +21,7 @@ use std::thread;
 use std::time::Duration;
 
 use bdlminer_app::app::{App, Platform};
-use bdlminer_app::miner::software_worker;
+use bdlminer_app::miner::{run_worker, WorkerOptions};
 use bdlminer_app::notify::HttpClient;
 use bdlminer_app::platform::{BoardKind, BoardProfile, Clock, Storage, SystemInfo};
 use bdlminer_app::pool;
@@ -26,7 +32,6 @@ use esp_idf_svc::hal::cpu::Core;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_svc::hal::task::thread::ThreadSpawnConfiguration;
 use esp_idf_svc::http::client::{Configuration as HttpConfiguration, EspHttpConnection};
-use esp_idf_svc::io::Write;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sntp::EspSntp;
 use esp_idf_svc::wifi::{BlockingWifi, ClientConfiguration, Configuration as Wifi, EspWifi};
@@ -35,14 +40,18 @@ use crate::system::{EspClock, EspSystem};
 
 fn board_profile() -> BoardProfile {
     BoardProfile {
-        name: if cfg!(esp32s3) {
+        name: if cfg!(feature = "m5stickc-plus2") {
+            "M5StickC Plus2"
+        } else if cfg!(esp32s3) {
             "ESP32-S3"
         } else if cfg!(esp32c3) {
             "ESP32-C3"
         } else {
             "ESP32"
         },
-        env: if cfg!(esp32s3) {
+        env: if cfg!(feature = "m5stickc-plus2") {
+            "m5stickc-plus2-rust"
+        } else if cfg!(esp32s3) {
             "esp32s3-rust"
         } else if cfg!(esp32c3) {
             "esp32c3-rust"
@@ -52,7 +61,7 @@ fn board_profile() -> BoardProfile {
         kind: BoardKind::Esp32,
         m5: cfg!(feature = "m5"),
         display_pages: 0,
-        temperature_sensor: cfg!(any(esp32s2, esp32s3, esp32c3)),
+        temperature_sensor: cfg!(any(esp32s2, esp32s3, esp32c3, feature = "m5stickc-plus2")),
     }
 }
 
@@ -61,6 +70,8 @@ struct EspHttp;
 
 impl HttpClient for EspHttp {
     fn post(&self, url: &str, headers: &[(&str, &str)], body: &[u8]) -> Result<u16, String> {
+        // TLS hashes with the SHA peripheral too: keep the miner off it.
+        let _hold = hwsha::Hold::new();
         let config = HttpConfiguration {
             timeout: Some(Duration::from_secs(15)),
             crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
@@ -100,11 +111,17 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let peripherals = Peripherals::take()?;
+    #[cfg(feature = "m5stickc-plus2")]
+    m5stickc::hold_power(peripherals.pins.gpio4);
+    #[cfg(feature = "m5stickc-plus2")]
+    let imu = m5stickc::imu(peripherals.i2c0, peripherals.pins.gpio21, peripherals.pins.gpio22);
+    #[cfg(not(feature = "m5stickc-plus2"))]
+    let imu = None;
     let sysloop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
     let storage: Arc<Mutex<dyn Storage>> = Arc::new(Mutex::new(nvs::NvsStorage));
     let clock = Arc::new(EspClock::new(bdlminer_app::settings::DEFAULT_TIMEZONE));
-    let espsystem = Arc::new(EspSystem { ip: Mutex::new(String::new()), ssid: Mutex::new(String::new()) });
+    let espsystem = Arc::new(EspSystem { ip: Mutex::new(String::new()), ssid: Mutex::new(String::new()), imu });
     let mut boot = [0u8; 4];
     system::random(&mut boot);
     let app = App::new(Platform {
@@ -121,6 +138,13 @@ fn main() -> anyhow::Result<()> {
     EspClock::new(&settings.timezone); // the configured time zone
     app.log_configuration();
     app.log(&format!("[boot] reset reason: {}", espsystem.boot_reason()));
+    #[cfg(feature = "m5stickc-plus2")]
+    if display::begin(&app) {
+        let version = format!("v{} (Rust)", bdlminer_app::platform::FW_VERSION);
+        display::message("BDLMiner V2", app.board.name, &version);
+    } else {
+        app.log("[ui] display could not start");
+    }
 
     // WiFi: keep the network the driver saved (also the C++ portal's).
     let mut wifi = BlockingWifi::wrap(EspWifi::new(peripherals.modem, sysloop.clone(), Some(nvs))?, sysloop)?;
@@ -155,6 +179,8 @@ fn main() -> anyhow::Result<()> {
             wifi::join(ssid, pass, 15_000, i == 0 && saved.is_some())
         });
     if !joined {
+        #[cfg(feature = "m5stickc-plus2")]
+        display::portal(&app, &bdlminer_app::app::portal_ap_name(app.mac), &app.portal_password());
         portal::run(app.clone(), &mut wifi);
     }
     let ip = wifi::station_ip().unwrap_or_default();
@@ -163,16 +189,40 @@ fn main() -> anyhow::Result<()> {
     app.log(&format!("[wifi] connected, IP {ip}"));
     let _sntp = EspSntp::new_default()?;
 
-    // One software miner per core: the last core alone (WiFi runs on core 0).
+    // One miner per core. With a working SHA peripheral, the hardware miner
+    // gets the last core to itself (WiFi runs on core 0) at priority 19 and
+    // software runs on the others, as in the C++ firmware.
     app.miner.load_stats();
-    let cores: &[Core] = if cfg!(esp32c3) { &[Core::Core0] } else { &[Core::Core1, Core::Core0] };
+    let caps = {
+        let app = app.clone();
+        hwsha::init(move |line| app.log(line))
+    };
+    let cores: &[Core] = if cfg!(any(esp32s2, esp32c3)) { &[Core::Core0] } else { &[Core::Core1, Core::Core0] };
     for (i, &core) in cores.iter().enumerate() {
-        let Some(engine) = app.miner.register_engine("sw") else { break };
+        let hardware = caps.hardware && i == 0;
+        let kind = if hardware { "hw" } else { "sw" };
+        let Some(engine) = app.miner.register_engine(kind) else { break };
+        // Original ESP32: a second work hashed in the idle cycles of the
+        // hardware loop, counted as its own engine.
+        let fill = if hardware && caps.fill { app.miner.register_engine("fill") } else { None };
         let miner = app.miner.clone();
-        let owns_core = cores.len() > 1 && i == 0;
+        // On a single core the network needs the CPU more than any miner.
+        let owns_core = hardware && cores.len() > 1;
+        // A real sleep (one tick): the idle task and lower priorities run.
+        let options = WorkerOptions { owns_core, pause: Duration::from_millis(1) };
         let name: &'static [u8] = if i == 0 { b"miner0\0" } else { b"miner1\0" };
-        spawn_pinned(name, core, 1, 8 * 1024, move || software_worker(&miner, engine, owns_core));
-        app.log(&format!("[miner] miner{i} engine=sw core={core:?}"));
+        let priority = if owns_core { 19 } else { 1 };
+        spawn_pinned(name, core, priority, 8 * 1024, move || {
+            if hardware {
+                run_worker(&miner, engine, &mut hwsha::HardwareEngine::new(fill), options);
+            } else {
+                run_worker(&miner, engine, &mut hwsha::SoftwareEngine, options);
+            }
+        });
+        app.log(&format!("[miner] miner{i} engine={kind} core={core:?}"));
+        if fill.is_some() {
+            app.log("[miner] engine=fill: a second work in the idle cycles of miner0");
+        }
     }
     {
         let app = app.clone();
@@ -191,6 +241,16 @@ fn main() -> anyhow::Result<()> {
             thread::sleep(Duration::from_secs(5));
         });
     }
+    #[cfg(feature = "m5stickc-plus2")]
+    let events = {
+        let events = display::Events::new(app.brightness());
+        let (app, system, ui) = (app.clone(), espsystem.clone(), events.clone());
+        let (a, b) = (peripherals.pins.gpio37, peripherals.pins.gpio39);
+        spawn_pinned(b"ui\0", Core::Core0, 2, 10 * 1024, move || display::run(app, system, ui, a, b));
+        events
+    };
+    #[cfg(not(feature = "m5stickc-plus2"))]
+    let events = std::sync::Arc::new(NoIndicators);
     let _server = http::start(app.clone())?;
     app.log(&format!("[web] dashboard on http://{ip}/ (http://{}.local/)", app.hostname));
 
@@ -201,7 +261,7 @@ fn main() -> anyhow::Result<()> {
         let now = clock.millis();
         if now.wrapping_sub(last_tick) >= 1000 {
             last_tick = now;
-            app.second_tick(&NoIndicators);
+            app.second_tick(&*events);
             if let Some(why) = app.restart_due().or_else(|| app.watch.take_restart()) {
                 app.prepare_restart(&why);
                 thread::sleep(Duration::from_millis(500));

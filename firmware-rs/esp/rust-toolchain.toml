@@ -1,3 +1,5 @@
 [toolchain]
 # Installed by espup (https://github.com/esp-rs/espup); provides the Xtensa targets.
+# CI pins 1.97.0.0 (1.99.0.0 does not build std for ESP-IDF):
+# `espup install --toolchain-version 1.97.0.0`.
 channel = "esp"
