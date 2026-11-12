@@ -95,24 +95,38 @@ pub fn station_ip() -> Option<String> {
     Some(format!("{}.{}.{}.{}", a[0], a[1], a[2], a[3]))
 }
 
-/// Joins a network; `persist` saves it as the driver's own (the portal's).
-pub fn join(ssid: &str, password: &str, timeout_ms: u32, persist: bool) -> bool {
-    if ssid.is_empty() || ssid.len() > 32 || password.len() > 64 {
-        return false;
-    }
+/// A station configuration for `ssid` (open when there is no password).
+fn station_raw(ssid: &str, password: &str) -> wifi_config_t {
     let mut conf: wifi_config_t = unsafe { std::mem::zeroed() };
     unsafe {
         conf.sta.ssid[..ssid.len()].copy_from_slice(ssid.as_bytes());
         conf.sta.password[..password.len()].copy_from_slice(password.as_bytes());
         conf.sta.threshold.authmode =
             if password.is_empty() { wifi_auth_mode_t_WIFI_AUTH_OPEN } else { wifi_auth_mode_t_WIFI_AUTH_WPA2_PSK };
+    }
+    conf
+}
+
+/// Sets the station configuration, in the driver's NVS (`persist`) or for
+/// this boot only.
+fn set_station(conf: &mut wifi_config_t, persist: bool) -> bool {
+    unsafe {
         esp_wifi_set_storage(if persist { wifi_storage_t_WIFI_STORAGE_FLASH } else { wifi_storage_t_WIFI_STORAGE_RAM });
-        esp_wifi_disconnect();
-        let ok = esp_wifi_set_config(wifi_interface_t_WIFI_IF_STA, &mut conf) == ESP_OK && esp_wifi_connect() == ESP_OK;
+        let ok = esp_wifi_set_config(wifi_interface_t_WIFI_IF_STA, conf) == ESP_OK;
         esp_wifi_set_storage(wifi_storage_t_WIFI_STORAGE_FLASH);
-        if !ok {
-            return false;
-        }
+        ok
+    }
+}
+
+/// Joins a network; `persist` saves it as the driver's own (the portal's).
+pub fn join(ssid: &str, password: &str, timeout_ms: u32, persist: bool) -> bool {
+    if ssid.is_empty() || ssid.len() > 32 || password.len() > 64 {
+        return false;
+    }
+    let mut conf = station_raw(ssid, password);
+    unsafe { esp_wifi_disconnect() };
+    if !set_station(&mut conf, persist) || unsafe { esp_wifi_connect() } != ESP_OK {
+        return false;
     }
     let start = millis();
     while millis().wrapping_sub(start) < timeout_ms {
@@ -122,6 +136,34 @@ pub fn join(ssid: &str, password: &str, timeout_ms: u32, persist: bool) -> bool 
         std::thread::sleep(Duration::from_millis(100));
     }
     link_up()
+}
+
+/// Phones and computers on the setup portal's access point.
+pub fn portal_clients() -> usize {
+    let mut list: wifi_sta_list_t = unsafe { std::mem::zeroed() };
+    if unsafe { esp_wifi_ap_get_sta_list(&mut list) } != ESP_OK {
+        return 0;
+    }
+    list.num.max(0) as usize
+}
+
+/// Saves a network that was joined as the driver's own: the one the miner
+/// joins at boot.
+pub fn save_station(ssid: &str, password: &str) -> bool {
+    let mut conf = station_raw(ssid, password);
+    set_station(&mut conf, true)
+}
+
+/// Stops trying a network that could not be joined and puts `saved` back
+/// for this boot (the driver's NVS still holds it): the station leaves the
+/// radio, and the access point stays on its channel.
+pub fn restore_station(saved: Option<&(String, String)>) {
+    unsafe { esp_wifi_disconnect() };
+    let mut conf = match saved {
+        Some((ssid, password)) if ssid.len() <= 32 && password.len() <= 64 => station_raw(ssid, password),
+        _ => unsafe { std::mem::zeroed() },
+    };
+    set_station(&mut conf, false);
 }
 
 /// The pool task's network: std TCP over lwIP, and the WiFi state.

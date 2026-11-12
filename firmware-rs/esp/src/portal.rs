@@ -1,9 +1,11 @@
 //! The setup portal: an access point "BDLMinerV2-XXXX" with a small form at
 //! http://192.168.4.1 for the WiFi network, the pool and the payout address.
-//! Saved, the miner joins the network and restarts. Restarts after 3 minutes
-//! without a configuration, as the C++ firmware does.
+//! Saved, the miner joins the network and restarts. Restarts 3 minutes after
+//! the last sign of use without a configuration, as WiFiManager does in the
+//! C++ firmware.
 
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bdlminer_app::settings;
@@ -92,8 +94,15 @@ button.w{{display:flex;justify-content:space-between;width:100%;margin:.3rem 0;p
     )
 }
 
-/// Validates and saves the form; joins the network. Ok: restart now.
-fn save(app: &App, body: &str) -> Result<(), String> {
+/// A network to try, with the settings to save once it is joined.
+struct Request {
+    ssid: String,
+    password: String,
+    settings: settings::Settings,
+}
+
+/// Validates the form (fast: the reply must leave before the radio moves).
+fn validate(app: &App, body: &str) -> Result<Request, String> {
     let fields: Vec<(String, String)> =
         body.split('&').filter_map(|kv| kv.split_once('=').map(|(k, v)| (url_decode(k), url_decode(v)))).collect();
     let get = |k: &str| fields.iter().find(|(name, _)| name == k).map(|(_, v)| v.clone()).unwrap_or_default();
@@ -112,15 +121,56 @@ fn save(app: &App, body: &str) -> Result<(), String> {
     let mut pending = current;
     settings::apply(&mut pending, &values, &app.board);
     settings::sanitize(&mut pending, &app.board);
-    let (ssid, password) = (get("ssid"), get("wpass"));
-    if !wifi::join(ssid.trim(), &password, 20_000, true) {
-        return Err(format!("Could not join \"{}\": check the network name and password", ssid.trim()));
+    let (ssid, password) = (get("ssid").trim().to_owned(), get("wpass"));
+    if ssid.is_empty() || ssid.len() > 32 {
+        return Err("Choose a WiFi network (1 to 32 characters)".into());
     }
-    if !app.save_settings(&pending, true) {
-        return Err("Settings could not be saved".into());
+    // WPA2 passwords have 8 to 64 characters; none for an open network.
+    if !password.is_empty() && !(8..=64).contains(&password.len()) {
+        return Err("A WiFi password has 8 to 64 characters (none for an open network)".into());
     }
-    Ok(())
+    Ok(Request { ssid, password, settings: pending })
 }
+
+/// Where the last "Save and connect" stands.
+#[derive(Clone)]
+enum Attempt {
+    Idle,
+    Joining(String),
+    Failed(String),
+    Joined,
+}
+
+/// Joins the network for this boot only, then saves it and the settings:
+/// a mistyped password never replaces the network that worked.
+fn attempt(app: &App, request: Request, saved: Option<&(String, String)>) -> Attempt {
+    if !wifi::join(&request.ssid, &request.password, 20_000, false) {
+        wifi::restore_station(saved);
+        return Attempt::Failed(format!("Could not join \"{}\": check the network name and password", request.ssid));
+    }
+    if !wifi::save_station(&request.ssid, &request.password) || !app.save_settings(&request.settings, true) {
+        wifi::restore_station(saved);
+        return Attempt::Failed("Settings could not be saved".into());
+    }
+    Attempt::Joined
+}
+
+/// While the miner tries the network: the radio may move to that network's
+/// channel and the phone lose the access point for a moment, so the page
+/// asks again until it gets the outcome.
+fn status_page(ssid: &str) -> String {
+    format!(
+        "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>\
+<meta http-equiv='refresh' content='3;url=/status'><title>BDLMiner V2 setup</title>\
+<style>body{{font-family:system-ui;background:#0a0d12;color:#e8e8e8;max-width:28rem;margin:auto;padding:1rem}}</style></head><body>\
+<h1>BDLMiner V2</h1><p>Connecting to \"{}\"... This page updates by itself. If your phone left the miner's \
+network, join it again.</p></body></html>",
+        escape(ssid)
+    )
+}
+
+const SAVED_PAGE: &str = "<!doctype html><meta charset='utf-8'><meta name='viewport' \
+content='width=device-width,initial-scale=1'><p>Saved. The miner restarts and joins your network.</p>";
 
 /// Runs the portal until it is configured or times out; then restarts.
 pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
@@ -145,7 +195,13 @@ pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
     }
     // Every name leads to the portal: phones open it as soon as they join.
     captive::start_dns(wifi::PORTAL_ADDRESS.octets());
-    let done = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    // The network saved before the portal opened: put back after a failed
+    // attempt.
+    let saved = Arc::new(wifi::saved_station());
+    let state = Arc::new(Mutex::new(Attempt::Idle));
+    // Restarts 3 minutes after the last sign of someone using the portal
+    // (a request, a phone on the access point), as WiFiManager does.
+    let active = Arc::new(AtomicU32::new(millis()));
     // Wildcards: "/*" (registered last) catches every other page.
     // Phones open several connections at once (connectivity checks, the
     // page): 6 sockets, as many as lwIP's 10 leave (3 for the server, 1 for
@@ -153,15 +209,17 @@ pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
     let config =
         Configuration { stack_size: 10 * 1024, uri_match_wildcard: true, max_open_sockets: 6, ..Default::default() };
     let server = EspHttpServer::new(&config).and_then(|mut server| {
-        let page = app.clone();
+        let (page, seen) = (app.clone(), active.clone());
         server.fn_handler("/", Method::Get, move |req| -> anyhow::Result<()> {
+            seen.store(millis(), Ordering::Relaxed);
             req.into_response(200, None, &[("Content-Type", "text/html; charset=utf-8")])?.write_all(
                 form(&page, "Choose your WiFi network, pool and payout address.", &captive::networks()).as_bytes(),
             )?;
             Ok(())
         })?;
-        let (saver, flag) = (app.clone(), done.clone());
+        let (saver, now, seen, before) = (app.clone(), state.clone(), active.clone(), saved.clone());
         server.fn_handler("/save", Method::Post, move |mut req| -> anyhow::Result<()> {
+            seen.store(millis(), Ordering::Relaxed);
             let mut body = vec![0u8; 2048];
             let mut got = 0;
             while got < body.len() {
@@ -172,16 +230,57 @@ pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
                 got += n;
             }
             let text = String::from_utf8_lossy(&body[..got]).into_owned();
-            let html = match save(&saver, &text) {
-                Ok(()) => {
-                    flag.store(true, std::sync::atomic::Ordering::Relaxed);
-                    "<!doctype html><meta charset='utf-8'><p>Saved. The miner restarts and joins your network.</p>"
-                        .to_owned()
-                }
-                Err(e) => form(&saver, &e, &captive::networks()),
+            let html = match &*now.lock().unwrap() {
+                Attempt::Joining(ssid) => Some(status_page(ssid)),
+                Attempt::Joined => Some(SAVED_PAGE.to_owned()),
+                _ => None,
+            };
+            let html = match html {
+                Some(html) => html,
+                None => match validate(&saver, &text) {
+                    Err(e) => form(&saver, &e, &captive::networks()),
+                    Ok(request) => {
+                        let page = status_page(&request.ssid);
+                        *now.lock().unwrap() = Attempt::Joining(request.ssid.clone());
+                        let (app, state, saved) = (saver.clone(), now.clone(), before.clone());
+                        // After the reply: joining can move the radio away.
+                        let started = std::thread::Builder::new().stack_size(8 * 1024).spawn(move || {
+                            std::thread::sleep(Duration::from_millis(500));
+                            let outcome = attempt(&app, request, (*saved).as_ref());
+                            *state.lock().unwrap() = outcome;
+                        });
+                        if started.is_err() {
+                            *now.lock().unwrap() = Attempt::Failed("Could not start the connection".into());
+                        }
+                        page
+                    }
+                },
             };
             req.into_response(200, None, &[("Content-Type", "text/html; charset=utf-8")])?
                 .write_all(html.as_bytes())?;
+            Ok(())
+        })?;
+        let (page, now, seen) = (app.clone(), state.clone(), active.clone());
+        server.fn_handler("/status", Method::Get, move |req| -> anyhow::Result<()> {
+            seen.store(millis(), Ordering::Relaxed);
+            let current = now.lock().unwrap().clone();
+            let html = match current {
+                Attempt::Joining(ssid) => status_page(&ssid),
+                Attempt::Joined => SAVED_PAGE.to_owned(),
+                Attempt::Failed(e) => {
+                    *now.lock().unwrap() = Attempt::Idle;
+                    form(&page, &e, &captive::networks())
+                }
+                Attempt::Idle => {
+                    form(&page, "Choose your WiFi network, pool and payout address.", &captive::networks())
+                }
+            };
+            req.into_response(
+                200,
+                None,
+                &[("Content-Type", "text/html; charset=utf-8"), ("Cache-Control", "no-store")],
+            )?
+            .write_all(html.as_bytes())?;
             Ok(())
         })?;
         // Registered last: the connectivity checks of phones and computers
@@ -195,17 +294,24 @@ pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
         Ok(server)
     });
     let _server = server.map_err(|e| app.log(&format!("[wifi] portal server failed: {e}")));
-    let start = millis();
-    while !done.load(std::sync::atomic::Ordering::Relaxed)
-        && millis().wrapping_sub(start) < settings::PORTAL_TIMEOUT_S * 1000
-    {
+    loop {
         std::thread::sleep(Duration::from_millis(100));
+        let now = millis();
+        match &*state.lock().unwrap() {
+            Attempt::Joined => break,
+            Attempt::Joining(_) => active.store(now, Ordering::Relaxed),
+            _ => {}
+        }
+        if wifi::portal_clients() > 0 {
+            active.store(now, Ordering::Relaxed);
+        }
+        if now.wrapping_sub(active.load(Ordering::Relaxed)) >= settings::PORTAL_TIMEOUT_S * 1000 {
+            app.log("[wifi] not configured, restarting");
+            unsafe { esp_idf_svc::sys::esp_restart() }
+        }
     }
-    if done.load(std::sync::atomic::Ordering::Relaxed) {
-        app.log("[cfg] settings saved");
-        std::thread::sleep(Duration::from_millis(1500));
-    } else {
-        app.log("[wifi] not configured, restarting");
-    }
+    app.log("[cfg] settings saved");
+    // Time for the phone to fetch the "Saved" page.
+    std::thread::sleep(Duration::from_millis(3000));
     unsafe { esp_idf_svc::sys::esp_restart() }
 }
