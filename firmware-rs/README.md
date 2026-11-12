@@ -139,21 +139,22 @@ Common CI and build failures, the reference set and the benchmark:
 
 ## Status
 
-Done and tested on a PC: everything in `core`, `app` and `host`.
+Done and tested on a PC: everything in `core` and `app` (the screen
+renderer included, on in-memory panels of every board size) and `host`.
 
-Written but not yet built or run on hardware (no ESP toolchain where it was
-written): the `esp` crate, the hardware SHA component included. Expect compile
-fixes on its first build; check the boot log for `hardware SHA: self-test OK`
-and the `hw` engine's hashrate against the C++ firmware on the same board.
+Built by the workflow for every board, Rust from end to end: the hardware
+SHA engine and its Xtensa kernels (`esp/src/hwsha.rs`, `global_asm!`), the
+Bitaxe Gamma 601 (BM1370 + TPS546 + EMC2101) and NerdNOS (BM1397) drivers
+(`esp/src/gamma601.rs`, `nerdnos.rs`), the panels (`esp/src/lcd.rs`). Run on
+hardware so far: the M5StickC Plus2 (before the renderer and the SHA engine
+moved to Rust). The M5Stack image keeps M5GFX (C++) for its board detection
+and panel drivers only (`esp/components/bdl_ui`); its pages are drawn in
+Rust like the others.
 
 Not ported yet (the C++ firmware keeps them):
 
-- ASIC boards: the Bitaxe Gamma 601 (BM1370 + TPS546 + EMC2101) and NerdNOS
-  (BM1397) drivers. Their wire protocols, safety limits and fan policy are in
-  `core` and tested; the UART/I2C drivers and board bring-up are not.
-- Displays and buttons of the other boards (T-Display, CYD, M5Stack...), the
-  beeper, and the market data the price, fee and recent-block readings show
-  ("-" on the M5StickC Plus2 screen).
+- The beeper, and the market data the price, fee and recent-block readings
+  show ("-" on the screens).
 - Firmware updates: web upload (`/update`), signed GitHub updates, trial boot
   and rollback.
 - MQTT/Home Assistant, market data (mempool.space), pool statistics, block
