@@ -23,3 +23,8 @@ CONFIG_LWIP_SO_RCVBUF=y
 # or the USB cable wakes it, holds its power in time. Other resets (software,
 # watchdog, after an update) still check it.
 CONFIG_BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON=y
+# 240 MHz like the C++ firmware (board_build.f_cpu): the CPU feeds the SHA
+# peripheral, and at ESP-IDF's default 160 MHz an M5StickC Plus2 hashed
+# about 0.67 MH/s instead of the C++ firmware's 1.0. The ESP32-C3 has no
+# 240 MHz setting and keeps its 160.
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
