@@ -34,6 +34,8 @@ build-std = ["std", "panic_abort"]
 [env]
 MCU = "esp32"
 ESP_IDF_VERSION = "v5.3.2"
+# M5StickC Plus2: ESP_IDF_SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.psram"
+# in the environment (its PSRAM), as the workflow builds it.
 ESP_IDF_SDKCONFIG_DEFAULTS = "sdkconfig.defaults"
 # C code of dependencies (secp256k1-sys): Espressif's GCC from espup, which
 # builds little-endian code with long calls. Left to itself, cc picked a

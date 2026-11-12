@@ -41,6 +41,8 @@ jobs:
             # 8 MB of flash: the C++ firmware's layout (NVS at the same place).
             partitions: default_8MB.csv
             flash: 8mb
+            # Its 2 MB of PSRAM (esp/sdkconfig.psram).
+            sdkconfig: sdkconfig.defaults;sdkconfig.psram
           - target: xtensa-esp32s3-espidf
             mcu: esp32s3
             board: esp32s3
@@ -148,6 +150,7 @@ jobs:
         working-directory: firmware-rs/esp
         env:
           MCU: ${{ matrix.mcu }}
+          ESP_IDF_SDKCONFIG_DEFAULTS: ${{ matrix.sdkconfig || 'sdkconfig.defaults' }}
         run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
       # The linker map, to see where a failed link went wrong.
       - name: Linker map
