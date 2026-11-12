@@ -14,16 +14,6 @@ extern "C" fn atexit(_f: Option<unsafe extern "C" fn()>) -> c_int {
     0
 }
 
-/// No fork on ESP-IDF.
-#[no_mangle]
-extern "C" fn pthread_atfork(
-    _prepare: Option<unsafe extern "C" fn()>,
-    _parent: Option<unsafe extern "C" fn()>,
-    _child: Option<unsafe extern "C" fn()>,
-) -> c_int {
-    0
-}
-
 /// No symbolic links on ESP-IDF's file systems: `stat`.
 #[no_mangle]
 unsafe extern "C" fn lstat(path: *const c_char, buf: *mut c_void) -> c_int {
