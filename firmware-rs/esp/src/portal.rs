@@ -104,6 +104,33 @@ fn save(app: &App, body: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Gives the access point 192.168.4.1 (esp-idf-svc's default is
+/// 192.168.71.1), the address the C++ firmware's portal uses and the one the
+/// log and the screen announce.
+fn portal_address() -> Result<(), esp_idf_svc::sys::EspError> {
+    use esp_idf_svc::sys::{
+        esp, esp_ip4_addr_t, esp_netif_dhcps_start, esp_netif_dhcps_stop, esp_netif_get_handle_from_ifkey,
+        esp_netif_ip_info_t, esp_netif_set_ip_info, EspError, ESP_ERR_INVALID_STATE,
+    };
+    let address = |a: [u8; 4]| esp_ip4_addr_t { addr: u32::from_le_bytes(a) };
+    let info = esp_netif_ip_info_t {
+        ip: address([192, 168, 4, 1]),
+        netmask: address([255, 255, 255, 0]),
+        gw: address([192, 168, 4, 1]),
+    };
+    unsafe {
+        let netif = esp_netif_get_handle_from_ifkey(c"WIFI_AP_DEF".as_ptr());
+        if netif.is_null() {
+            return Err(EspError::from_infallible::<ESP_ERR_INVALID_STATE>());
+        }
+        // The DHCP server must be stopped while the address changes; a
+        // server that was not running is fine.
+        let _ = esp_netif_dhcps_stop(netif);
+        esp!(esp_netif_set_ip_info(netif, &info))?;
+        esp!(esp_netif_dhcps_start(netif))
+    }
+}
+
 /// Runs the portal until it is configured or times out; then restarts.
 pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
     let name = bdlminer_app::app::portal_ap_name(app.mac);
@@ -121,6 +148,9 @@ pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
     let started = wifi.set_configuration(&Wifi::Mixed(ClientConfiguration::default(), ap)).and_then(|_| wifi.start());
     if let Err(e) = started {
         app.log(&format!("[wifi] portal could not start: {e}"));
+    }
+    if let Err(e) = portal_address() {
+        app.log(&format!("[wifi] portal address 192.168.4.1 not set: {e}"));
     }
     let done = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let server =
