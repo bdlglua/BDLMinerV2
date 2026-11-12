@@ -36,6 +36,10 @@ secp256k1 = { version = "0.33", default-features = false, features = ["lowmemory
 [[package.metadata.esp-idf-sys.extra_components]]
 component_dirs = ["components/bdl_hwsha"]
 
+# The C++ firmware's screen renderer on M5GFX (src/display.rs, M5StickC Plus2).
+[[package.metadata.esp-idf-sys.extra_components]]
+component_dirs = ["components/bdl_ui"]
+
 [build-dependencies]
 embuild = "0.33"
 
