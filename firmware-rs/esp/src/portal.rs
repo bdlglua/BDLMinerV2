@@ -17,7 +17,7 @@ use esp_idf_svc::wifi::{
 use serde_json::{Map, Value};
 
 use crate::system::millis;
-use crate::wifi;
+use crate::{captive, wifi};
 
 fn url_decode(s: &str) -> String {
     let b = s.as_bytes();
@@ -47,7 +47,24 @@ fn escape(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\'', "&#39;")
 }
 
-fn form(app: &App, message: &str) -> String {
+/// The networks in range as buttons that fill in the WiFi network field.
+fn network_list(networks: &[captive::Network]) -> String {
+    if networks.is_empty() {
+        return "<p>No network found. <a href='/'>Scan again</a></p>".into();
+    }
+    let mut html = String::from("<p>Networks in range (<a href='/'>scan again</a>):</p>");
+    for n in networks {
+        let quality = (2 * (i32::from(n.rssi) + 100)).clamp(0, 100);
+        let name = escape(&n.ssid);
+        html.push_str(&format!(
+            "<button type='button' class='w' data-s='{name}' onclick='pick(this)'>{name}<span>{}{quality}%</span></button>",
+            if n.secured { "&#128274; " } else { "" }
+        ));
+    }
+    html
+}
+
+fn form(app: &App, message: &str, networks: &[captive::Network]) -> String {
     let s = app.settings();
     let field = |name: &str, label: &str, value: &str, kind: &str| {
         format!("<label>{label}<input name='{name}' type='{kind}' value='{}'></label>", escape(value))
@@ -56,12 +73,15 @@ fn form(app: &App, message: &str) -> String {
         "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>\
 <title>BDLMiner V2 setup</title><style>body{{font-family:system-ui;background:#0a0d12;color:#e8e8e8;max-width:28rem;margin:auto;padding:1rem}}\
 label{{display:block;margin:.6rem 0}}input{{display:block;width:100%;padding:.5rem;margin-top:.2rem;box-sizing:border-box}}\
-button{{padding:.7rem 1.2rem;background:#f7931a;border:0;font-weight:700}}p.m{{color:#f7931a}}</style></head><body>\
-<h1>BDLMiner V2</h1><p class='m'>{}</p><form method='post' action='/save'>{}{}\
+button{{padding:.7rem 1.2rem;background:#f7931a;border:0;font-weight:700}}p.m{{color:#f7931a}}a{{color:#f7931a}}\
+button.w{{display:flex;justify-content:space-between;width:100%;margin:.3rem 0;padding:.6rem;background:#1b2230;color:#e8e8e8;font-weight:400;text-align:left}}</style>\
+<script>function pick(b){{var f=document.forms[0];f.ssid.value=b.dataset.s;f.wpass.focus()}}</script></head><body>\
+<h1>BDLMiner V2</h1><p class='m'>{}</p>{}<form method='post' action='/save'>{}{}\
 <label>Cryptocurrency (SHA-256d: 0 BTC, 1 BCH, 2 BSV, 3 XEC, 4 DGB, 5 PPC)<input name='coin' type='number' min='0' max='5' value='{}'></label>\
 {}{}{}{}<label>Protocol: 0 Stratum V1, 1 Stratum V2 (Noise)<input name='proto' type='number' min='0' max='1' value='{}'></label>{}\
 <button type='submit'>Save and connect</button></form></body></html>",
         escape(message),
+        network_list(networks),
         field("ssid", "WiFi network", &wifi::saved_station().map(|w| w.0).unwrap_or_default(), "text"),
         field("wpass", "WiFi password", "", "password"),
         s.mining_coin,
@@ -152,41 +172,53 @@ pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
     if let Err(e) = portal_address() {
         app.log(&format!("[wifi] portal address 192.168.4.1 not set: {e}"));
     }
+    // Every name leads to the portal: phones open it as soon as they join.
+    captive::start_dns([192, 168, 4, 1]);
     let done = Arc::new(std::sync::atomic::AtomicBool::new(false));
-    let server =
-        EspHttpServer::new(&Configuration { stack_size: 10 * 1024, ..Default::default() }).and_then(|mut server| {
-            let page = app.clone();
-            server.fn_handler("/", Method::Get, move |req| -> anyhow::Result<()> {
-                req.into_response(200, None, &[("Content-Type", "text/html; charset=utf-8")])?
-                    .write_all(form(&page, "Choose your WiFi network, pool and payout address.").as_bytes())?;
-                Ok(())
-            })?;
-            let (saver, flag) = (app.clone(), done.clone());
-            server.fn_handler("/save", Method::Post, move |mut req| -> anyhow::Result<()> {
-                let mut body = vec![0u8; 2048];
-                let mut got = 0;
-                while got < body.len() {
-                    let n = req.read(&mut body[got..])?;
-                    if n == 0 {
-                        break;
-                    }
-                    got += n;
+    // Wildcards: "/*" (registered last) catches every other page.
+    let config = Configuration { stack_size: 10 * 1024, uri_match_wildcard: true, ..Default::default() };
+    let server = EspHttpServer::new(&config).and_then(|mut server| {
+        let page = app.clone();
+        server.fn_handler("/", Method::Get, move |req| -> anyhow::Result<()> {
+            req.into_response(200, None, &[("Content-Type", "text/html; charset=utf-8")])?.write_all(
+                form(&page, "Choose your WiFi network, pool and payout address.", &captive::networks()).as_bytes(),
+            )?;
+            Ok(())
+        })?;
+        let (saver, flag) = (app.clone(), done.clone());
+        server.fn_handler("/save", Method::Post, move |mut req| -> anyhow::Result<()> {
+            let mut body = vec![0u8; 2048];
+            let mut got = 0;
+            while got < body.len() {
+                let n = req.read(&mut body[got..])?;
+                if n == 0 {
+                    break;
                 }
-                let text = String::from_utf8_lossy(&body[..got]).into_owned();
-                let html = match save(&saver, &text) {
-                    Ok(()) => {
-                        flag.store(true, std::sync::atomic::Ordering::Relaxed);
-                        "<!doctype html><meta charset='utf-8'><p>Saved. The miner restarts and joins your network.</p>"
-                            .to_owned()
-                    }
-                    Err(e) => form(&saver, &e),
-                };
-                req.into_response(200, None, &[("Content-Type", "text/html; charset=utf-8")])?
-                    .write_all(html.as_bytes())?;
-                Ok(())
-            })?;
-            Ok(server)
-        });
+                got += n;
+            }
+            let text = String::from_utf8_lossy(&body[..got]).into_owned();
+            let html = match save(&saver, &text) {
+                Ok(()) => {
+                    flag.store(true, std::sync::atomic::Ordering::Relaxed);
+                    "<!doctype html><meta charset='utf-8'><p>Saved. The miner restarts and joins your network.</p>"
+                        .to_owned()
+                }
+                Err(e) => form(&saver, &e, &captive::networks()),
+            };
+            req.into_response(200, None, &[("Content-Type", "text/html; charset=utf-8")])?
+                .write_all(html.as_bytes())?;
+            Ok(())
+        })?;
+        // Registered last: the connectivity checks of phones and computers
+        // (generate_204, hotspot-detect.html, connecttest.txt...) and any
+        // other page are sent to the form, which makes them show it.
+        server.fn_handler("/*", Method::Get, |req| -> anyhow::Result<()> {
+            req.into_response(302, None, &[("Location", "http://192.168.4.1/"), ("Cache-Control", "no-store")])?
+                .write_all(b"")?;
+            Ok(())
+        })?;
+        Ok(server)
+    });
     let _server = server.map_err(|e| app.log(&format!("[wifi] portal server failed: {e}")));
     let start = millis();
     while !done.load(std::sync::atomic::Ordering::Relaxed)

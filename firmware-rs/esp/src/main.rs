@@ -5,6 +5,7 @@
 //! miner on the others, the pool task, the dashboard, then the once-a-second
 //! supervision loop.
 
+mod captive;
 #[cfg(feature = "m5stickc-plus2")]
 mod display;
 mod http;
