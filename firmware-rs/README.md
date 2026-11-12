@@ -43,6 +43,9 @@ same self-tests as the C++ firmware choose what runs:
   (`stats`/`hist`) instead of the `spiffs` partition, so it starts empty after
   the switch.
 - WiFi: the network saved by the C++ portal (in the WiFi driver's NVS) is used.
+  Without one, the setup portal (`BDLMinerV2-XXXX`, http://192.168.4.1) works
+  as WiFiManager's did: it opens by itself on a phone that joins it (every DNS
+  name and page lead to it) and lists the networks in range.
 - Dashboard: the same pages and scripts from `web/`, the same JSON API
   (`/api/stats`, `/api/history`, `/api/settings`, `/api/backup`, `/metrics`...),
   so the hub and other miners' dashboards keep working.
@@ -96,7 +99,9 @@ cargo build --release
 cargo run --release
 ```
 
-M5StickC Plus2 (holds the power pin on GPIO4, reads the IMU temperature, and
+M5StickC Plus2 (holds the power pin on GPIO4 as soon as the app starts, and
+the image's ESP-IDF bootloader skips the image check at power-on so that it
+starts in time after the power button or the USB cable; reads the IMU temperature, and
 draws the C++ firmware's screens with its own renderer, `src/ui_view.cpp` on
 M5GFX, built by `esp/components/bdl_ui`; button A: next page, held 5 s:
 factory reset; button B: brightness):
@@ -107,7 +112,8 @@ cargo build --release --features m5stickc-plus2
 
 Without an ESP toolchain, run the manual workflow *Rust ESP32 firmware*
 (`.github/workflows/firmware-rs-esp.yml`): its artifacts hold one image per
-board (`bdlminer-esp-<board>.bin`) to flash at 0x0. ASIC boards (Bitaxe
+board (`bdlminer-esp-<board>.bin`, ESP-IDF's bootloader built from
+`esp/sdkconfig.defaults`, the partition table and the app) to flash at 0x0. ASIC boards (Bitaxe
 Gamma 601, NerdNOS) are not supported yet: keep the C++ firmware on them.
 
 The first build downloads and compiles ESP-IDF v5.3. `cargo run` flashes with

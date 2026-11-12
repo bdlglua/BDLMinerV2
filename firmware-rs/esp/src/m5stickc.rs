@@ -4,7 +4,7 @@
 
 use std::sync::Mutex;
 
-use esp_idf_svc::hal::gpio::{Gpio4, PinDriver};
+use esp_idf_svc::hal::gpio::Gpio4;
 
 // components/bdl_ui/ui_ffi.cpp: the MPU6886 through M5GFX's I2C driver.
 // esp-idf-hal's I2cDriver uses ESP-IDF's legacy driver, and ESP-IDF aborts
@@ -18,16 +18,23 @@ extern "C" {
 /// Serialises the IMU reads.
 static IMU: Mutex<()> = Mutex::new(());
 
-/// On battery the board turns itself off unless GPIO4 stays high: call
-/// first thing at boot.
-pub fn hold_power(pin: Gpio4) {
-    match PinDriver::output(pin) {
-        Ok(mut hold) => {
-            let _ = hold.set_high();
-            // Keep the pin driven for as long as the firmware runs.
-            std::mem::forget(hold);
-        }
-        Err(e) => log::error!("power hold: {e:?}"),
+/// The board turns itself off unless GPIO4 goes high soon after the power
+/// button or the USB cable wakes it: call first thing at boot. The level is
+/// set before the pin becomes an output, and the pin is not reset first
+/// (`PinDriver::output` would), so the hold never dips.
+pub fn hold_power(_pin: Gpio4) {
+    use esp_idf_svc::sys::{gpio_config, gpio_config_t, gpio_mode_t_GPIO_MODE_OUTPUT, gpio_set_level};
+    let config = gpio_config_t {
+        pin_bit_mask: 1 << 4,
+        mode: gpio_mode_t_GPIO_MODE_OUTPUT,
+        // No pull-up or pull-down, no interrupt.
+        ..unsafe { std::mem::zeroed() }
+    };
+    // The output register first: the pin drives high from the moment it
+    // becomes an output.
+    let ok = unsafe { gpio_set_level(4, 1) == 0 && gpio_config(&config) == 0 && gpio_set_level(4, 1) == 0 };
+    if !ok {
+        log::error!("power hold: GPIO4 could not be driven high");
     }
 }
 

@@ -73,13 +73,23 @@ jobs:
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q libudev-dev
           cargo install espflash@3.3.0 --locked
+      # With ESP-IDF's own bootloader, built from sdkconfig.defaults (it skips
+      # the image check at power-on, so the M5StickC Plus2 holds its power
+      # sooner), instead of the one espflash ships.
       - name: Flashable image
         working-directory: firmware-rs/esp
-        run: >
-          espflash save-image --chip ${{ matrix.mcu }} --merge --flash-size ${{ matrix.flash }}
-          --partition-table ../../partitions/${{ matrix.partitions }}
-          target/${{ matrix.target }}/release/bdlminer-esp
-          target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
+        run: |
+          bootloader=$(ls target/${{ matrix.target }}/release/build/esp-idf-sys-*/out/build/bootloader/bootloader.bin | head -n 1)
+          if [ ! -f "$bootloader" ]; then
+            echo "::error::ESP-IDF bootloader.bin not found"
+            exit 1
+          fi
+          echo "bootloader: $bootloader"
+          espflash save-image --chip ${{ matrix.mcu }} --merge --flash-size ${{ matrix.flash }} \
+            --bootloader "$bootloader" \
+            --partition-table ../../partitions/${{ matrix.partitions }} \
+            target/${{ matrix.target }}/release/bdlminer-esp \
+            target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
       - uses: actions/upload-artifact@v7
         with:
           name: bdlminer-esp-${{ matrix.board }}
