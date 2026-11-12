@@ -56,15 +56,19 @@ struct CModel {
 const PANEL: i32 = 0;
 #[cfg(feature = "lilygo-t-display")]
 const PANEL: i32 = 1;
-#[cfg(feature = "lilygo-t-display-s3")]
+#[cfg(any(feature = "lilygo-t-display-s3", feature = "nerdnos"))]
 const PANEL: i32 = 2;
 #[cfg(feature = "cyd")]
 const PANEL: i32 = 3;
+#[cfg(feature = "gamma601")]
+const PANEL: i32 = 4;
 
 extern "C" {
     fn bdl_ui_begin(panel: i32, rotation: u8, accent: u32, language: u8) -> bool;
     fn bdl_ui_controls(button_a: *mut i32, button_b: *mut i32, touch: *mut bool);
     fn bdl_ui_touched() -> bool;
+    #[cfg(feature = "gamma601")]
+    fn bdl_ui_lines(line1: *const c_char, line2: *const c_char, line3: *const c_char);
     fn bdl_ui_brightness(percent: u8);
     fn bdl_ui_invalidate();
     fn bdl_ui_render(model: *const CModel);
@@ -414,10 +418,30 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
                     if s.screen_pages & (1 << page) == 0 {
                         page = 0;
                     }
+                    #[cfg(not(feature = "gamma601"))]
                     render(&screen::build(page, &s, &inputs(&app, &system, &events), &samples));
+                    #[cfg(feature = "gamma601")]
+                    gamma_screen(&app, &system);
                 }
             }
         }
         std::thread::sleep(Duration::from_millis(20));
     }
+}
+
+/// The Gamma's 128x32 OLED: hashrate, temperatures and clock, then the
+/// address or the ASIC's state, as the C++ firmware's ui_gamma.cpp sums up.
+#[cfg(feature = "gamma601")]
+fn gamma_screen(app: &App, system: &EspSystem) {
+    let s = crate::asic::status();
+    let rate = app.miner.hashrate_live() / 1e9;
+    let line1 = format!("{rate:.1} GH/s  {:.0} MHz", s.frequency);
+    let asic = if s.temperature.is_finite() { format!("{:.0}C", s.temperature) } else { "--".into() };
+    let vr = if s.regulator_temperature.is_finite() { format!("{:.0}C", s.regulator_temperature) } else { "--".into() };
+    let line2 = format!("ASIC {asic} VR {vr} {}rpm", s.rpm);
+    let ip = system.ip();
+    let line3 = if s.running && !ip.is_empty() { ip } else { s.state() };
+    let _guard = LOCK.lock().unwrap();
+    let (a, b, c3) = (c(&line1), c(&line2), c(&line3));
+    unsafe { bdl_ui_lines(a.as_ptr(), b.as_ptr(), c3.as_ptr()) };
 }

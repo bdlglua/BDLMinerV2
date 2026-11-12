@@ -60,12 +60,14 @@ pub struct EspSystem {
     /// A board thermometer that takes precedence over the chip's (the
     /// M5StickC Plus2's IMU).
     pub imu: Option<Box<dyn Fn() -> f32 + Send + Sync>>,
+    /// The name of that thermometer for the dashboard ("imu", "asic").
+    pub sensor: &'static str,
 }
 
 impl EspSystem {
     fn reading(&self) -> (f32, &'static str) {
         if let Some(imu) = &self.imu {
-            return (imu(), "imu");
+            return (imu(), self.sensor);
         }
         (chip_temperature(), "chip")
     }

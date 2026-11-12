@@ -126,8 +126,24 @@ bool bdl_ui_begin(int panel, uint8_t rotation, uint32_t accent, uint8_t language
     }
 #endif
     lcd->setRotation(rotation);
+    if (panel == BDL_PANEL_GAMMA601) {
+        // 128x32: three lines of text (bdl_ui_lines), not the pages.
+        lcd->fillScreen(TFT_BLACK);
+        return true;
+    }
     view.reset(new (std::nothrow) ui_view::View(lcd, true, accent, language));
     return view != nullptr;
+}
+
+void bdl_ui_lines(const char *line1, const char *line2, const char *line3) {
+    if (!lcd || view) return;
+    lcd->startWrite();
+    lcd->fillScreen(TFT_BLACK);
+    lcd->setTextColor(TFT_WHITE, TFT_BLACK);
+    lcd->setTextSize(1);
+    const char *lines[] = {line1, line2, line3};
+    for (int i = 0; i < 3; i++) lcd->drawString(lines[i] ? lines[i] : "", 0, i * 11);
+    lcd->endWrite();
 }
 
 int bdl_ui_board(void) { return lcd ? int(lcd->getBoard()) : 0; }

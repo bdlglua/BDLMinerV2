@@ -50,6 +50,8 @@ int bdl_ui_board(void);
 void bdl_ui_controls(int *button_a, int *button_b, bool *touch);
 // Whether the touch panel is pressed.
 bool bdl_ui_touched(void);
+// The Gamma 601's 128x32 OLED: three lines of text.
+void bdl_ui_lines(const char *line1, const char *line2, const char *line3);
 void bdl_ui_brightness(uint8_t percent);
 void bdl_ui_rotation(uint8_t rotation);
 void bdl_ui_invalidate(void);

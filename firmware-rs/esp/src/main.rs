@@ -5,6 +5,8 @@
 //! miner on the others, the pool task, the dashboard, then the once-a-second
 //! supervision loop.
 
+#[cfg(any(feature = "gamma601", feature = "nerdnos"))]
+mod asic;
 mod captive;
 #[cfg(feature = "display")]
 mod display;
@@ -41,7 +43,11 @@ use crate::system::{EspClock, EspSystem};
 /// The board's name and C++ firmware environment (with "-rust"), as the
 /// dashboard and the update channel know them.
 fn board_identity() -> (&'static str, &'static str) {
-    if cfg!(feature = "m5stickc-plus2") {
+    if cfg!(feature = "gamma601") {
+        ("Bitaxe-Gamma-601", "bitaxe-gamma-601-rust")
+    } else if cfg!(feature = "nerdnos") {
+        ("NerdNOS", "nerdnos-rust")
+    } else if cfg!(feature = "m5stickc-plus2") {
         ("M5StickC Plus2", "m5stickc-plus2-rust")
     } else if cfg!(all(feature = "m5stack", esp32s3)) {
         ("M5Stack-S3", "m5stack-s3-rust")
@@ -69,11 +75,22 @@ fn board_profile() -> BoardProfile {
     BoardProfile {
         name,
         env,
-        kind: BoardKind::Esp32,
+        kind: if cfg!(feature = "gamma601") {
+            BoardKind::Gamma601
+        } else if cfg!(feature = "nerdnos") {
+            BoardKind::NerdNos
+        } else {
+            BoardKind::Esp32
+        },
         m5: cfg!(feature = "m5"),
         // The screen pages the settings may choose from, as the C++ firmware
         // reports them.
-        display_pages: if cfg!(feature = "display") { bdlminer_app::screen::PAGES as u8 } else { 0 },
+        // The Gamma's 128x32 OLED has its own summary, no pages.
+        display_pages: if cfg!(all(feature = "display", not(feature = "gamma601"))) {
+            bdlminer_app::screen::PAGES as u8
+        } else {
+            0
+        },
         temperature_sensor: cfg!(any(esp32s2, esp32s3, esp32c3, feature = "m5stickc-plus2")),
     }
 }
@@ -124,8 +141,12 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let peripherals = Peripherals::take()?;
-    // T-Display-S3: GPIO15 keeps the panel powered on battery.
-    #[cfg(feature = "lilygo-t-display-s3")]
+    // Bitaxe Gamma 601: the ASIC held in reset before anything else.
+    #[cfg(any(feature = "gamma601", feature = "nerdnos"))]
+    asic::hold_reset();
+    // T-Display-S3 (also on the NerdNOS): GPIO15 keeps the panel powered on
+    // battery.
+    #[cfg(any(feature = "lilygo-t-display-s3", feature = "nerdnos"))]
     unsafe {
         use esp_idf_svc::sys::{gpio_config, gpio_config_t, gpio_mode_t_GPIO_MODE_OUTPUT, gpio_set_level};
         gpio_set_level(15, 1);
@@ -139,14 +160,18 @@ fn main() -> anyhow::Result<()> {
     #[cfg(feature = "m5stickc-plus2")]
     thread::sleep(Duration::from_millis(300));
     #[cfg(feature = "m5stickc-plus2")]
-    let imu = m5stickc::imu();
-    #[cfg(not(feature = "m5stickc-plus2"))]
-    let imu = None;
+    let (imu, sensor) = (m5stickc::imu(), "imu");
+    // ASIC boards: the driver's thermometer (ASIC diode or board sensor on the
+    // Gamma, NTC on the NerdNOS), which their own safety needs read.
+    #[cfg(any(feature = "gamma601", feature = "nerdnos"))]
+    let (imu, sensor): (Option<Box<dyn Fn() -> f32 + Send + Sync>>, _) = (Some(Box::new(asic::temperature)), "asic");
+    #[cfg(not(any(feature = "m5stickc-plus2", feature = "gamma601", feature = "nerdnos")))]
+    let (imu, sensor) = (None, "imu");
     let sysloop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
     let storage: Arc<Mutex<dyn Storage>> = Arc::new(Mutex::new(nvs::NvsStorage));
     let clock = Arc::new(EspClock::new(bdlminer_app::settings::DEFAULT_TIMEZONE));
-    let espsystem = Arc::new(EspSystem { ip: Mutex::new(String::new()), ssid: Mutex::new(String::new()), imu });
+    let espsystem = Arc::new(EspSystem { ip: Mutex::new(String::new()), ssid: Mutex::new(String::new()), imu, sensor });
     let mut boot = [0u8; 4];
     system::random(&mut boot);
     let app = App::new(Platform {
@@ -170,6 +195,10 @@ fn main() -> anyhow::Result<()> {
     } else {
         app.log("[ui] display could not start");
     }
+    // The ASIC board's regulator, sensors and chip (still off), after the
+    // screen: the Gamma's shares its I2C bus.
+    #[cfg(any(feature = "gamma601", feature = "nerdnos"))]
+    asic::begin(&app);
 
     // WiFi: keep the network the driver saved (also the C++ portal's).
     let mut wifi = BlockingWifi::wrap(wifi::driver(peripherals.modem, sysloop.clone(), nvs)?, sysloop)?;
@@ -210,39 +239,47 @@ fn main() -> anyhow::Result<()> {
     // gets the last core to itself (WiFi runs on core 0) at priority 19 and
     // software runs on the others, as in the C++ firmware.
     app.miner.load_stats();
-    let caps = {
-        let app = app.clone();
-        hwsha::init(move |line| app.log(line))
-    };
-    // Single-core chips (ESP32-S2, ESP32-C3): one miner, next to WiFi.
-    #[cfg(any(esp32, esp32s3))]
-    let cores: &[Core] = &[Core::Core1, Core::Core0];
-    #[cfg(not(any(esp32, esp32s3)))]
-    let cores: &[Core] = &[Core::Core0];
-    for (i, &core) in cores.iter().enumerate() {
-        let hardware = caps.hardware && i == 0;
-        let kind = if hardware { "hw" } else { "sw" };
-        let Some(engine) = app.miner.register_engine(kind) else { break };
-        // Original ESP32: a second work hashed in the idle cycles of the
-        // hardware loop, counted as its own engine.
-        let fill = if hardware && caps.fill { app.miner.register_engine("fill") } else { None };
-        let miner = app.miner.clone();
-        // On a single core the network needs the CPU more than any miner.
-        let owns_core = hardware && cores.len() > 1;
-        // A real sleep (one tick): the idle task and lower priorities run.
-        let options = WorkerOptions { owns_core, pause: Duration::from_millis(1) };
-        let name: &'static [u8] = if i == 0 { b"miner0\0" } else { b"miner1\0" };
-        let priority = if owns_core { 19 } else { 1 };
-        spawn_pinned(name, core, priority, 8 * 1024, move || {
-            if hardware {
-                run_worker(&miner, engine, &mut hwsha::HardwareEngine::new(fill), options);
-            } else {
-                run_worker(&miner, engine, &mut hwsha::SoftwareEngine, options);
+    // ASIC boards: the chip mines, through the C++ firmware's driver.
+    #[cfg(any(feature = "gamma601", feature = "nerdnos"))]
+    if !asic::start(app.clone()) {
+        app.log("[miner] ASIC task could not start");
+    }
+    #[cfg(not(any(feature = "gamma601", feature = "nerdnos")))]
+    {
+        let caps = {
+            let app = app.clone();
+            hwsha::init(move |line| app.log(line))
+        };
+        // Single-core chips (ESP32-S2, ESP32-C3): one miner, next to WiFi.
+        #[cfg(any(esp32, esp32s3))]
+        let cores: &[Core] = &[Core::Core1, Core::Core0];
+        #[cfg(not(any(esp32, esp32s3)))]
+        let cores: &[Core] = &[Core::Core0];
+        for (i, &core) in cores.iter().enumerate() {
+            let hardware = caps.hardware && i == 0;
+            let kind = if hardware { "hw" } else { "sw" };
+            let Some(engine) = app.miner.register_engine(kind) else { break };
+            // Original ESP32: a second work hashed in the idle cycles of the
+            // hardware loop, counted as its own engine.
+            let fill = if hardware && caps.fill { app.miner.register_engine("fill") } else { None };
+            let miner = app.miner.clone();
+            // On a single core the network needs the CPU more than any miner.
+            let owns_core = hardware && cores.len() > 1;
+            // A real sleep (one tick): the idle task and lower priorities run.
+            let options = WorkerOptions { owns_core, pause: Duration::from_millis(1) };
+            let name: &'static [u8] = if i == 0 { b"miner0\0" } else { b"miner1\0" };
+            let priority = if owns_core { 19 } else { 1 };
+            spawn_pinned(name, core, priority, 8 * 1024, move || {
+                if hardware {
+                    run_worker(&miner, engine, &mut hwsha::HardwareEngine::new(fill), options);
+                } else {
+                    run_worker(&miner, engine, &mut hwsha::SoftwareEngine, options);
+                }
+            });
+            app.log(&format!("[miner] miner{i} engine={kind} core={core:?}"));
+            if fill.is_some() {
+                app.log("[miner] engine=fill: a second work in the idle cycles of miner0");
             }
-        });
-        app.log(&format!("[miner] miner{i} engine={kind} core={core:?}"));
-        if fill.is_some() {
-            app.log("[miner] engine=fill: a second work in the idle cycles of miner0");
         }
     }
     {
@@ -282,6 +319,9 @@ fn main() -> anyhow::Result<()> {
         if now.wrapping_sub(last_tick) >= 1000 {
             last_tick = now;
             app.second_tick(&*events);
+            // Gamma: frequency, voltage and fan as the settings now say.
+            #[cfg(feature = "gamma601")]
+            asic::apply_settings(&app);
             if let Some(why) = app.restart_due().or_else(|| app.watch.take_restart()) {
                 app.prepare_restart(&why);
                 thread::sleep(Duration::from_millis(500));
