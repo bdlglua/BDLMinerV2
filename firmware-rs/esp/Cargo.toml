@@ -5,7 +5,7 @@ name = "bdlminer-esp"
 description = "BDLMiner V2 firmware for ESP32 boards (ESP-IDF)"
 version = "2.6.1"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.87"
 license = "GPL-3.0-only"
 publish = false
 
