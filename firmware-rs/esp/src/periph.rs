@@ -129,7 +129,12 @@ impl I2c {
     pub fn new(port: i32, sda: i32, scl: i32, addresses: &[u8]) -> Option<Self> {
         let mut bus: i2c_master_bus_handle_t = std::ptr::null_mut();
         unsafe {
-            if i2c_master_get_bus_handle(port, &mut bus) != ESP_OK || bus.is_null() {
+            // A port nobody opened yet is the usual case: not an error
+            // worth ESP-IDF's red log line.
+            esp_log_level_set(c"i2c.master".as_ptr(), esp_log_level_t_ESP_LOG_NONE);
+            let existing = i2c_master_get_bus_handle(port, &mut bus) == ESP_OK && !bus.is_null();
+            esp_log_level_set(c"i2c.master".as_ptr(), esp_log_level_t_ESP_LOG_INFO);
+            if !existing {
                 let mut config: i2c_master_bus_config_t = std::mem::zeroed();
                 config.i2c_port = port;
                 config.sda_io_num = sda;

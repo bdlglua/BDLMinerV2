@@ -233,3 +233,42 @@ fn metrics_and_diagnostics() {
     assert_eq!(handle(&app, &request(Method::Post, "/api/notify-test", b"")).status, 409); // nothing configured
     assert_eq!(handle(&app, &Request { query: "id=x", ..request(Method::Get, "/api/notify-test", b"") }).status, 400);
 }
+
+/// The history as the dashboard reads it, written without a JSON tree: one
+/// entry per five minutes, nulls where nothing was measured.
+#[test]
+fn history_points() {
+    let board = BoardProfile::host();
+    let mut storage = MemoryStorage::default();
+    let mut s = Settings::defaults(&board);
+    s.btc_address = ADDRESS.into();
+    settings::save(&mut storage, &s, 0, &board).unwrap();
+    let clock = Arc::new(TestClock(AtomicU32::new(5000)));
+    let app = App::new(Platform {
+        board,
+        clock: clock.clone(),
+        storage: Arc::new(Mutex::new(storage)),
+        system: Arc::new(TestSystem),
+        console: Box::new(|_| {}),
+        mac: 0x1a2b_0000_0000,
+        boot_id: 0xabc,
+        random: Arc::new(|b: &mut [u8]| b.fill(7)),
+    });
+    for step in 0..=3u32 {
+        clock.0.store(5000 + step * 300_000, Ordering::Relaxed);
+        app.miner.tick();
+    }
+    let r = handle(&app, &request(Method::Get, "/api/history", b""));
+    assert_eq!(r.content_type, "application/json");
+    let h = json_of(&r);
+    assert_eq!(h["boot_id"], "abc");
+    assert_eq!(h["interval_s"], 300);
+    assert_eq!(h["revision"], 3);
+    for key in ["hashrate", "temperature_c", "power_percent", "coverage_percent"] {
+        assert_eq!(h[key].as_array().map(Vec::len), Some(3), "{key}");
+    }
+    // Nothing hashed or measured: no rate, temperature or power.
+    assert_eq!(h["hashrate"][0], Value::Null);
+    assert_eq!(h["temperature_c"][0], Value::Null);
+    assert_eq!(h["coverage_percent"][0], 0);
+}

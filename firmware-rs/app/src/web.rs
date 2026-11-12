@@ -395,19 +395,35 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
     j
 }
 
+/// Written straight into the response: a `Value` tree of 4 x 288 points
+/// took about 30 KB of an ESP32's heap at once, the text about 6 KB.
 fn history(app: &App) -> Response {
+    use std::fmt::Write;
     let (points, revision) = app.miner.history();
-    let field = |f: &dyn Fn(&crate::miner::HistoryPoint) -> Value| -> Vec<Value> { points.iter().map(f).collect() };
-    let body = json!({
-        "boot_id": format!("{:x}", app.boot_id),
-        "interval_s": HISTORY_INTERVAL_S,
-        "revision": revision,
-        "hashrate": field(&|p| if p.coverage_percent != 0 || p.hashrate != 0.0 { (p.hashrate.round() as i64).into() } else { Value::Null }),
-        "temperature_c": field(&|p| if p.temperature_deci_c == i16::MIN { Value::Null } else { number((p.temperature_deci_c as f64 / 10.0 * 10.0).round() / 10.0) }),
-        "power_percent": field(&|p| if p.coverage_percent != 0 { p.power_percent.into() } else { Value::Null }),
-        "coverage_percent": field(&|p| p.coverage_percent.into()),
+    let mut body = String::with_capacity(96 + points.len() * 22);
+    let _ =
+        write!(body, "{{\"boot_id\":\"{:x}\",\"interval_s\":{HISTORY_INTERVAL_S},\"revision\":{revision}", app.boot_id);
+    let mut field = |name: &str, value: &dyn Fn(&crate::miner::HistoryPoint) -> Option<String>| {
+        let _ = write!(body, ",\"{name}\":[");
+        for (i, p) in points.iter().enumerate() {
+            if i > 0 {
+                body.push(',');
+            }
+            body.push_str(value(p).as_deref().unwrap_or("null"));
+        }
+        body.push(']');
+    };
+    field("hashrate", &|p| {
+        (p.coverage_percent != 0 || p.hashrate != 0.0).then(|| (p.hashrate.round() as i64).to_string())
     });
-    Response::json(&body)
+    field("temperature_c", &|p| {
+        (p.temperature_deci_c != i16::MIN)
+            .then(|| number((p.temperature_deci_c as f64 / 10.0 * 10.0).round() / 10.0).to_string())
+    });
+    field("power_percent", &|p| (p.coverage_percent != 0).then(|| p.power_percent.to_string()));
+    field("coverage_percent", &|p| Some(p.coverage_percent.to_string()));
+    body.push('}');
+    Response::new(200, "application/json", body).no_store()
 }
 
 fn diagnostics(app: &App) -> Response {
