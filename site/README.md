@@ -18,6 +18,11 @@ cargo run --locked --manifest-path site/Cargo.toml -- --check
 cargo run --locked --release --manifest-path site/Cargo.toml -- channels --repository bdlglua/BDLMinerV2 --output dist
 ```
 
+The newest Rust firmware release (`rust-v*`, firmware-rs) gets its own
+installer under `rust/`, built from its full images; a missing or unreadable
+Rust release leaves it out without holding up the stable and beta channels.
+Publishing a Rust release starts this site's workflow.
+
 The normal build regenerates tracked `installer/site/` templates and ignored
 `installer/assets/wasm/`. Publication fills channel metadata and generates
 SHA-256 manifests directly from release factory images. A staged export preserves
