@@ -26,6 +26,8 @@ mod nvs;
 #[cfg(any(feature = "gamma601", feature = "nerdnos", feature = "display"))]
 mod periph;
 mod portal;
+#[cfg(target_arch = "riscv32")]
+mod riscv_libc;
 mod system;
 mod wifi;
 
