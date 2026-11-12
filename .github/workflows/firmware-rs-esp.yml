@@ -101,6 +101,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7.0
+        # espup asks GitHub's API for the toolchain release: unauthenticated,
+        # a dozen parallel jobs ran out of the hourly rate limit.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # Espressif's latest stable fork. Its 1.99.0.0 does not build std
           # for ESP-IDF (`AT_FDCWD` missing from libc); there is no 1.99.1
