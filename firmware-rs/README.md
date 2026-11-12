@@ -118,7 +118,8 @@ board (`bdlminer-esp-<board>.bin`, ESP-IDF's bootloader built from
 Gamma 601, NerdNOS) are not supported yet: keep the C++ firmware on them.
 
 The first build downloads and compiles ESP-IDF v5.3. `cargo run` flashes with
-the C++ firmware's partition table (`partitions/min_spiffs.csv`). For an
+two 1.94 MB app slots (`partitions/rust_4MB_ota.csv`, NVS where the C++
+firmware keeps it). For an
 ESP32-S3 add `--target xtensa-esp32s3-espidf` (and `MCU=esp32s3`), for an
 ESP32-C3 `--target riscv32imc-esp-espidf` (`MCU=esp32c3`).
 
@@ -162,6 +163,10 @@ task), the daily summary (`summary.rs`), crash reports (`crash.rs`,
 `esp/src/crash.rs`), mDNS, the live dashboard stream (`/api/events`,
 `esp/src/http.rs`), the beeper (`esp/src/beeper.rs`) and the clock set from
 the pool's job time when NTP does not answer.
+
+The 4 MB boards with a screen (M5Stack Core, T-Display, CYD) have a single
+3.9 MB app slot (`partitions/rust_4MB.csv`): their image, with the screen
+renderer, does not fit two slots, so they update over USB only.
 
 GitHub updates only install `<env>-firmware.bin` from `rust-v*` releases
 (`<env>` ends in `-rust`), signed by the release key and naming this board

@@ -25,7 +25,7 @@ jobs:
             mcu: esp32
             board: esp32
             features: ""
-            partitions: min_spiffs.csv
+            partitions: rust_4MB_ota.csv
             flash: 4mb
           - target: xtensa-esp32-espidf
             mcu: esp32
@@ -38,7 +38,7 @@ jobs:
             mcu: esp32s3
             board: esp32s3
             features: ""
-            partitions: min_spiffs.csv
+            partitions: rust_4MB_ota.csv
             flash: 4mb
           # Boards with a screen. Their 4 MB variants use rust_4MB.csv: the
           # image (~2.1 MB with the renderer) exceeds min_spiffs' slots.
@@ -90,13 +90,13 @@ jobs:
             mcu: esp32s2
             board: esp32s2
             features: ""
-            partitions: min_spiffs.csv
+            partitions: rust_4MB_ota.csv
             flash: 4mb
           - target: riscv32imc-esp-espidf
             mcu: esp32c3
             board: esp32c3
             features: ""
-            partitions: min_spiffs.csv
+            partitions: rust_4MB_ota.csv
             flash: 4mb
     steps:
       - uses: actions/checkout@v7
@@ -191,6 +191,7 @@ jobs:
           espflash save-image --chip ${{ matrix.mcu }} --flash-size ${{ matrix.flash }} \
             target/${{ matrix.target }}/release/bdlminer-esp \
             target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
+          echo "update image: $(stat -c %s target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin) bytes"
           # The updater requires the board and version markers in the image.
           grep -q --binary-files=text "${{ matrix.board }}-rust" target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
           grep -q --binary-files=text "BDLMinerV1/" target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin

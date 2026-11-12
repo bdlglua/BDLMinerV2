@@ -6,25 +6,27 @@ target = "xtensa-esp32-espidf"
 
 # `-A linker_messages`: ldproxy always prints "[ldproxy] Running ldproxy"
 # on stderr, which rustc reports as a warning on every build.
+# `-Zlocation-detail=none`: no file names and lines in panic messages (tens
+# of KB of the image, which must fit two update slots on 4 MB boards).
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"
-runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
-rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
+runner = "espflash flash --monitor --partition-table ../../partitions/rust_4MB_ota.csv"
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages", "-Zlocation-detail=none"]
 
 [target.xtensa-esp32s3-espidf]
 linker = "ldproxy"
-runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
-rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
+runner = "espflash flash --monitor --partition-table ../../partitions/rust_4MB_ota.csv"
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages", "-Zlocation-detail=none"]
 
 [target.xtensa-esp32s2-espidf]
 linker = "ldproxy"
-runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
-rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
+runner = "espflash flash --monitor --partition-table ../../partitions/rust_4MB_ota.csv"
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages", "-Zlocation-detail=none"]
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
-runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
-rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
+runner = "espflash flash --monitor --partition-table ../../partitions/rust_4MB_ota.csv"
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages", "-Zlocation-detail=none"]
 
 [unstable]
 build-std = ["std", "panic_abort"]

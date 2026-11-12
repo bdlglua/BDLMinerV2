@@ -52,7 +52,7 @@ unsafe impl Send for Writer {}
 impl Writer {
     fn begin() -> Result<Self, String> {
         let partition = unsafe { esp_ota_get_next_update_partition(std::ptr::null()) };
-        if partition.is_null() {
+        if !supported() {
             return Err("this board has no room for a second firmware: update by USB".into());
         }
         let mut handle: esp_ota_handle_t = 0;
@@ -98,8 +98,11 @@ impl Firmware for EspFirmware {
     }
 }
 
+/// A second app slot exists. With a single one, ESP-IDF names the running
+/// slot as the next.
 pub fn supported() -> bool {
-    !unsafe { esp_ota_get_next_update_partition(std::ptr::null()) }.is_null()
+    let next = unsafe { esp_ota_get_next_update_partition(std::ptr::null()) };
+    !next.is_null() && next != unsafe { esp_ota_get_running_partition() }
 }
 
 /// Starts writing the other slot (the dashboard's upload).

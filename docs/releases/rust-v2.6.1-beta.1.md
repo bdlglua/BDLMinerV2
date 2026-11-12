@@ -50,6 +50,11 @@ the previous one comes back by itself. The C++ firmware's updates never
 offer these images, and the Rust firmware only installs Rust releases: to
 go back to the C++ firmware, flash it over USB.
 
+The 4 MB boards with a screen (`m5stack-esp32`, `lilygo-t-display`,
+`esp32-2432s028r`) have room for one firmware only: they update over USB.
+The 4 MB boards without a screen use a new partition table with two
+firmware slots; flashing the full image at 0x0 keeps their settings.
+
 ## Testing
 
 Built by the workflow for every board; the portable code (mining, pools,
