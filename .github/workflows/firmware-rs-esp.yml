@@ -17,8 +17,16 @@ jobs:
         include:
           - target: xtensa-esp32-espidf
             mcu: esp32
+            board: esp32
+            features: ""
+          - target: xtensa-esp32-espidf
+            mcu: esp32
+            board: m5stickc-plus2
+            features: m5stickc-plus2
           - target: xtensa-esp32s3-espidf
             mcu: esp32s3
+            board: esp32s3
+            features: ""
     steps:
       - uses: actions/checkout@v7
       - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7.0
@@ -30,10 +38,10 @@ jobs:
         working-directory: firmware-rs/esp
         env:
           MCU: ${{ matrix.mcu }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
       # One image to flash at 0x0 (bootloader, partition table, app), e.g.
       # with https://espressif.github.io/esptool-js/ or
-      # `espflash write-bin 0x0 bdlminer-esp-<mcu>.bin`.
+      # `espflash write-bin 0x0 bdlminer-esp-<board>.bin`.
       - name: Install espflash
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q libudev-dev
@@ -44,12 +52,12 @@ jobs:
           espflash save-image --chip ${{ matrix.mcu }} --merge --flash-size 4mb
           --partition-table ../../partitions/min_spiffs.csv
           target/${{ matrix.target }}/release/bdlminer-esp
-          target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.mcu }}.bin
+          target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
       - uses: actions/upload-artifact@v7
         with:
-          name: bdlminer-esp-${{ matrix.mcu }}
+          name: bdlminer-esp-${{ matrix.board }}
           path: |
             firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp
-            firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.mcu }}.bin
+            firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
           if-no-files-found: error
           retention-days: 7

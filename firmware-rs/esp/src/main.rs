@@ -7,6 +7,8 @@
 
 mod http;
 mod hwsha;
+#[cfg(feature = "m5stickc-plus2")]
+mod m5stickc;
 mod nvs;
 mod portal;
 mod system;
@@ -37,14 +39,18 @@ use crate::system::{EspClock, EspSystem};
 
 fn board_profile() -> BoardProfile {
     BoardProfile {
-        name: if cfg!(esp32s3) {
+        name: if cfg!(feature = "m5stickc-plus2") {
+            "M5StickC Plus2"
+        } else if cfg!(esp32s3) {
             "ESP32-S3"
         } else if cfg!(esp32c3) {
             "ESP32-C3"
         } else {
             "ESP32"
         },
-        env: if cfg!(esp32s3) {
+        env: if cfg!(feature = "m5stickc-plus2") {
+            "m5stickc-plus2-rust"
+        } else if cfg!(esp32s3) {
             "esp32s3-rust"
         } else if cfg!(esp32c3) {
             "esp32c3-rust"
@@ -54,7 +60,7 @@ fn board_profile() -> BoardProfile {
         kind: BoardKind::Esp32,
         m5: cfg!(feature = "m5"),
         display_pages: 0,
-        temperature_sensor: cfg!(any(esp32s2, esp32s3, esp32c3)),
+        temperature_sensor: cfg!(any(esp32s2, esp32s3, esp32c3, feature = "m5stickc-plus2")),
     }
 }
 
@@ -104,11 +110,17 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let peripherals = Peripherals::take()?;
+    #[cfg(feature = "m5stickc-plus2")]
+    m5stickc::hold_power(peripherals.pins.gpio4);
+    #[cfg(feature = "m5stickc-plus2")]
+    let imu = m5stickc::imu(peripherals.i2c0, peripherals.pins.gpio21, peripherals.pins.gpio22);
+    #[cfg(not(feature = "m5stickc-plus2"))]
+    let imu = None;
     let sysloop = EspSystemEventLoop::take()?;
     let nvs = EspDefaultNvsPartition::take()?;
     let storage: Arc<Mutex<dyn Storage>> = Arc::new(Mutex::new(nvs::NvsStorage));
     let clock = Arc::new(EspClock::new(bdlminer_app::settings::DEFAULT_TIMEZONE));
-    let espsystem = Arc::new(EspSystem { ip: Mutex::new(String::new()), ssid: Mutex::new(String::new()) });
+    let espsystem = Arc::new(EspSystem { ip: Mutex::new(String::new()), ssid: Mutex::new(String::new()), imu });
     let mut boot = [0u8; 4];
     system::random(&mut boot);
     let app = App::new(Platform {

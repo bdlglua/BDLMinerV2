@@ -17,6 +17,8 @@ harness = false
 default = []
 # Boards with an M5 IMU near the battery default to a 65 C thermal limit.
 m5 = []
+# M5StickC Plus2: power hold on GPIO4, MPU6886 temperature.
+m5stickc-plus2 = ["m5"]
 
 [dependencies]
 bdlminer-core = { path = "../core" }

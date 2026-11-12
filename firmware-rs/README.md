@@ -93,6 +93,17 @@ cargo build --release
 cargo run --release
 ```
 
+M5StickC Plus2 (holds the power pin on GPIO4, reads the IMU temperature):
+
+```bash
+cargo build --release --features m5stickc-plus2
+```
+
+Without an ESP toolchain, run the manual workflow *Rust ESP32 firmware*
+(`.github/workflows/firmware-rs-esp.yml`): its artifacts hold one image per
+board (`bdlminer-esp-<board>.bin`) to flash at 0x0. ASIC boards (Bitaxe
+Gamma 601, NerdNOS) are not supported yet: keep the C++ firmware on them.
+
 The first build downloads and compiles ESP-IDF v5.3. `cargo run` flashes with
 the C++ firmware's partition table (`partitions/min_spiffs.csv`). For an
 ESP32-S3 add `--target xtensa-esp32s3-espidf` (and `MCU=esp32s3`), for an

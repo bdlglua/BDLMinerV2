@@ -57,6 +57,18 @@ impl Clock for EspClock {
 pub struct EspSystem {
     pub ip: Mutex<String>,
     pub ssid: Mutex<String>,
+    /// A board thermometer that takes precedence over the chip's (the
+    /// M5StickC Plus2's IMU).
+    pub imu: Option<Box<dyn Fn() -> f32 + Send + Sync>>,
+}
+
+impl EspSystem {
+    fn reading(&self) -> (f32, &'static str) {
+        if let Some(imu) = &self.imu {
+            return (imu(), "imu");
+        }
+        (chip_temperature(), "chip")
+    }
 }
 
 /// The chip's own temperature sensor (ESP32-S2/S3/C3); the original ESP32
@@ -113,13 +125,12 @@ impl SystemInfo for EspSystem {
         }
     }
     fn temperature(&self) -> f32 {
-        chip_temperature()
+        self.reading().0
     }
     fn temperature_source(&self) -> &'static str {
-        if chip_temperature().is_finite() {
-            "chip"
-        } else {
-            "unavailable"
+        match self.reading() {
+            (t, source) if t.is_finite() => source,
+            _ => "unavailable",
         }
     }
     fn boot_reason(&self) -> String {
