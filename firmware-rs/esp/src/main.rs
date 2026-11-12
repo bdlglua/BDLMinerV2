@@ -1,10 +1,12 @@
 //! BDLMiner V2 for ESP32 boards, in Rust on ESP-IDF.
 //!
 //! Boot: settings from NVS, WiFi (saved network, fallbacks, else the setup
-//! portal), SNTP, one software mining thread per core, the pool task, the
-//! dashboard, then the once-a-second supervision loop.
+//! portal), SNTP, the hardware SHA miner on the last core and a software
+//! miner on the others, the pool task, the dashboard, then the once-a-second
+//! supervision loop.
 
 mod http;
+mod hwsha;
 mod nvs;
 mod portal;
 mod system;
@@ -15,7 +17,7 @@ use std::thread;
 use std::time::Duration;
 
 use bdlminer_app::app::{App, Platform};
-use bdlminer_app::miner::software_worker;
+use bdlminer_app::miner::{run_worker, WorkerOptions};
 use bdlminer_app::notify::HttpClient;
 use bdlminer_app::platform::{BoardKind, BoardProfile, Clock, Storage, SystemInfo};
 use bdlminer_app::pool;
@@ -61,6 +63,8 @@ struct EspHttp;
 
 impl HttpClient for EspHttp {
     fn post(&self, url: &str, headers: &[(&str, &str)], body: &[u8]) -> Result<u16, String> {
+        // TLS hashes with the SHA peripheral too: keep the miner off it.
+        let _hold = hwsha::Hold::new();
         let config = HttpConfiguration {
             timeout: Some(Duration::from_secs(15)),
             crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
@@ -163,16 +167,40 @@ fn main() -> anyhow::Result<()> {
     app.log(&format!("[wifi] connected, IP {ip}"));
     let _sntp = EspSntp::new_default()?;
 
-    // One software miner per core: the last core alone (WiFi runs on core 0).
+    // One miner per core. With a working SHA peripheral, the hardware miner
+    // gets the last core to itself (WiFi runs on core 0) at priority 19 and
+    // software runs on the others, as in the C++ firmware.
     app.miner.load_stats();
-    let cores: &[Core] = if cfg!(esp32c3) { &[Core::Core0] } else { &[Core::Core1, Core::Core0] };
+    let caps = {
+        let app = app.clone();
+        hwsha::init(move |line| app.log(line))
+    };
+    let cores: &[Core] = if cfg!(any(esp32s2, esp32c3)) { &[Core::Core0] } else { &[Core::Core1, Core::Core0] };
     for (i, &core) in cores.iter().enumerate() {
-        let Some(engine) = app.miner.register_engine("sw") else { break };
+        let hardware = caps.hardware && i == 0;
+        let kind = if hardware { "hw" } else { "sw" };
+        let Some(engine) = app.miner.register_engine(kind) else { break };
+        // Original ESP32: a second work hashed in the idle cycles of the
+        // hardware loop, counted as its own engine.
+        let fill = if hardware && caps.fill { app.miner.register_engine("fill") } else { None };
         let miner = app.miner.clone();
-        let owns_core = cores.len() > 1 && i == 0;
+        // On a single core the network needs the CPU more than any miner.
+        let owns_core = hardware && cores.len() > 1;
+        // A real sleep (one tick): the idle task and lower priorities run.
+        let options = WorkerOptions { owns_core, pause: Duration::from_millis(1) };
         let name: &'static [u8] = if i == 0 { b"miner0\0" } else { b"miner1\0" };
-        spawn_pinned(name, core, 1, 8 * 1024, move || software_worker(&miner, engine, owns_core));
-        app.log(&format!("[miner] miner{i} engine=sw core={core:?}"));
+        let priority = if owns_core { 19 } else { 1 };
+        spawn_pinned(name, core, priority, 8 * 1024, move || {
+            if hardware {
+                run_worker(&miner, engine, &mut hwsha::HardwareEngine::new(fill), options);
+            } else {
+                run_worker(&miner, engine, &mut hwsha::SoftwareEngine, options);
+            }
+        });
+        app.log(&format!("[miner] miner{i} engine={kind} core={core:?}"));
+        if fill.is_some() {
+            app.log("[miner] engine=fill: a second work in the idle cycles of miner0");
+        }
     }
     {
         let app = app.clone();
