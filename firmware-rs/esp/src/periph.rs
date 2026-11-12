@@ -181,19 +181,20 @@ impl I2c {
     }
 }
 
-/// One ADC1 pin, calibrated millivolts (as Arduino's analogReadMilliVolts),
-/// with the ESP32-S3's curve fitting: the NerdNOS NTC.
-#[cfg(feature = "nerdnos")]
+/// One ADC1 pin, calibrated millivolts (as Arduino's analogReadMilliVolts):
+/// the NerdNOS NTC (ESP32-S3, curve fitting) and the M5StickC Plus2's
+/// battery (ESP32, line fitting).
+#[cfg(any(feature = "nerdnos", feature = "m5stickc-plus2"))]
 pub struct Adc {
     unit: adc_oneshot_unit_handle_t,
     channel: adc_channel_t,
     cali: adc_cali_handle_t,
 }
 
-#[cfg(feature = "nerdnos")]
+#[cfg(any(feature = "nerdnos", feature = "m5stickc-plus2"))]
 unsafe impl Send for Adc {}
 
-#[cfg(feature = "nerdnos")]
+#[cfg(any(feature = "nerdnos", feature = "m5stickc-plus2"))]
 impl Adc {
     pub fn new(pin: i32) -> Option<Self> {
         unsafe {
@@ -215,15 +216,32 @@ impl Adc {
             if adc_oneshot_config_channel(unit, channel, &chan) != ESP_OK {
                 return None;
             }
-            let cali_config = adc_cali_curve_fitting_config_t {
-                unit_id,
-                chan: channel,
-                atten: adc_atten_t_ADC_ATTEN_DB_12,
-                bitwidth: adc_bitwidth_t_ADC_BITWIDTH_DEFAULT,
-            };
             let mut cali: adc_cali_handle_t = std::ptr::null_mut();
-            if adc_cali_create_scheme_curve_fitting(&cali_config, &mut cali) != ESP_OK {
-                cali = std::ptr::null_mut();
+            #[cfg(not(esp32))]
+            {
+                let cali_config = adc_cali_curve_fitting_config_t {
+                    unit_id,
+                    chan: channel,
+                    atten: adc_atten_t_ADC_ATTEN_DB_12,
+                    bitwidth: adc_bitwidth_t_ADC_BITWIDTH_DEFAULT,
+                };
+                if adc_cali_create_scheme_curve_fitting(&cali_config, &mut cali) != ESP_OK {
+                    cali = std::ptr::null_mut();
+                }
+            }
+            // The original ESP32 has line fitting only (eFuse Vref or Two
+            // Point values, else the nominal 1100 mV).
+            #[cfg(esp32)]
+            {
+                let cali_config = adc_cali_line_fitting_config_t {
+                    unit_id,
+                    atten: adc_atten_t_ADC_ATTEN_DB_12,
+                    bitwidth: adc_bitwidth_t_ADC_BITWIDTH_DEFAULT,
+                    default_vref: 1100,
+                };
+                if adc_cali_create_scheme_line_fitting(&cali_config, &mut cali) != ESP_OK {
+                    cali = std::ptr::null_mut();
+                }
             }
             Some(Adc { unit, channel, cali })
         }

@@ -146,6 +146,10 @@ impl SystemInfo for EspSystem {
             _ => "unavailable",
         }
     }
+    #[cfg(feature = "m5stickc-plus2")]
+    fn on_battery(&self) -> i32 {
+        crate::m5stickc::on_battery()
+    }
     fn ota_supported(&self) -> bool {
         crate::ota::supported()
     }
