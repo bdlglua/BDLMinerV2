@@ -349,10 +349,18 @@ fn main() -> anyhow::Result<()> {
         }
     }
     // Without a payout address there is nothing useful to mine for.
+    // The saved network gets a second try: after a crash the access point
+    // may still hold the previous association for a while.
     let joined = !settings.btc_address.is_empty()
         && networks.iter().enumerate().any(|(i, (ssid, pass))| {
             app.log(&format!("[wifi] trying \"{ssid}\""));
-            wifi::join(ssid, pass, 15_000, i == 0 && saved.is_some())
+            let saved_first = i == 0 && saved.is_some();
+            wifi::join(ssid, pass, 15_000, saved_first)
+                || (saved_first && {
+                    app.log(&format!("[wifi] trying \"{ssid}\" again"));
+                    thread::sleep(Duration::from_secs(2));
+                    wifi::join(ssid, pass, 15_000, true)
+                })
         });
     if !joined {
         #[cfg(feature = "display")]
@@ -504,13 +512,15 @@ fn main() -> anyhow::Result<()> {
             last_log = now;
             let s = app.miner.stats();
             app.log(&format!(
-                "[stats] {:.2} kH/s | shares {} ok / {} rejected | best {:.6} (ever {:.6}) | {}",
+                "[stats] {:.2} kH/s | shares {} ok / {} rejected | best {:.6} (ever {:.6}) | {} | heap {} KB, block {} KB",
                 app.miner.hashrate() / 1000.0,
                 s.accepted,
                 s.rejected,
                 s.session_best_diff,
                 s.best_diff,
-                app.pool.status()
+                app.pool.status(),
+                espsystem.free_heap() / 1024,
+                espsystem.max_alloc() / 1024
             ));
         }
         thread::sleep(Duration::from_millis(20));

@@ -49,3 +49,12 @@ CONFIG_NEWLIB_NANO_FORMAT=y
 CONFIG_ESP_ERR_TO_NAME_LOOKUP=n
 CONFIG_LOG_DEFAULT_LEVEL_WARN=y
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN=y
+# TLS memory: buffers allocated as records need them and freed after the
+# handshake (certificates, configuration), 4 KB outgoing records. A boot
+# with the HTTPS services (updates, market data, notifications...) ran an
+# M5StickC Plus2 out of heap ("memory allocation of 408 bytes failed").
+CONFIG_MBEDTLS_DYNAMIC_BUFFER=y
+CONFIG_MBEDTLS_DYNAMIC_FREE_CONFIG_DATA=y
+CONFIG_MBEDTLS_DYNAMIC_FREE_CA_CERT=y
+CONFIG_MBEDTLS_ASYMMETRIC_CONTENT_LEN=y
+CONFIG_MBEDTLS_SSL_OUT_CONTENT_LEN=4096
