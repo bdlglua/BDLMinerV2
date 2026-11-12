@@ -450,6 +450,8 @@ impl Ssd1306 {
             log::warn!("[ui] SSD1306 not answering");
             return None;
         }
+        // LovyanGFX's default brightness after init.
+        oled.set_brightness(127);
         oled.flush();
         Some(oled)
     }
@@ -469,6 +471,11 @@ impl Ssd1306 {
 
     pub fn set_rotation(&mut self, rotation: u8) {
         self.flipped = rotation & 2 != 0;
+    }
+
+    /// Display off (sleep) or on.
+    pub fn sleep(&self, asleep: bool) {
+        self.commands(&[if asleep { 0xAE } else { 0xAF }]);
     }
 
     fn flush(&self) {

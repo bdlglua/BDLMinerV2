@@ -38,8 +38,9 @@ impl Screen for crate::lcd::Lcd {
 
 #[cfg(feature = "gamma601")]
 impl Screen for crate::lcd::Ssd1306 {
+    /// As the C++ firmware: the OLED only sleeps (0) or wakes.
     fn brightness(&mut self, value: u8) {
-        self.set_brightness(value);
+        self.sleep(value == 0);
     }
 }
 
@@ -240,6 +241,8 @@ mod cyd_touch {
 struct Display {
     screen: Box<dyn Screen>,
     view: View,
+    #[cfg(feature = "gamma601")]
+    gamma: bdlminer_app::ui_gamma::GammaView,
 }
 
 static DISPLAY: Mutex<Option<Display>> = Mutex::new(None);
@@ -257,7 +260,12 @@ pub fn begin(app: &App) -> bool {
     if display.is_none() {
         match open(s.rotation) {
             Some(screen) => {
-                *display = Some(Display { screen, view: View::new(screen::accent(s.theme), s.language) });
+                *display = Some(Display {
+                    screen,
+                    view: View::new(screen::accent(s.theme), s.language),
+                    #[cfg(feature = "gamma601")]
+                    gamma: bdlminer_app::ui_gamma::GammaView::new(),
+                });
             }
             None => {
                 app.log("[ui] display not found");
@@ -279,14 +287,41 @@ fn percent_to_level(percent: u8) -> u8 {
 }
 
 pub fn message(title: &str, line1: &str, line2: &str) {
+    #[cfg(feature = "gamma601")]
+    {
+        if title == "BDLMiner V2" {
+            let version = format!("BDLMiner {FW_VERSION}");
+            gamma_lines([&version, "Bitaxe Gamma 601", "Native BM1370 driver", "EXPERIMENTAL"], false);
+        } else {
+            gamma_lines([title, line1, line2, ""], false);
+        }
+    }
+    #[cfg(not(feature = "gamma601"))]
     with(|panel, view| view.message(panel, title, line1, line2));
+}
+
+/// The Gamma's four rows (app::ui_gamma).
+#[cfg(feature = "gamma601")]
+fn gamma_lines(rows: [&str; 4], centered: bool) {
+    if let Some(d) = DISPLAY.lock().unwrap().as_mut() {
+        d.gamma.lines(&mut *d.screen, rows, centered, millis());
+    }
 }
 
 /// The setup portal: its network, password and a QR code to join it.
 pub fn portal(app: &App, ssid: &str, password: &str) {
     let lang = app.settings().language;
-    let qr = format!("WIFI:T:WPA;S:{ssid};P:{password};;");
-    with(|panel, view| view.portal(panel, screen::tr("WiFi setup", lang), ssid, password, &qr));
+    #[cfg(feature = "gamma601")]
+    {
+        let _ = lang;
+        let key = format!("Key: {password}");
+        gamma_lines(["WiFi setup: connect to", ssid, &key, "Open 192.168.4.1"], false);
+    }
+    #[cfg(not(feature = "gamma601"))]
+    {
+        let qr = format!("WIFI:T:WPA;S:{ssid};P:{password};;");
+        with(|panel, view| view.portal(panel, screen::tr("WiFi setup", lang), ssid, password, &qr));
+    }
 }
 
 fn render(model: &Model) {
@@ -294,6 +329,12 @@ fn render(model: &Model) {
 }
 
 fn alert(title: &str, value: &str, line: &str) {
+    #[cfg(feature = "gamma601")]
+    {
+        let height = format!("Height {value}");
+        gamma_lines([title, &height, line, "Press the button"], true);
+    }
+    #[cfg(not(feature = "gamma601"))]
     with(|panel, view| view.alert(panel, title, value, line));
 }
 
@@ -302,7 +343,11 @@ fn set_brightness(percent: u8) {
 }
 
 fn invalidate() {
-    with(|_, view| view.invalidate());
+    if let Some(d) = DISPLAY.lock().unwrap().as_mut() {
+        d.view.invalidate();
+        #[cfg(feature = "gamma601")]
+        d.gamma.invalidate();
+    }
 }
 
 /// What the supervision reports to the screen (`App::second_tick`).
@@ -507,7 +552,7 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
                 alert_shown = false;
                 events.block.store(0, Ordering::Relaxed);
             } else {
-                page = display_config::next_page(page, PAGES, app.settings().screen_pages);
+                page = display_config::next_page(page, UI_PAGES, app.settings().screen_pages);
             }
             invalidate();
             redraw = true;
@@ -519,7 +564,16 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
             } else {
                 let current = app.brightness();
                 let i = BRIGHTNESS_STEPS.iter().position(|&s| s == current).map_or(0, |i| i + 1);
-                let next = BRIGHTNESS_STEPS[i % BRIGHTNESS_STEPS.len()];
+                // The Gamma's OLED is only on (80) or off, as in the C++ firmware.
+                let next = if cfg!(feature = "gamma601") {
+                    if current > 0 {
+                        0
+                    } else {
+                        80
+                    }
+                } else {
+                    BRIGHTNESS_STEPS[i % BRIGHTNESS_STEPS.len()]
+                };
                 app.set_brightness(next);
                 events.backlight.store(next, Ordering::Relaxed);
             }
@@ -560,7 +614,7 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
                     #[cfg(not(feature = "gamma601"))]
                     render(&screen::build(page, &s, &inputs(&app, &system, &events), &samples));
                     #[cfg(feature = "gamma601")]
-                    gamma_screen(&app, &system);
+                    gamma_screen(&app, &system, page);
                 }
             }
         }
@@ -568,17 +622,67 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
     }
 }
 
-/// The Gamma's 128x32 OLED: hashrate, temperatures and clock, then the
-/// address or the ASIC's state, as the C++ firmware's ui_gamma.cpp sums up.
+/// The Gamma's 128x32 OLED, as the C++ firmware's ui_gamma.cpp renders it:
+/// the ASIC's state while it is off, else three pages (or the custom
+/// screen's widgets on the first).
 #[cfg(feature = "gamma601")]
-fn gamma_screen(app: &App, system: &EspSystem) {
-    let s = crate::asic::status();
-    let rate = app.miner.hashrate_live() / 1e9;
-    let line1 = format!("{rate:.1} GH/s  {:.0} MHz", s.frequency);
-    let asic = if s.temperature.is_finite() { format!("{:.0}C", s.temperature) } else { "--".into() };
-    let vr = if s.regulator_temperature.is_finite() { format!("{:.0}C", s.regulator_temperature) } else { "--".into() };
-    let line2 = format!("ASIC {asic} VR {vr} {}rpm", s.rpm);
+fn gamma_screen(app: &App, system: &EspSystem, page: u32) {
+    use bdlminer_core::work::format_si;
+    let s = app.settings();
+    let stats = app.miner.stats();
+    let a = crate::asic::status();
+    // The ASIC diode, or the board's sensor while the ASIC is off.
+    let t = crate::asic::temperature();
+    let temp = if t.is_finite() { format!("{t:.1}") } else { "--".into() };
+    let reading = |v: f32, d: usize| if v.is_finite() { format!("{v:.d$}") } else { "--".into() };
+    let counter = |n: u32| if n < 1_000_000 { n.to_string() } else { format_si(n as f64, 2) };
     let ip = system.ip();
-    let line3 = if s.running && !ip.is_empty() { ip } else { s.state() };
-    with(|panel, view| view.lines(panel, &[&line1, &line2, &line3]));
+    let ticker = s.coin().ticker();
+    let rows: [String; 4] = if !a.running {
+        ["Gamma 601 / BM1370".into(), a.state(), format!("{temp} C  Fan {}", a.rpm), ip]
+    } else if page == 0 && s.custom_screen {
+        let data = display_config::Snapshot {
+            hashrate: app.miner.hashrate_live(),
+            best: stats.session_best_diff,
+            accepted: stats.accepted,
+            temperature: t,
+            uptime: app.miner.uptime_seconds(),
+            connected: stats.pool_connected,
+            frequency: a.frequency,
+            fan_rpm: a.rpm as i32,
+        };
+        let french = s.language == 1;
+        s.screen_widgets.map(|w| {
+            let w = w as u32;
+            format!("{} {}", display_config::label(w, french), display_config::value(w, &data, french))
+        })
+    } else if page == 0 {
+        [
+            if a.stock_fallback { "BM1370 525M FALLBACK".into() } else { format!("BDLMiner {ticker}/BM1370") },
+            format!("{}H/s", format_si(app.miner.hashrate_live(), 2)),
+            format!("{temp} C  Fan {}", a.rpm),
+            format!("A:{} R:{}", counter(stats.accepted), counter(stats.rejected)),
+        ]
+    } else if page == 1 {
+        [
+            "Power / thermal".into(),
+            format!("Vin {}V Vc {}V", reading(a.input_voltage, 2), reading(a.core_voltage, 3)),
+            format!("{} MHz  {}A", reading(a.frequency, 0), reading(a.current, 1)),
+            format!("VR {} C", reading(a.regulator_temperature, 1)),
+        ]
+    } else {
+        [
+            format!("{ticker} / Pool / records"),
+            if stats.pool_connected { "Pool connected" } else { "Pool disconnected" }.into(),
+            format!("Best {}", format_si(stats.best_diff, 2)),
+            ip,
+        ]
+    };
+    gamma_lines([&rows[0], &rows[1], &rows[2], &rows[3]], false);
 }
+
+/// Pages button A cycles through: the Gamma's three, the others' eight.
+#[cfg(feature = "gamma601")]
+const UI_PAGES: u32 = 3;
+#[cfg(not(feature = "gamma601"))]
+const UI_PAGES: u32 = PAGES;
