@@ -4,6 +4,7 @@
 #include "bdl_ui.h"
 
 #include <M5GFX.h>
+#include <lgfx/v1/panel/Panel_ST7789.hpp>
 
 #include <memory>
 #include <new>
