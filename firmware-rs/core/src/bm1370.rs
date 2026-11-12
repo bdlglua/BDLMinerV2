@@ -15,7 +15,7 @@ pub const VOLTAGE_OPTIONS: [u16; 7] = [1000, 1060, 1100, 1150, 1200, 1250, 1300]
 
 pub fn valid_profile(mhz: u32) -> bool {
     mhz == ESP_MINER_MAX_MHZ as u32
-        || ((STOCK_MHZ as u32..=MAX_MHZ as u32).contains(&mhz) && (mhz - STOCK_MHZ as u32) % 25 == 0)
+        || ((STOCK_MHZ as u32..=MAX_MHZ as u32).contains(&mhz) && (mhz - STOCK_MHZ as u32).is_multiple_of(25))
 }
 
 pub fn valid_voltage(mv: u32) -> bool {
