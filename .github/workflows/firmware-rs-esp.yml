@@ -269,9 +269,10 @@ jobs:
             openssl dgst -sha256 -sign "$key" -out "$f.sig" "$f"
             openssl dgst -sha256 -verify "$RUNNER_TEMP/update-public.pem" -signature "$f.sig" "$f"
           done
-      - name: Checksums
-        run: (cd dist && sha256sum *.bin > SHA256SUMS.txt && cat SHA256SUMS.txt)
-          notes="docs/releases/rust-v$version.md"
+      - name: Checksums and notes
+        run: |
+          (cd dist && sha256sum *.bin > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          notes="docs/releases/rust-v$VERSION.md"
           if [ -f "$notes" ]; then echo "NOTES=$notes" >> "$GITHUB_ENV"; fi
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
