@@ -202,7 +202,7 @@ impl HttpClient for EspHttp {
                 if !refused || attempt == 3 {
                     return Ok(status);
                 }
-                log::info!("download link refused (HTTP {status}); asking GitHub for a fresh one");
+                log::warn!("download link refused (HTTP {status}); asking GitHub for a fresh one");
                 thread::sleep(Duration::from_secs(2));
                 break;
             }

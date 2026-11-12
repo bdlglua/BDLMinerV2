@@ -50,7 +50,7 @@ static LOG: OnceLock<Logger> = OnceLock::new();
 fn log(line: &str) {
     match LOG.get() {
         Some(f) => f(line),
-        None => log::info!("{line}"),
+        None => log::warn!("{line}"),
     }
 }
 

@@ -264,7 +264,7 @@ impl Lcd {
                 // them apart.
                 if id[0] == 0x85 && id[2] == 0x52 {
                     invert = !invert;
-                    log::info!("[ui] ST7789 display (CYD with two USB ports): colours inverted");
+                    log::warn!("[ui] ST7789 display (CYD with two USB ports): colours inverted");
                 }
             }
         }

@@ -59,10 +59,7 @@ remote_component = { name = "espressif/mdns", version = "1.2" }
 embuild = "0.33"
 
 [profile.release]
-# Size first for the dependencies: two app slots of 1.94 MB on 4 MB boards
-# (partitions/rust_4MB_ota.csv). The firmware's own crates keep "s" and the
-# mining core 3 (below): the SHA engine loops are there.
-opt-level = "z"
+opt-level = "s"
 codegen-units = 1
 lto = "fat"
 
@@ -74,9 +71,3 @@ opt-level = "z"
 # does the same for the C++ firmware).
 [profile.release.package.bdlminer-core]
 opt-level = 3
-
-[profile.release.package.bdlminer-app]
-opt-level = "s"
-
-[profile.release.package.bdlminer-esp]
-opt-level = "s"

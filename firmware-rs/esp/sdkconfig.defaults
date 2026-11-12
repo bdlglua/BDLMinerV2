@@ -39,3 +39,13 @@ CONFIG_ESP_COREDUMP_CHECKSUM_CRC32=y
 # The dashboard's server (8 sockets, two of them live dashboards), the pool,
 # MQTT and the HTTPS requests, at once.
 CONFIG_LWIP_MAX_SOCKETS=16
+# Image size: the 4 MB boards without a screen keep two 1.94 MB update slots
+# (partitions/rust_4MB_ota.csv). No assert texts, newlib's small printf (the
+# firmware formats in Rust), no error name table, ESP-IDF's own messages from
+# warnings up (the firmware's log is unaffected), and the certificate bundle
+# of the common authorities (GitHub, mempool.space, the BDLMiner API...).
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y
+CONFIG_NEWLIB_NANO_FORMAT=y
+CONFIG_ESP_ERR_TO_NAME_LOOKUP=n
+CONFIG_LOG_DEFAULT_LEVEL_WARN=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN=y
