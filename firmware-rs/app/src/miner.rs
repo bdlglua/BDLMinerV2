@@ -3,7 +3,7 @@
 //! SHA peripheral, ASIC drivers) all report through `Miner`.
 
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -182,6 +182,37 @@ pub struct MinerStats {
     pub start_millis: u32,
 }
 
+/// A 64-bit hash counter outside the stats lock. The original ESP32 (Xtensa
+/// LX6) has no 64-bit atomics: there it is a short lock instead.
+#[cfg(target_has_atomic = "64")]
+#[derive(Default)]
+struct HashCounter(std::sync::atomic::AtomicU64);
+
+#[cfg(target_has_atomic = "64")]
+impl HashCounter {
+    fn add(&self, n: u64) {
+        self.0.fetch_add(n, Ordering::Relaxed);
+    }
+    fn get(&self) -> u64 {
+        self.0.load(Ordering::Relaxed)
+    }
+}
+
+#[cfg(not(target_has_atomic = "64"))]
+#[derive(Default)]
+struct HashCounter(Mutex<u64>);
+
+#[cfg(not(target_has_atomic = "64"))]
+impl HashCounter {
+    fn add(&self, n: u64) {
+        let mut h = self.0.lock().unwrap();
+        *h = h.wrapping_add(n);
+    }
+    fn get(&self) -> u64 {
+        *self.0.lock().unwrap()
+    }
+}
+
 /// Work with what is needed to check its results.
 #[derive(Clone, Debug)]
 pub struct MiningWork {
@@ -265,7 +296,7 @@ pub struct Miner {
     queue_signal: Condvar,
     inner: Mutex<Inner>,
     /// Per-engine hash counters, outside the lock for the hot path.
-    hashes: [AtomicU64; MAX_MINERS],
+    hashes: [HashCounter; MAX_MINERS],
     safety: SafetyLease,
     battery_limited: AtomicBool,
     ota_busy: AtomicBool,
@@ -387,7 +418,7 @@ impl Miner {
 
     pub fn add_hashes(&self, engine: usize, count: u64) {
         if let Some(h) = self.hashes.get(engine) {
-            h.fetch_add(count, Ordering::Relaxed);
+            h.add(count);
         }
     }
 
@@ -742,7 +773,7 @@ impl Miner {
     pub fn stats(&self) -> MinerStats {
         let mut s = self.inner().stats.clone();
         for (i, h) in s.hashes.iter_mut().enumerate() {
-            *h = self.hashes[i].load(Ordering::Relaxed);
+            *h = self.hashes[i].get();
         }
         s
     }
@@ -822,7 +853,7 @@ impl Miner {
             let count = inner.stats.miner_count;
             let mut deltas = [0u64; MAX_MINERS];
             for (i, d) in deltas.iter_mut().enumerate().take(count) {
-                let h = self.hashes[i].load(Ordering::Relaxed);
+                let h = self.hashes[i].get();
                 *d = h.wrapping_sub(inner.last_hashes[i]);
                 inner.last_hashes[i] = h;
             }
