@@ -884,6 +884,11 @@ pub fn error(values: &Map<String, Value>, current: &Settings, board: &BoardProfi
         .and_then(Value::as_u64)
         .and_then(|c| Coin::from_id(c as u32))
         .unwrap_or_else(|| current.coin());
+    // Stratum users are plain text: a phone's typographic apostrophe or an
+    // accent is a mistyped address, never a pool account.
+    if !trim_identity(user).chars().all(|c| c.is_ascii_graphic()) {
+        return Some("The payout address can only hold plain letters, digits and symbols");
+    }
     if !selected.address_compatible(&trim_identity(user)) {
         return Some("Use an address for the selected cryptocurrency");
     }

@@ -36,7 +36,8 @@ Object.assign(FR,{
  'Unsupported cryptocurrency':'Cryptomonnaie non prise en charge',
  'BCH requires Stratum V1':'BCH nécessite Stratum V1',
  'Choose a pool for the selected cryptocurrency':'Choisis une pool pour la cryptomonnaie sélectionnée',
- 'Use an address for the selected cryptocurrency':'Utilise une adresse de la cryptomonnaie sélectionnée'
+ 'Use an address for the selected cryptocurrency':'Utilise une adresse de la cryptomonnaie sélectionnée',
+ 'The payout address can only hold plain letters, digits and symbols':'L’adresse de paiement ne peut contenir que des lettres simples, des chiffres et des symboles'
 });
 const FR_SET={asicmhz:'Fréquence ASIC Gamma (MHz)',asicmv:'Tension de cœur ASIC Gamma (mV)',pool:'Hôte de la pool',port:'Port de la pool',addr:'Adresse BTC (éventuellement adresse.worker)',pass:'Mot de passe de la pool',
 diff:'Difficulté de share suggérée',pool2:'Pool de secours (vide = aucune)',port2:'Port de la pool de secours',
