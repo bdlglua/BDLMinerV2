@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # ESP-IDF 5.3's esp-clang links libxml2.so.2, which newer images lack.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
