@@ -36,8 +36,11 @@ keeps the configuration, and going back to the C++ firmware keeps it too.
 
 - Firmware updates from the dashboard or GitHub: flash over USB.
 - MQTT/Home Assistant, market data (price, fees and recent blocks show "-"),
-  pool statistics, block confirmation checks, anonymous statistics, remote
-  monitoring, the daily summary, crash reports, mDNS and the beeper.
+  pool statistics, block confirmation checks, remote monitoring ("My miners"),
+  the daily summary, crash reports, mDNS and the beeper.
+
+Anonymous hashrate sharing works as in the C++ firmware: the miner appears on
+the public statistics page about 3 minutes after it starts mining.
 
 ## Testing
 

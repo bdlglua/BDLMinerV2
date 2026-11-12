@@ -9,6 +9,7 @@ pub mod platform;
 pub mod pool;
 pub mod screen;
 pub mod settings;
+pub mod share;
 pub mod std_platform;
 pub mod ui_gamma;
 pub mod ui_view;

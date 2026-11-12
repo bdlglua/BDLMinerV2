@@ -158,6 +158,6 @@ Not ported yet (the C++ firmware keeps them):
 - Firmware updates: web upload (`/update`), signed GitHub updates, trial boot
   and rollback.
 - MQTT/Home Assistant, market data (mempool.space), pool statistics, block
-  confirmation checks, anonymous statistics sharing, remote monitoring,
+  confirmation checks, remote monitoring,
   daily summary notification, crash reports, mDNS, live dashboard stream
   (`/api/events`: the pages poll instead).

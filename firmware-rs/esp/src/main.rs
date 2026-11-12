@@ -313,9 +313,14 @@ fn main() -> anyhow::Result<()> {
     }
     {
         let app = app.clone();
-        spawn_pinned(b"notify\0", Core::Core0, 1, 12 * 1024, move || loop {
-            app.notifier.poll(&EspHttp);
-            thread::sleep(Duration::from_secs(5));
+        // Notifications and the anonymous statistics report share one HTTPS task.
+        spawn_pinned(b"notify\0", Core::Core0, 1, 12 * 1024, move || {
+            let mut share = bdlminer_app::share::Share::default();
+            loop {
+                app.notifier.poll(&EspHttp);
+                share.poll(&app, &EspHttp, wifi::link_up());
+                thread::sleep(Duration::from_secs(5));
+            }
         });
     }
     #[cfg(feature = "display")]
