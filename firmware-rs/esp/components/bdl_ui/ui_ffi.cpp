@@ -6,6 +6,8 @@
 
 #include <M5GFX.h>
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 #include <cmath>
 #include <memory>
@@ -32,10 +34,23 @@ extern "C" {
 
 bool bdl_ui_begin(uint8_t rotation, uint32_t accent, uint8_t language) {
     if (view) return true;
-    lcd = new (std::nothrow) M5GFX();
-    if (!lcd || !lcd->init()) return false;
-    if (lcd->getBoard() != lgfx::boards::board_M5StickCPlus2) {
-        ESP_LOGW("ui", "M5GFX detected board %d, not an M5StickC Plus2", int(lcd->getBoard()));
+    // A panel that has only just been powered (the board started on USB, and
+    // the power hold switched its supply on) may not answer yet: try again.
+    for (int attempt = 1; attempt <= 3; attempt++) {
+        lcd = new (std::nothrow) M5GFX();
+        if (!lcd) return false;
+        bool ok = lcd->init();
+        if (ok && lcd->getBoard() == lgfx::boards::board_M5StickCPlus2) break;
+        ESP_LOGW("ui", "attempt %d: M5GFX %s, board %d", attempt, ok ? "started" : "failed", int(lcd->getBoard()));
+        if (attempt == 3) {
+            if (ok) break;  // another board: draw on what M5GFX found
+            delete lcd;
+            lcd = nullptr;
+            return false;
+        }
+        delete lcd;
+        lcd = nullptr;
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
     lcd->setRotation(rotation);
     view.reset(new (std::nothrow) ui_view::View(lcd, true, accent, language));

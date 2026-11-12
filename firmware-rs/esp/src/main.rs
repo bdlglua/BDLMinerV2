@@ -113,6 +113,10 @@ fn main() -> anyhow::Result<()> {
     let peripherals = Peripherals::take()?;
     #[cfg(feature = "m5stickc-plus2")]
     m5stickc::hold_power(peripherals.pins.gpio4);
+    // Started on USB, the board's screen and IMU are only powered from the
+    // moment the hold is on: give them time (an ST7789 needs 120 ms) first.
+    #[cfg(feature = "m5stickc-plus2")]
+    thread::sleep(Duration::from_millis(300));
     #[cfg(feature = "m5stickc-plus2")]
     let imu = m5stickc::imu();
     #[cfg(not(feature = "m5stickc-plus2"))]
