@@ -9,6 +9,8 @@
 
 #[cfg(any(feature = "gamma601", feature = "nerdnos"))]
 mod asic;
+#[cfg(feature = "display")]
+mod beeper;
 mod captive;
 mod crash;
 #[cfg(feature = "display")]
@@ -206,6 +208,33 @@ impl HttpClient for EspHttp {
             }
         }
         Err("download link refused".into())
+    }
+}
+
+/// Some networks block NTP. Certificates are checked against the clock, so
+/// no HTTPS request could ever be made: after a minute without NTP, the
+/// pool's job time (within minutes of the real time) sets it; NTP corrects
+/// it whenever it answers. A time before this firmware was built is never
+/// the real one (an expired certificate would pass as valid): refused.
+fn clock_from_pool(app: &App) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    static REFUSED: AtomicBool = AtomicBool::new(false);
+    if DONE.load(Ordering::Relaxed) || app.clock.unix_time().is_some() || app.clock.millis() < 60_000 {
+        return;
+    }
+    let oldest = bdlminer_core::build_time::oldest_plausible(env!("BDL_BUILD_DATE"), 1_700_000_000);
+    let job = app.miner.job_time();
+    if job < oldest {
+        if job != 0 && !REFUSED.swap(true, Ordering::Relaxed) {
+            app.log("[time] the pool's job time is older than this firmware: not used to set the clock");
+        }
+        return;
+    }
+    let now = esp_idf_svc::sys::timeval { tv_sec: job as _, tv_usec: 0 };
+    if unsafe { esp_idf_svc::sys::settimeofday(&now, std::ptr::null()) } == 0 {
+        DONE.store(true, Ordering::Relaxed);
+        app.log("[time] NTP not answering: clock set from the pool's job time");
     }
 }
 
@@ -461,6 +490,7 @@ fn main() -> anyhow::Result<()> {
             last_tick = now;
             app.second_tick(&*events);
             ota::poll_trial(&app);
+            clock_from_pool(&app);
             // Gamma: frequency, voltage and fan as the settings now say.
             #[cfg(feature = "gamma601")]
             asic::apply_settings(&app);

@@ -64,7 +64,28 @@ fn substitute(line: &str, defines: &[(String, String)]) -> String {
     out
 }
 
+/// The build day as C's __DATE__ ("Nov  9 2026"): the oldest time the
+/// pool's job time may set the clock to (esp/src/main.rs).
+fn build_date() {
+    let secs = env::var("SOURCE_DATE_EPOCH").ok().and_then(|s| s.parse::<i64>().ok()).unwrap_or_else(|| {
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+    });
+    // Howard Hinnant's civil_from_days.
+    let z = secs.div_euclid(86400) + 719468;
+    let era = z.div_euclid(146097);
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + if month <= 2 { 1 } else { 0 };
+    const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    println!("cargo:rustc-env=BDL_BUILD_DATE={} {day:>2} {year}", MONTHS[(month - 1) as usize]);
+}
+
 fn main() {
+    build_date();
     // The chip cfgs esp-idf-sys passes on (esp32, esp32s3...).
     println!("cargo::rustc-check-cfg=cfg(esp32, esp32s2, esp32s3, esp32c3)");
     kernels();

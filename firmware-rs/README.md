@@ -151,13 +151,19 @@ moved to Rust). The M5Stack image keeps M5GFX (C++) for its board detection
 and panel drivers only (`esp/components/bdl_ui`); its pages are drawn in
 Rust like the others.
 
-Not ported yet (the C++ firmware keeps them):
+Ported from the C++ firmware since the first builds, run by the HTTPS task
+(`esp/src/main.rs`) unless noted: firmware updates (dashboard upload,
+signed GitHub releases of the Rust firmware, trial boot and rollback:
+`app/src/update.rs`, `app/src/multipart.rs`, `esp/src/ota.rs`), market data
+and the pool's statistics (`app/src/market.rs`), remote monitoring
+(`remote.rs`), block confirmation checks (`block_status.rs`), the anonymous
+statistics report (`share.rs`), MQTT/Home Assistant (`mqtt.rs`, its own
+task), the daily summary (`summary.rs`), crash reports (`crash.rs`,
+`esp/src/crash.rs`), mDNS, the live dashboard stream (`/api/events`,
+`esp/src/http.rs`), the beeper (`esp/src/beeper.rs`) and the clock set from
+the pool's job time when NTP does not answer.
 
-- The beeper, and the market data the price, fee and recent-block readings
-  show ("-" on the screens).
-- Firmware updates: web upload (`/update`), signed GitHub updates, trial boot
-  and rollback.
-- MQTT/Home Assistant, market data (mempool.space), pool statistics, block
-  confirmation checks, remote monitoring,
-  daily summary notification, crash reports, mDNS, live dashboard stream
-  (`/api/events`: the pages poll instead).
+GitHub updates only install `<env>-firmware.bin` from `rust-v*` releases
+(`<env>` ends in `-rust`), signed by the release key and naming this board
+and that version in the image: the C++ and Rust firmwares never install each
+other by themselves.

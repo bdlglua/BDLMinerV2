@@ -32,15 +32,23 @@ and application), for example with https://espressif.github.io/esptool-js/ or
 The settings keep the C++ firmware's format and place: flashing a Rust image
 keeps the configuration, and going back to the C++ firmware keeps it too.
 
-## Not in this beta
+## Same features as the C++ firmware
 
-- Firmware updates from the dashboard or GitHub: flash over USB.
-- MQTT/Home Assistant, market data (price, fees and recent blocks show "-"),
-  pool statistics, block confirmation checks, remote monitoring ("My miners"),
-  the daily summary, crash reports, mDNS and the beeper.
+Firmware updates (upload from the dashboard, signed GitHub releases, trial
+and automatic rollback), market data (price, fees, retarget, recent blocks),
+the pool's statistics, block confirmation checks, remote monitoring ("My
+miners"), the anonymous public statistics, MQTT/Home Assistant, the daily
+summary, crash reports, mDNS (`http://<name>.local/`), the live dashboard and
+the beeper.
 
-Anonymous hashrate sharing works as in the C++ firmware: the miner appears on
-the public statistics page about 3 minutes after it starts mining.
+## Updates
+
+The next Rust betas install from the dashboard (GitHub update, or upload of
+`<board>-rust-firmware.bin` from the release). A new firmware starts on
+trial: it is kept after a few minutes connected to the pool and mining, else
+the previous one comes back by itself. The C++ firmware's updates never
+offer these images, and the Rust firmware only installs Rust releases: to
+go back to the C++ firmware, flash it over USB.
 
 ## Testing
 
@@ -48,5 +56,8 @@ Built by the workflow for every board; the portable code (mining, pools,
 settings, dashboard, screen layout) is tested on a PC. On hardware, only the
 M5StickC Plus2 ran an earlier build. Check the boot log for
 `hardware SHA: self-test OK` and, on the Bitaxe Gamma 601, for
-`regulator and sensors configured`. Report problems with the boot log
-(`espflash monitor`).
+`regulator and sensors configured`. Report problems with the boot log, read
+with a serial monitor that leaves DTR and RTS inactive (the M5StickC Plus2
+turns off otherwise), e.g.
+
+    python -m serial.tools.miniterm --dtr 0 --rts 0 /dev/ttyACM0 115200

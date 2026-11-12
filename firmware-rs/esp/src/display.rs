@@ -44,6 +44,12 @@ impl Screen for crate::lcd::Ssd1306 {
     }
 }
 
+/// M5GFX's board (lgfx::boards::board_t), 0 when unknown.
+#[cfg(feature = "m5stack")]
+pub fn m5_board() -> i32 {
+    unsafe { m5::bdl_m5_board() }
+}
+
 /// M5GFX's board detection and panels (components/bdl_ui).
 #[cfg(feature = "m5stack")]
 mod m5 {
@@ -56,6 +62,7 @@ mod m5 {
         pub fn bdl_m5_controls(button_a: *mut i32, button_b: *mut i32, touch: *mut bool);
         pub fn bdl_m5_touched() -> bool;
         pub fn bdl_m5_brightness(value: u8);
+        pub fn bdl_m5_board() -> i32;
     }
 
     pub struct M5;
@@ -371,6 +378,9 @@ impl Events {
 }
 
 impl Indicators for Events {
+    fn beep(&self) {
+        crate::beeper::beep();
+    }
     fn set_backlight(&self, percent: u8) {
         self.backlight.store(percent, Ordering::Relaxed);
     }
