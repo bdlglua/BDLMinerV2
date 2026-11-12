@@ -96,7 +96,10 @@ cargo build --release
 cargo run --release
 ```
 
-M5StickC Plus2 (holds the power pin on GPIO4, reads the IMU temperature):
+M5StickC Plus2 (holds the power pin on GPIO4, reads the IMU temperature, and
+draws the C++ firmware's screens with its own renderer, `src/ui_view.cpp` on
+M5GFX, built by `esp/components/bdl_ui`; button A: next page, held 5 s:
+factory reset; button B: brightness):
 
 ```bash
 cargo build --release --features m5stickc-plus2
@@ -141,7 +144,9 @@ Not ported yet (the C++ firmware keeps them):
 - ASIC boards: the Bitaxe Gamma 601 (BM1370 + TPS546 + EMC2101) and NerdNOS
   (BM1397) drivers. Their wire protocols, safety limits and fan policy are in
   `core` and tested; the UART/I2C drivers and board bring-up are not.
-- Displays and buttons (M5StickC Plus2, T-Display, CYD...), screens, beeper.
+- Displays and buttons of the other boards (T-Display, CYD, M5Stack...), the
+  beeper, and the market data the price, fee and recent-block readings show
+  ("-" on the M5StickC Plus2 screen).
 - Firmware updates: web upload (`/update`), signed GitHub updates, trial boot
   and rollback.
 - MQTT/Home Assistant, market data (mempool.space), pool statistics, block

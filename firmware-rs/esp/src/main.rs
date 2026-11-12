@@ -5,6 +5,8 @@
 //! miner on the others, the pool task, the dashboard, then the once-a-second
 //! supervision loop.
 
+#[cfg(feature = "m5stickc-plus2")]
+mod display;
 mod http;
 mod hwsha;
 #[cfg(feature = "m5stickc-plus2")]
@@ -136,6 +138,13 @@ fn main() -> anyhow::Result<()> {
     EspClock::new(&settings.timezone); // the configured time zone
     app.log_configuration();
     app.log(&format!("[boot] reset reason: {}", espsystem.boot_reason()));
+    #[cfg(feature = "m5stickc-plus2")]
+    if display::begin(&app) {
+        let version = format!("v{} (Rust)", bdlminer_app::platform::FW_VERSION);
+        display::message("BDLMiner V2", app.board.name, &version);
+    } else {
+        app.log("[ui] display could not start");
+    }
 
     // WiFi: keep the network the driver saved (also the C++ portal's).
     let mut wifi = BlockingWifi::wrap(EspWifi::new(peripherals.modem, sysloop.clone(), Some(nvs))?, sysloop)?;
@@ -170,6 +179,8 @@ fn main() -> anyhow::Result<()> {
             wifi::join(ssid, pass, 15_000, i == 0 && saved.is_some())
         });
     if !joined {
+        #[cfg(feature = "m5stickc-plus2")]
+        display::portal(&app, &bdlminer_app::app::portal_ap_name(app.mac), &app.portal_password());
         portal::run(app.clone(), &mut wifi);
     }
     let ip = wifi::station_ip().unwrap_or_default();
@@ -230,6 +241,16 @@ fn main() -> anyhow::Result<()> {
             thread::sleep(Duration::from_secs(5));
         });
     }
+    #[cfg(feature = "m5stickc-plus2")]
+    let events = {
+        let events = display::Events::new(app.brightness());
+        let (app, system, ui) = (app.clone(), espsystem.clone(), events.clone());
+        let (a, b) = (peripherals.pins.gpio37, peripherals.pins.gpio39);
+        spawn_pinned(b"ui\0", Core::Core0, 2, 10 * 1024, move || display::run(app, system, ui, a, b));
+        events
+    };
+    #[cfg(not(feature = "m5stickc-plus2"))]
+    let events = std::sync::Arc::new(NoIndicators);
     let _server = http::start(app.clone())?;
     app.log(&format!("[web] dashboard on http://{ip}/ (http://{}.local/)", app.hostname));
 
@@ -240,7 +261,7 @@ fn main() -> anyhow::Result<()> {
         let now = clock.millis();
         if now.wrapping_sub(last_tick) >= 1000 {
             last_tick = now;
-            app.second_tick(&NoIndicators);
+            app.second_tick(&*events);
             if let Some(why) = app.restart_due().or_else(|| app.watch.take_restart()) {
                 app.prepare_restart(&why);
                 thread::sleep(Duration::from_millis(500));

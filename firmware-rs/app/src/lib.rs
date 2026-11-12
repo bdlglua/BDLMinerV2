@@ -7,6 +7,7 @@ pub mod miner;
 pub mod notify;
 pub mod platform;
 pub mod pool;
+pub mod screen;
 pub mod settings;
 pub mod std_platform;
 pub mod watch;
