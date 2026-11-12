@@ -1,5 +1,7 @@
 # Builds the Rust ESP32 firmware (firmware-rs/esp): by hand, or for a Rust
 # release on a rust-v* tag (a GitHub prerelease with one image per board).
+# By hand with `release` checked, the release is published as well, its tag
+# rust-v<workspace version> created on the commit built.
 # The C++ firmware's releases (release.yml, v* tags), its installer and its
 # update channels never pick these up: the tag is no `v` version, and a
 # prerelease is never "latest".
@@ -7,6 +9,11 @@ name: Rust ESP32 firmware
 
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish the prerelease rust-v<workspace version> (creates the tag on this commit)"
+        type: boolean
+        default: false
   push:
     tags: ["rust-v*"]
 
@@ -206,7 +213,7 @@ jobs:
           retention-days: 7
   release:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/rust-v')
+    if: startsWith(github.ref, 'refs/tags/rust-v') || inputs.release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -218,7 +225,16 @@ jobs:
           path: artifacts
       - name: Collect the images
         run: |
-          version="${GITHUB_REF_NAME#rust-v}"
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then
+            version="${GITHUB_REF_NAME#rust-v}"
+          else
+            # By hand: the workspace version, tagged on this commit by the release step.
+            version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' firmware-rs/Cargo.toml)
+            [ -n "$version" ] || { echo "::error::no workspace version"; exit 1; }
+            if git ls-remote --exit-code --tags origin "refs/tags/rust-v$version" >/dev/null; then
+              echo "::error::rust-v$version already exists"; exit 1
+            fi
+          fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
           mkdir dist
           for dir in artifacts/bdlminer-esp-*; do
@@ -260,7 +276,7 @@ jobs:
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           name: BDLMinerV2-rust-v${{ env.VERSION }}
-          tag_name: ${{ github.ref_name }}
+          tag_name: rust-v${{ env.VERSION }}
           target_commitish: ${{ github.sha }}
           prerelease: true
           make_latest: false
