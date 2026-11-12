@@ -47,3 +47,5 @@ CFLAGS_xtensa_esp32s3_espidf = "-mlongcalls"
 CC_xtensa_esp32s2_espidf = "xtensa-esp32s2-elf-gcc"
 CFLAGS_xtensa_esp32s2_espidf = "-mlongcalls"
 CC_riscv32imc_esp_espidf = "riscv32-esp-elf-gcc"
+# cc enables PIC by default; its GOT breaks the ESP-IDF RISC-V flash layout.
+CFLAGS_riscv32imc_esp_espidf = "-fno-pic -fno-pie"
