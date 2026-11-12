@@ -97,6 +97,14 @@ fn web_validation_rejects_before_staging() {
     assert_eq!(err(json!({"ua": "NerdMinerV2"})), None);
     assert_eq!(err(json!({"coin": 1})), Some("Use an address for the selected cryptocurrency"));
     assert_eq!(
+        err(json!({"coin": 1, "addr": "qzejfjfnff\u{2019}x\u{2019}x"})),
+        Some("The payout address can only hold plain letters, digits and symbols")
+    );
+    assert_eq!(
+        err(json!({"addr": "bc1q w"})),
+        Some("The payout address can only hold plain letters, digits and symbols")
+    );
+    assert_eq!(
         err(json!({"coin": 1, "addr": "bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a"})),
         Some("Choose a pool for the selected cryptocurrency")
     );

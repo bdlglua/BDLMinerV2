@@ -52,6 +52,17 @@ impl Clock for EspClock {
         unsafe { localtime_r(&now, &mut tm) };
         Some(tm.tm_hour as u8)
     }
+    fn local_time(&self) -> Option<bdlminer_app::platform::LocalTime> {
+        let now = self.unix_time()? as time_t;
+        let mut tm: tm = unsafe { std::mem::zeroed() };
+        unsafe { localtime_r(&now, &mut tm) };
+        Some(bdlminer_app::platform::LocalTime {
+            year: tm.tm_year as u32,
+            year_day: tm.tm_yday as u32,
+            hour: tm.tm_hour as u8,
+            minute: tm.tm_min as u8,
+        })
+    }
 }
 
 pub struct EspSystem {
@@ -60,12 +71,14 @@ pub struct EspSystem {
     /// A board thermometer that takes precedence over the chip's (the
     /// M5StickC Plus2's IMU).
     pub imu: Option<Box<dyn Fn() -> f32 + Send + Sync>>,
+    /// The name of that thermometer for the dashboard ("imu", "asic").
+    pub sensor: &'static str,
 }
 
 impl EspSystem {
     fn reading(&self) -> (f32, &'static str) {
         if let Some(imu) = &self.imu {
-            return (imu(), "imu");
+            return (imu(), self.sensor);
         }
         (chip_temperature(), "chip")
     }
@@ -132,6 +145,9 @@ impl SystemInfo for EspSystem {
             (t, source) if t.is_finite() => source,
             _ => "unavailable",
         }
+    }
+    fn ota_supported(&self) -> bool {
+        crate::ota::supported()
     }
     fn boot_reason(&self) -> String {
         let reason = unsafe { esp_reset_reason() };

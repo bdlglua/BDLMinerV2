@@ -75,7 +75,7 @@ fn pages_assets_and_unknown_routes() {
     let app = app_with(|_| {});
     let page = handle(&app, &request(Method::Get, "/", b""));
     assert_eq!(page.status, 200);
-    let html = String::from_utf8(page.body).unwrap();
+    let html = String::from_utf8(page.body.into_owned()).unwrap();
     assert!(html.starts_with("<!doctype html><html lang=\"en\">") && html.contains("/assets/dashboard.js?v="));
     for path in [
         "/assets/style.css",
@@ -164,7 +164,10 @@ fn live_and_restarting_changes() {
     assert!(app.brightness() == 30 && app.settings().mining_power == 60 && !app.restart_pending());
 
     let r = handle(&app, &request(Method::Post, "/api/settings", br#"{"bright":300}"#));
-    assert_eq!((r.status, String::from_utf8(r.body).unwrap().as_str()), (400, "Setting outside its allowed range"));
+    assert_eq!(
+        (r.status, String::from_utf8(r.body.into_owned()).unwrap().as_str()),
+        (400, "Setting outside its allowed range")
+    );
     assert_eq!(handle(&app, &request(Method::Post, "/api/settings", b"[1]")).status, 400);
     assert_eq!(handle(&app, &request(Method::Post, "/api/settings", b"{}")).status, 400);
 
@@ -207,14 +210,17 @@ fn backups_round_trip() {
     assert_eq!(r.status, 409); // a restart is pending
     let fresh = app_with(|_| {});
     let r = handle(&fresh, &request(Method::Post, "/api/backup", bad.as_bytes()));
-    assert_eq!((r.status, String::from_utf8(r.body).unwrap().as_str()), (400, "Unsupported backup version"));
+    assert_eq!(
+        (r.status, String::from_utf8(r.body.into_owned()).unwrap().as_str()),
+        (400, "Unsupported backup version")
+    );
 }
 
 #[test]
 fn metrics_and_diagnostics() {
     let app = app_with(|_| {});
     app.miner.register_engine("sw");
-    let text = String::from_utf8(handle(&app, &request(Method::Get, "/metrics", b"")).body).unwrap();
+    let text = String::from_utf8(handle(&app, &request(Method::Get, "/metrics", b"")).body.into_owned()).unwrap();
     assert!(text.contains("# TYPE bdlminer_hashrate_hps gauge\nbdlminer_hashrate_hps 0\n"));
     assert!(text.contains("bdlminer_engine_hashrate_hps{engine=\"sw\",index=\"0\"} 0"));
     assert!(text.contains("bdlminer_info{board=\"Host\",firmware=\""));
@@ -226,4 +232,43 @@ fn metrics_and_diagnostics() {
     assert!(h["interval_s"] == 300 && h["hashrate"].as_array().unwrap().is_empty());
     assert_eq!(handle(&app, &request(Method::Post, "/api/notify-test", b"")).status, 409); // nothing configured
     assert_eq!(handle(&app, &Request { query: "id=x", ..request(Method::Get, "/api/notify-test", b"") }).status, 400);
+}
+
+/// The history as the dashboard reads it, written without a JSON tree: one
+/// entry per five minutes, nulls where nothing was measured.
+#[test]
+fn history_points() {
+    let board = BoardProfile::host();
+    let mut storage = MemoryStorage::default();
+    let mut s = Settings::defaults(&board);
+    s.btc_address = ADDRESS.into();
+    settings::save(&mut storage, &s, 0, &board).unwrap();
+    let clock = Arc::new(TestClock(AtomicU32::new(5000)));
+    let app = App::new(Platform {
+        board,
+        clock: clock.clone(),
+        storage: Arc::new(Mutex::new(storage)),
+        system: Arc::new(TestSystem),
+        console: Box::new(|_| {}),
+        mac: 0x1a2b_0000_0000,
+        boot_id: 0xabc,
+        random: Arc::new(|b: &mut [u8]| b.fill(7)),
+    });
+    for step in 0..=3u32 {
+        clock.0.store(5000 + step * 300_000, Ordering::Relaxed);
+        app.miner.tick();
+    }
+    let r = handle(&app, &request(Method::Get, "/api/history", b""));
+    assert_eq!(r.content_type, "application/json");
+    let h = json_of(&r);
+    assert_eq!(h["boot_id"], "abc");
+    assert_eq!(h["interval_s"], 300);
+    assert_eq!(h["revision"], 3);
+    for key in ["hashrate", "temperature_c", "power_percent", "coverage_percent"] {
+        assert_eq!(h[key].as_array().map(Vec::len), Some(3), "{key}");
+    }
+    // Nothing hashed or measured: no rate, temperature or power.
+    assert_eq!(h["hashrate"][0], Value::Null);
+    assert_eq!(h["temperature_c"][0], Value::Null);
+    assert_eq!(h["coverage_percent"][0], 0);
 }

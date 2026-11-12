@@ -1,9 +1,21 @@
-# Builds the Rust ESP32 firmware (firmware-rs/esp). Manual while that crate
-# has not yet been validated on hardware; see firmware-rs/README.md.
+# Builds the Rust ESP32 firmware (firmware-rs/esp): by hand, or for a Rust
+# release on a rust-v* tag (a GitHub prerelease with one image per board).
+# By hand with `release` checked, the release is published as well, its tag
+# rust-v<workspace version> created on the commit built.
+# The C++ firmware's releases (release.yml, v* tags), its installer and its
+# update channels never pick these up: the tag is no `v` version, and a
+# prerelease is never "latest".
 name: Rust ESP32 firmware
 
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish the prerelease rust-v<workspace version> (creates the tag on this commit)"
+        type: boolean
+        default: false
+  push:
+    tags: ["rust-v*"]
 
 permissions:
   contents: read
@@ -20,7 +32,7 @@ jobs:
             mcu: esp32
             board: esp32
             features: ""
-            partitions: min_spiffs.csv
+            partitions: rust_4MB_ota.csv
             flash: 4mb
           - target: xtensa-esp32-espidf
             mcu: esp32
@@ -33,28 +45,119 @@ jobs:
             mcu: esp32s3
             board: esp32s3
             features: ""
-            partitions: min_spiffs.csv
+            partitions: rust_4MB_ota.csv
+            flash: 4mb
+          # Boards with a screen. Their 4 MB variants use rust_4MB.csv: the
+          # image (~2.1 MB with the renderer) exceeds min_spiffs' slots.
+          - target: xtensa-esp32-espidf
+            mcu: esp32
+            board: m5stack-esp32
+            features: m5stack
+            partitions: rust_4MB.csv
+            flash: 4mb
+          - target: xtensa-esp32s3-espidf
+            mcu: esp32s3
+            board: m5stack-s3
+            features: m5stack
+            partitions: default_8MB.csv
+            flash: 8mb
+          - target: xtensa-esp32-espidf
+            mcu: esp32
+            board: lilygo-t-display
+            features: lilygo-t-display
+            partitions: rust_4MB.csv
+            flash: 4mb
+          - target: xtensa-esp32s3-espidf
+            mcu: esp32s3
+            board: lilygo-t-display-s3
+            features: lilygo-t-display-s3
+            partitions: default_16MB.csv
+            flash: 16mb
+          - target: xtensa-esp32-espidf
+            mcu: esp32
+            board: esp32-2432s028r
+            features: cyd
+            partitions: rust_4MB.csv
+            flash: 4mb
+          # ASIC boards: the BM1370 and BM1397 drivers in Rust (gamma601.rs,
+          # nerdnos.rs).
+          - target: xtensa-esp32s3-espidf
+            mcu: esp32s3
+            board: bitaxe-gamma-601
+            features: gamma601
+            partitions: default_16MB.csv
+            flash: 16mb
+          - target: xtensa-esp32s3-espidf
+            mcu: esp32s3
+            board: nerdnos
+            features: nerdnos
+            partitions: default_16MB.csv
+            flash: 16mb
+          - target: xtensa-esp32s2-espidf
+            mcu: esp32s2
+            board: esp32s2
+            features: ""
+            partitions: rust_4MB_ota.csv
+            flash: 4mb
+          - target: riscv32imc-esp-espidf
+            mcu: esp32c3
+            board: esp32c3
+            features: ""
+            partitions: rust_4MB_ota.csv
             flash: 4mb
     steps:
       - uses: actions/checkout@v7
       - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7.0
+        # espup asks GitHub's API for the toolchain release: unauthenticated,
+        # a dozen parallel jobs ran out of the hourly rate limit.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           # Espressif's latest stable fork. Its 1.99.0.0 does not build std
           # for ESP-IDF (`AT_FDCWD` missing from libc); there is no 1.99.1
           # fork. The host workspace uses Rust 1.99.1.
           version: 1.97.0.0
           default: true
-          buildtargets: ${{ matrix.mcu }}
+          # The crate builds with the `esp` toolchain, which comes with the
+          # Xtensa targets; the ESP32-C3 also needs the RISC-V GCC.
+          buildtargets: ${{ matrix.mcu == 'esp32c3' && 'esp32,esp32c3' || matrix.mcu }}
           ldproxy: true
       - name: Espressif GCC on PATH
         run: |
-          which xtensa-${{ matrix.mcu }}-elf-gcc
-          xtensa-${{ matrix.mcu }}-elf-gcc --version | head -1
+          gcc=$([ "${{ matrix.mcu }}" = esp32c3 ] && echo riscv32-esp-elf-gcc || echo xtensa-${{ matrix.mcu }}-elf-gcc)
+          # espup puts the RISC-V GCC next to the toolchain without adding it
+          # to PATH (the Xtensa one is exported).
+          if ! command -v "$gcc" >/dev/null; then
+            found=$(find "$HOME/.rustup" "$HOME/.espressif" -type f -name "$gcc" 2>/dev/null | head -n 1)
+            if [ -z "$found" ] && [ "${{ matrix.mcu }}" = esp32c3 ]; then
+              # Not installed by the action: Espressif's own build, the
+              # version ESP-IDF 5.3.2 uses.
+              release=esp-13.2.0_20240530
+              curl -sSfL -o "$RUNNER_TEMP/riscv.tar.xz" \
+                "https://github.com/espressif/crosstool-NG/releases/download/$release/riscv32-esp-elf-13.2.0_20240530-x86_64-linux-gnu.tar.xz"
+              tar -xf "$RUNNER_TEMP/riscv.tar.xz" -C "$HOME"
+              found="$HOME/riscv32-esp-elf/bin/$gcc"
+            fi
+            [ -x "$found" ] || { echo "::error::$gcc not found"; exit 1; }
+            dirname "$found" >> "$GITHUB_PATH"
+            export PATH="$(dirname "$found"):$PATH"
+          fi
+          which "$gcc"
+          "$gcc" --version | head -1
       - name: Build
         working-directory: firmware-rs/esp
         env:
           MCU: ${{ matrix.mcu }}
         run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      # The linker map, to see where a failed link went wrong.
+      - name: Linker map
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linker-map-${{ matrix.board }}
+          path: firmware-rs/esp/target/${{ matrix.target }}/release/build/esp-idf-sys-*/out/build/libespidf.map
+          if-no-files-found: ignore
+          retention-days: 3
       # ESP-IDF aborts at boot ("CONFLICT! driver_ng is not allowed to be
       # used with this old driver") when the legacy I2C driver is linked next
       # to the new one (M5GFX uses the new one).
@@ -90,11 +193,93 @@ jobs:
             --partition-table ../../partitions/${{ matrix.partitions }} \
             target/${{ matrix.target }}/release/bdlminer-esp \
             target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
+          # The app image alone, for updates (dashboard upload or GitHub):
+          # <env>-firmware.bin, the env the firmware names itself with.
+          espflash save-image --chip ${{ matrix.mcu }} --flash-size ${{ matrix.flash }} \
+            target/${{ matrix.target }}/release/bdlminer-esp \
+            target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
+          echo "update image: $(stat -c %s target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin) bytes"
+          # The updater requires the board and version markers in the image.
+          grep -q --binary-files=text "${{ matrix.board }}-rust" target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
+          grep -q --binary-files=text "BDLMinerV1/" target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
       - uses: actions/upload-artifact@v7
         with:
           name: bdlminer-esp-${{ matrix.board }}
           path: |
             firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp
             firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
+            firmware-rs/esp/target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
           if-no-files-found: error
           retention-days: 7
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/rust-v') || inputs.release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bdlminer-esp-*
+          path: artifacts
+      - name: Collect the images
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then
+            version="${GITHUB_REF_NAME#rust-v}"
+          else
+            # By hand: the workspace version, tagged on this commit by the release step.
+            version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' firmware-rs/Cargo.toml)
+            [ -n "$version" ] || { echo "::error::no workspace version"; exit 1; }
+            if git ls-remote --exit-code --tags origin "refs/tags/rust-v$version" >/dev/null; then
+              echo "::error::rust-v$version already exists"; exit 1
+            fi
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          mkdir dist
+          for dir in artifacts/bdlminer-esp-*; do
+            board="${dir#artifacts/bdlminer-esp-}"
+            cp "$dir/bdlminer-esp-$board.bin" "dist/BDLMiner-rust-$version-$board.bin"
+            cp "$dir/$board-rust-firmware.bin" "dist/$board-rust-firmware.bin"
+            # The anonymous daily usage count downloads this file.
+            printf 'ok' > "dist/ping-$board-rust.txt"
+          done
+      # GitHub updates install only images signed by the release key (the
+      # public half is built into the firmware, src/update_key.h).
+      - name: Sign the update images
+        env:
+          KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::warning::RELEASE_SIGNING_KEY is not set: GitHub updates will refuse these images"
+            exit 0
+          fi
+          umask 077
+          key="$RUNNER_TEMP/release-signing-key.pem"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$KEY" > "$key"
+          python3 - "$RUNNER_TEMP/update-public.pem" <<'PY'
+          import re, sys
+          text = open("src/update_key.h").read()
+          lines = re.findall(r'"([^"]*)\\n"', text)
+          open(sys.argv[1], "w").write("\n".join(lines) + "\n")
+          PY
+          openssl pkey -in "$key" -pubout | diff - "$RUNNER_TEMP/update-public.pem"
+          for f in dist/*-rust-firmware.bin; do
+            openssl dgst -sha256 -sign "$key" -out "$f.sig" "$f"
+            openssl dgst -sha256 -verify "$RUNNER_TEMP/update-public.pem" -signature "$f.sig" "$f"
+          done
+      - name: Checksums and notes
+        run: |
+          (cd dist && sha256sum *.bin > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          notes="docs/releases/rust-v$VERSION.md"
+          if [ -f "$notes" ]; then echo "NOTES=$notes" >> "$GITHUB_ENV"; fi
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          name: BDLMinerV2-rust-v${{ env.VERSION }}
+          tag_name: rust-v${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          body_path: ${{ env.NOTES }}
+          files: dist/*

@@ -99,8 +99,11 @@ fn form(app: &App, message: &str, networks: &[captive::Network]) -> String {
 label{{display:block;margin:.6rem 0}}input{{display:block;width:100%;padding:.5rem;margin-top:.2rem;box-sizing:border-box}}\
 button{{padding:.7rem 1.2rem;background:#f7931a;border:0;font-weight:700}}p.m{{color:#f7931a}}a{{color:#f7931a}}\
 button.w{{display:flex;justify-content:space-between;width:100%;margin:.3rem 0;padding:.6rem;background:#1b2230;color:#e8e8e8;font-weight:400;text-align:left}}\
-p.h{{color:#9aa3b2;font-size:.85rem;margin:.2rem 0 .6rem}}select{{display:block;width:100%;padding:.5rem;margin-top:.2rem}}</style>\
+p.h{{color:#9aa3b2;font-size:.85rem;margin:.2rem 0 .6rem}}span.pw{{display:flex;gap:.4rem;margin-top:.2rem}}span.pw input{{margin-top:0}}\
+button.show{{padding:.5rem .8rem;background:#1b2230;color:#e8e8e8;font-weight:400}}select{{display:block;width:100%;padding:.5rem;margin-top:.2rem}}</style>\
 <script>function pick(b){{var f=document.forms[0];f.ssid.value=b.dataset.s;f.wpass.focus()}}\
+function reveal(b){{var i=document.forms[0].wpass,hidden=i.type==='password';i.type=hidden?'text':'password';\
+b.textContent=hidden?'Hide':'Show';b.setAttribute('aria-label',hidden?'Hide the password':'Show the password')}}\
 function coinChanged(){{var f=document.forms[0],btc=f.coin.value==='0',h=f.pool.value.trim().toLowerCase().replace(/^[a-z0-9+]+:\\/\\//,'').split(/[:\\/]/)[0];\
 f.proto.options[1].disabled=!btc;if(!btc)f.proto.value='0';\
 if(!btc&&['public-pool.io','nerdminers.org','nerdminer.io','ckpool.org','ocean.xyz','braiins.com'].some(function(d){{return h===d||h.endsWith('.'+d)}}))\
@@ -115,7 +118,8 @@ its payout address and Stratum V1.</p>\
         escape(message),
         network_list(networks),
         field("ssid", "WiFi network", &wifi::saved_station().map(|w| w.0).unwrap_or_default(), "text"),
-        field("wpass", "WiFi password", "", "password"),
+        "<label>WiFi password<span class='pw'><input name='wpass' type='password' value='' autocomplete='off'>\
+<button type='button' class='show' onclick='reveal(this)' aria-label='Show the password'>Show</button></span></label>",
         coin_options(s.mining_coin),
         field("pool", "Pool host", &s.pool_host, "text"),
         field("port", "Pool port", &s.pool_port.to_string(), "number"),

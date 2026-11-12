@@ -1,0 +1,9 @@
+# Rust firmware on 4 MB boards with a screen (firmware-rs): one 3.9 MB app
+# slot, as its image with the screen renderer (~2.1 MB) exceeds the 1.9 MB
+# slots of min_spiffs.csv. NVS stays at 0x9000, where the C++ firmware keeps
+# its settings. No second slot: these boards update over USB only.
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x9000,  0x5000,
+otadata,  data, ota,     0xe000,  0x2000,
+app0,     app,  ota_0,   0x10000, 0x3E0000,
+coredump, data, coredump,0x3F0000,0x10000,

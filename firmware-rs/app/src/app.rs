@@ -29,6 +29,12 @@ pub struct App {
     pub pool_config: PoolConfig,
     pub watch: Watch,
     pub notifier: Notifier,
+    pub updater: crate::update::Updater,
+    pub market: crate::market::Market,
+    pub block_status: crate::block_status::BlockStatus,
+    pub mqtt: crate::mqtt::MqttState,
+    pub crashes: crate::crash::Crashes,
+    summary: Mutex<crate::summary::Summary>,
     pub system: Arc<dyn SystemInfo>,
     /// "bdlminer-xxxx": mDNS and DHCP name.
     pub hostname: String,
@@ -41,6 +47,8 @@ pub struct App {
     /// The loop applies display settings after a live change.
     pub settings_changed: AtomicBool,
     pub ota_busy: AtomicBool,
+    /// A freshly installed firmware not confirmed yet (rolls back if it fails).
+    pub firmware_trial: AtomicBool,
     pub rebinding: Mutex<RebindingGuard>,
 }
 
@@ -116,7 +124,15 @@ impl App {
             },
             move |s| l3.line(c3.millis(), s),
         );
+        let (l4, c4) = (log.clone(), clock.clone());
+        let updater = crate::update::Updater::new(move |s| l4.line(c4.millis(), s));
         Arc::new(App {
+            updater,
+            market: Default::default(),
+            block_status: Default::default(),
+            mqtt: Default::default(),
+            crashes: Default::default(),
+            summary: Default::default(),
             pool_config: pool_config(&values, &p.board),
             watch: Watch::new(&p.board),
             brightness: AtomicU8::new(values.brightness),
@@ -139,6 +155,7 @@ impl App {
             restart_why: Mutex::new(String::new()),
             settings_changed: AtomicBool::new(false),
             ota_busy: AtomicBool::new(false),
+            firmware_trial: AtomicBool::new(false),
             rebinding: Mutex::new(RebindingGuard::default()),
         })
     }
@@ -250,6 +267,8 @@ impl App {
             ui,
             &log,
         );
+        self.summary.lock().unwrap().tick(self);
+        self.crashes.poll(self);
         self.miner.history_poll();
     }
 

@@ -1,7 +1,8 @@
-// C functions over ui_view::View (src/ui_view.h) for the Rust firmware, on
-// the M5StickC Plus2 panel. M5GFX's board detection sets it up (ST7789V2
-// 135x240 on SPI2, PWM backlight on GPIO27, power hold on GPIO4), exactly as
-// for the C++ firmware through M5Unified.
+// M5GFX's board detection and panel drivers for the Rust firmware's M5Stack
+// image (feature `m5stack`: Core/Basic/Gray/Fire, Core2, Tough on the ESP32;
+// CoreS3, AtomS3... on the ESP32-S3). The renderer is Rust
+// (bdlminer_app::ui_view); this only moves pixels, as the panels of
+// src/lcd.rs do on the other boards.
 #include "bdl_ui.h"
 
 #include <M5GFX.h>
@@ -9,119 +10,86 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include <cmath>
-#include <memory>
 #include <new>
-#include <string>
-#include <vector>
-
-#include "ui_view.h"
 
 namespace {
 
-// MPU6886 on the internal I2C bus.
-constexpr int kImuPort = 0;
-constexpr int kImuAddress = 0x68;
-
 M5GFX *lcd = nullptr;
-std::unique_ptr<ui_view::View> view;
 
-std::string str(const char *s) { return s ? s : ""; }
+// M5GFX's detection; a panel that has only just been powered (the board
+// started on USB, and the power hold switched its supply on) may not answer
+// yet: try again.
+M5GFX *m5_panel() {
+    for (int attempt = 1; attempt <= 3; attempt++) {
+        auto *m5 = new (std::nothrow) M5GFX();
+        if (!m5) return nullptr;
+        bool ok = m5->init();
+        if (ok && m5->getBoard() != lgfx::boards::board_unknown && m5->width() > 0) return m5;
+        ESP_LOGW("ui", "attempt %d: M5GFX %s, board %d", attempt, ok ? "started" : "failed", int(m5->getBoard()));
+        if (attempt == 3 && ok && m5->width() > 0) return m5;  // draw on what M5GFX found
+        delete m5;
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+    return nullptr;
+}
 
 }  // namespace
 
 extern "C" {
 
-bool bdl_ui_begin(uint8_t rotation, uint32_t accent, uint8_t language) {
-    if (view) return true;
-    // A panel that has only just been powered (the board started on USB, and
-    // the power hold switched its supply on) may not answer yet: try again.
-    for (int attempt = 1; attempt <= 3; attempt++) {
-        lcd = new (std::nothrow) M5GFX();
-        if (!lcd) return false;
-        bool ok = lcd->init();
-        if (ok && lcd->getBoard() == lgfx::boards::board_M5StickCPlus2) break;
-        ESP_LOGW("ui", "attempt %d: M5GFX %s, board %d", attempt, ok ? "started" : "failed", int(lcd->getBoard()));
-        if (attempt == 3) {
-            if (ok) break;  // another board: draw on what M5GFX found
-            delete lcd;
-            lcd = nullptr;
-            return false;
-        }
-        delete lcd;
-        lcd = nullptr;
-        vTaskDelay(pdMS_TO_TICKS(200));
-    }
+bool bdl_m5_begin(uint8_t rotation) {
+    if (!lcd) lcd = m5_panel();
+    if (!lcd) return false;
     lcd->setRotation(rotation);
-    view.reset(new (std::nothrow) ui_view::View(lcd, true, accent, language));
-    return view != nullptr;
+    lcd->fillScreen(TFT_BLACK);
+    return true;
 }
 
-void bdl_ui_brightness(uint8_t percent) {
-    if (lcd) lcd->setBrightness(percent > 100 ? 255 : percent * 255 / 100);
+int bdl_m5_width(void) { return lcd ? lcd->width() : 0; }
+int bdl_m5_height(void) { return lcd ? lcd->height() : 0; }
+
+void bdl_m5_push(int x, int y, int w, int h, const uint16_t *pixels) {
+    if (!lcd) return;
+    // RGB565 in the CPU's byte order.
+    lcd->pushImage(x, y, w, h, (const lgfx::rgb565_t *)pixels);
 }
 
-void bdl_ui_rotation(uint8_t rotation) {
-    if (!lcd || lcd->getRotation() == rotation) return;
-    lcd->setRotation(rotation);
-    if (view) view->invalidate();
+void bdl_m5_fill(int x, int y, int w, int h, uint16_t color) {
+    if (lcd) lcd->fillRect(x, y, w, h, lgfx::rgb565_t(color));
 }
 
-void bdl_ui_invalidate(void) {
-    if (view) view->invalidate();
-}
+int bdl_m5_board(void) { return lcd ? int(lcd->getBoard()) : 0; }
 
-void bdl_ui_render(const bdl_ui_model *m) {
-    if (!view || !m) return;
-    static std::vector<ui_view::Point> points;
-    ui_view::Model model;
-    model.page = m->page;
-    model.language = m->language;
-    model.accent = m->accent;
-    model.statusColor = m->status_color;
-    model.title = str(m->title);
-    model.status = str(m->status);
-    model.battery = str(m->battery);
-    model.footer = str(m->footer);
-    for (int i = 0; i < 6; i++) {
-        model.metrics[i].label = str(m->metrics[i].label);
-        model.metrics[i].value = str(m->metrics[i].value);
-        model.metrics[i].detail = str(m->metrics[i].detail);
-        model.metrics[i].color = m->metrics[i].color;
+void bdl_m5_controls(int *button_a, int *button_b, bool *touch) {
+    *button_a = *button_b = -1;
+    *touch = false;
+    switch (lcd ? lcd->getBoard() : lgfx::boards::board_unknown) {
+    case lgfx::boards::board_M5StickC:
+    case lgfx::boards::board_M5StickCPlus:
+    case lgfx::boards::board_M5StickCPlus2: *button_a = 37; *button_b = 39; break;
+    case lgfx::boards::board_M5Stack: *button_a = 39; *button_b = 38; break;
+    case lgfx::boards::board_M5AtomS3:
+    case lgfx::boards::board_M5AtomS3R: *button_a = 41; break;
+    case lgfx::boards::board_M5StackCore2:
+    case lgfx::boards::board_M5Tough:
+    case lgfx::boards::board_M5StackCoreS3:
+    case lgfx::boards::board_M5StackCoreS3SE: *touch = true; break;
+    default: break;
     }
-    points.resize(m->point_count > 0 ? m->point_count : 0);
-    for (size_t i = 0; i < points.size(); i++) points[i] = {m->points[i].ms, m->points[i].rate};
-    model.points = points.data();
-    model.pointCount = int(points.size());
-    model.graphRevision = m->graph_revision;
-    view->render(model);
 }
 
-void bdl_ui_message(const char *title, const char *line1, const char *line2) {
-    if (view) view->message(title, line1, line2);
+bool bdl_m5_touched(void) {
+    if (!lcd) return false;
+    lgfx::touch_point_t point;
+    return lcd->getTouch(&point, 1) > 0;
 }
 
-void bdl_ui_portal(const char *title, const char *ssid, const char *password, const char *qr) {
-    if (view) view->portal(title, ssid, password, qr);
+void bdl_m5_brightness(uint8_t value) {
+    if (lcd) lcd->setBrightness(value);
 }
 
-void bdl_ui_alert(const char *title, const char *value, const char *line) {
-    if (view) view->alert(title, value, line);
-}
-
-int bdl_imu_begin(void) {
-    if (lgfx::i2c::init(kImuPort, 21, 22).has_error()) return -1;
-    auto id = lgfx::i2c::readRegister8(kImuPort, kImuAddress, 0x75);  // WHO_AM_I
-    if (id.has_error()) return -1;
-    // Out of sleep, internal clock.
-    if (id.value() == 0x19 && lgfx::i2c::writeRegister8(kImuPort, kImuAddress, 0x6B, 0x00).has_error()) return -1;
-    return id.value();
-}
-
-float bdl_imu_temperature(void) {
-    uint8_t raw[2];
-    if (lgfx::i2c::readRegister(kImuPort, kImuAddress, 0x41, raw, 2).has_error()) return NAN;  // TEMP_OUT_H
-    return int16_t(uint16_t(raw[0]) << 8 | raw[1]) / 326.8f + 25.0f;
+void bdl_m5_rotation(uint8_t rotation) {
+    if (lcd) lcd->setRotation(rotation);
 }
 
 }  // extern "C"

@@ -9,7 +9,7 @@ hardware: see [Status](#status).
 | [`core`](core) `bdlminer-core` | Port of `src/core`: SHA-256d kernel with midstate and early rejection, header/merkle building, difficulty and targets, Stratum V1 state machine, Stratum V2 extended channel and Noise_NX (secp256k1 EllSwift + ChaCha20-Poly1305), payout addresses of the six SHA-256d coins, BM1370/BM1397 wire protocols, thermal/fan/safety policies, release versions, image markers | anywhere |
 | [`app`](app) `bdlminer-app` | Port of the hardware-independent firmware: settings table, validation and the two-record store, shared miner state (job board, share queues, block candidates, statistics, history, persistence), pool task with failover/rotation, supervision and alerts, notifications, the dashboard's JSON API and pages (`web/`) | anywhere with `std` |
 | [`host`](host) `bdlminer-host` | The firmware on a PC: software SHA-256d threads, pool sessions, the local dashboard | Linux, macOS, Windows |
-| [`esp`](esp) `bdlminer-esp` | The ESP32 firmware: NVS, WiFi with setup portal, SNTP, pinned mining threads with the C++ firmware's hardware SHA engine and assembly kernels ([`components/bdl_hwsha`](esp/components/bdl_hwsha)), ESP-IDF HTTP server, HTTPS notifications | ESP32, ESP32-S3, ESP32-C3 |
+| [`esp`](esp) `bdlminer-esp` | The ESP32 firmware: NVS, WiFi with setup portal, SNTP, pinned mining threads with the hardware SHA engine and the Xtensa assembly kernels ([`src/hwsha.rs`](esp/src/hwsha.rs)), the BM1370/BM1397 ASIC drivers, ESP-IDF HTTP server, HTTPS notifications | ESP32, ESP32-S3, ESP32-C3 |
 
 Everything portable is in `core` and `app` and is tested on a PC; `esp` only
 binds ESP-IDF services to the traits of `app::platform`, and plugs the
@@ -17,11 +17,12 @@ hardware SHA engine into the mining loop (`app::miner::Engine`).
 
 ## Hardware SHA and assembly
 
-`esp` does not rewrite the hardware SHA code: the ESP-IDF component
-`esp/components/bdl_hwsha` builds the C++ firmware's `src/hw_sha.cpp`,
-`hw_sha_classic.S`, `hw_sha_fill.S` and `sw_sha_prefilter.S` (with
-`src/core/sha256.cpp`, `work.cpp` and `fill.cpp`) unchanged, and
-`hwsha_ffi.cpp` exposes them as C functions to `esp/src/hwsha.rs`. At boot the
+`esp/src/hwsha.rs` is a Rust port of the C++ firmware's `src/hw_sha.cpp`
+(register access, engine locks, kernel selection and self-tests). Its
+Xtensa kernels are the C++ firmware's `hw_sha_classic.S`, `hw_sha_fill.S` and
+`sw_sha_prefilter.S`, assembled with `global_asm!`: `esp/build.rs` does what
+the C preprocessor did for them (their `#define`s and target guard), and the
+data of the idle-cycle hash is `core::fill` (from `src/core/fill.cpp`). At boot the
 same self-tests as the C++ firmware choose what runs:
 
 - the last core: the hardware miner (`hw`, priority 19, alone on its core,
@@ -117,7 +118,8 @@ board (`bdlminer-esp-<board>.bin`, ESP-IDF's bootloader built from
 Gamma 601, NerdNOS) are not supported yet: keep the C++ firmware on them.
 
 The first build downloads and compiles ESP-IDF v5.3. `cargo run` flashes with
-the C++ firmware's partition table (`partitions/min_spiffs.csv`). For an
+two 1.94 MB app slots (`partitions/rust_4MB_ota.csv`, NVS where the C++
+firmware keeps it). For an
 ESP32-S3 add `--target xtensa-esp32s3-espidf` (and `MCU=esp32s3`), for an
 ESP32-C3 `--target riscv32imc-esp-espidf` (`MCU=esp32c3`).
 
@@ -138,24 +140,35 @@ Common CI and build failures, the reference set and the benchmark:
 
 ## Status
 
-Done and tested on a PC: everything in `core`, `app` and `host`.
+Done and tested on a PC: everything in `core` and `app` (the screen
+renderer included, on in-memory panels of every board size) and `host`.
 
-Written but not yet built or run on hardware (no ESP toolchain where it was
-written): the `esp` crate, the hardware SHA component included. Expect compile
-fixes on its first build; check the boot log for `hardware SHA: self-test OK`
-and the `hw` engine's hashrate against the C++ firmware on the same board.
+Built by the workflow for every board, Rust from end to end: the hardware
+SHA engine and its Xtensa kernels (`esp/src/hwsha.rs`, `global_asm!`), the
+Bitaxe Gamma 601 (BM1370 + TPS546 + EMC2101) and NerdNOS (BM1397) drivers
+(`esp/src/gamma601.rs`, `nerdnos.rs`), the panels (`esp/src/lcd.rs`). Run on
+hardware so far: the M5StickC Plus2 (before the renderer and the SHA engine
+moved to Rust). The M5Stack image keeps M5GFX (C++) for its board detection
+and panel drivers only (`esp/components/bdl_ui`); its pages are drawn in
+Rust like the others.
 
-Not ported yet (the C++ firmware keeps them):
+Ported from the C++ firmware since the first builds, run by the HTTPS task
+(`esp/src/main.rs`) unless noted: firmware updates (dashboard upload,
+signed GitHub releases of the Rust firmware, trial boot and rollback:
+`app/src/update.rs`, `app/src/multipart.rs`, `esp/src/ota.rs`), market data
+and the pool's statistics (`app/src/market.rs`), remote monitoring
+(`remote.rs`), block confirmation checks (`block_status.rs`), the anonymous
+statistics report (`share.rs`), MQTT/Home Assistant (`mqtt.rs`, its own
+task), the daily summary (`summary.rs`), crash reports (`crash.rs`,
+`esp/src/crash.rs`), mDNS, the live dashboard stream (`/api/events`,
+`esp/src/http.rs`), the beeper (`esp/src/beeper.rs`) and the clock set from
+the pool's job time when NTP does not answer.
 
-- ASIC boards: the Bitaxe Gamma 601 (BM1370 + TPS546 + EMC2101) and NerdNOS
-  (BM1397) drivers. Their wire protocols, safety limits and fan policy are in
-  `core` and tested; the UART/I2C drivers and board bring-up are not.
-- Displays and buttons of the other boards (T-Display, CYD, M5Stack...), the
-  beeper, and the market data the price, fee and recent-block readings show
-  ("-" on the M5StickC Plus2 screen).
-- Firmware updates: web upload (`/update`), signed GitHub updates, trial boot
-  and rollback.
-- MQTT/Home Assistant, market data (mempool.space), pool statistics, block
-  confirmation checks, anonymous statistics sharing, remote monitoring,
-  daily summary notification, crash reports, mDNS, live dashboard stream
-  (`/api/events`: the pages poll instead).
+The 4 MB boards with a screen (M5Stack Core, T-Display, CYD) have a single
+3.9 MB app slot (`partitions/rust_4MB.csv`): their image, with the screen
+renderer, does not fit two slots, so they update over USB only.
+
+GitHub updates only install `<env>-firmware.bin` from `rust-v*` releases
+(`<env>` ends in `-rust`), signed by the release key and naming this board
+and that version in the image: the C++ and Rust firmwares never install each
+other by themselves.

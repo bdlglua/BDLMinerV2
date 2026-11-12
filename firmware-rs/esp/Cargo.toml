@@ -5,7 +5,7 @@ name = "bdlminer-esp"
 description = "BDLMiner V2 firmware for ESP32 boards (ESP-IDF)"
 version = "2.6.1"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.87"
 license = "GPL-3.0-only"
 publish = false
 
@@ -17,8 +17,23 @@ harness = false
 default = []
 # Boards with an M5 IMU near the battery default to a 65 C thermal limit.
 m5 = []
+# A screen and buttons (src/display.rs, src/lcd.rs). One board feature
+# at most below.
+display = []
 # M5StickC Plus2: power hold on GPIO4, MPU6886 temperature.
-m5stickc-plus2 = ["m5"]
+m5stickc-plus2 = ["m5", "display"]
+# Other M5Stack devices with a screen (Core/Basic/Gray/Fire, Core2, Tough on
+# the ESP32; CoreS3, AtomS3... on the ESP32-S3), detected by M5GFX.
+m5stack = ["display"]
+# LilyGO TTGO T-Display (ESP32) and T-Display-S3, ESP32-2432S028R (CYD).
+lilygo-t-display = ["display"]
+lilygo-t-display-s3 = ["display"]
+cyd = ["display"]
+# ASIC boards: Rust drivers (src/gamma601.rs, src/nerdnos.rs):
+# Bitaxe Gamma 601 (BM1370, SSD1306 128x32) and NerdNOS (BM1397 on a
+# T-Display-S3).
+gamma601 = ["display"]
+nerdnos = ["display"]
 
 [dependencies]
 bdlminer-core = { path = "../core" }
@@ -32,13 +47,13 @@ serde_json = "1"
 # handshake only takes a few milliseconds longer.
 secp256k1 = { version = "0.33", default-features = false, features = ["lowmemory"] }
 
-# The C++ firmware's hardware SHA engine and assembly kernels (src/hwsha.rs).
-[[package.metadata.esp-idf-sys.extra_components]]
-component_dirs = ["components/bdl_hwsha"]
-
-# The C++ firmware's screen renderer on M5GFX (src/display.rs, M5StickC Plus2).
+# M5GFX's board detection and panels for the M5Stack image (src/display.rs).
 [[package.metadata.esp-idf-sys.extra_components]]
 component_dirs = ["components/bdl_ui"]
+
+# mDNS (http://<host name>.local/), ESP-IDF's managed component.
+[[package.metadata.esp-idf-sys.extra_components]]
+remote_component = { name = "espressif/mdns", version = "1.2" }
 
 [build-dependencies]
 embuild = "0.33"

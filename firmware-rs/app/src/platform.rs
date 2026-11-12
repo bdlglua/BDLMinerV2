@@ -11,9 +11,24 @@ pub trait Clock: Send + Sync {
     fn unix_time(&self) -> Option<u32>;
     /// Local hour 0..23 in the configured time zone, when the clock was set.
     fn local_hour(&self) -> Option<u8>;
+    /// Local date and time, when the clock was set.
+    fn local_time(&self) -> Option<LocalTime> {
+        None
+    }
     fn sleep(&self, d: Duration) {
         std::thread::sleep(d);
     }
+}
+
+/// A local date and time (`struct tm`'s fields).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LocalTime {
+    /// Years since 1900.
+    pub year: u32,
+    /// 0..365.
+    pub year_day: u32,
+    pub hour: u8,
+    pub minute: u8,
 }
 
 /// A source of cryptographically secure random bytes.
@@ -154,6 +169,17 @@ impl BoardProfile {
 
 /// Firmware version, as released.
 pub const FW_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The version marker every release image holds ("BDLMinerV1/<version>" and a
+/// NUL): GitHub updates check it in the downloaded image, and the statistics
+/// report sends it as its HTTP user agent. Read through `transport_agent()`
+/// so that it stays in the image.
+pub static VERSION_MARKER: &str = concat!("BDLMinerV1/", env!("CARGO_PKG_VERSION"), "\0");
+
+/// "BDLMinerV1/<version>": the HTTP user agent of the firmware's own requests.
+pub fn transport_agent() -> &'static str {
+    std::hint::black_box(VERSION_MARKER).trim_end_matches('\0')
+}
 
 pub fn native_user_agent() -> String {
     format!("BDLMinerV2/{FW_VERSION}")

@@ -2,12 +2,15 @@
 //! platform turns its requests into a `Request` and sends the `Response`.
 //! The pages and scripts are the ones in web/, as the C++ firmware serves.
 
+use std::borrow::Cow;
 use std::sync::atomic::Ordering;
+use std::sync::OnceLock;
 
 use serde_json::{json, Map, Value};
 
 use bdlminer_core::coin::Coin;
 use bdlminer_core::pool_agent::NERD_MINER;
+use bdlminer_core::sha256::Sha256;
 use bdlminer_core::share_reason::RejectReason;
 use bdlminer_core::{address, pool_diagnostics, work};
 
@@ -49,12 +52,15 @@ pub struct Response {
     pub status: u16,
     pub content_type: &'static str,
     pub headers: Vec<(&'static str, String)>,
-    pub body: Vec<u8>,
+    /// The embedded pages and scripts are served from flash as they are:
+    /// a copy of a 50 KB script can exceed the largest free block of an
+    /// ESP32's heap, and a failed allocation restarts the firmware.
+    pub body: Cow<'static, [u8]>,
 }
 
 impl Response {
     pub fn new(status: u16, content_type: &'static str, body: impl Into<Vec<u8>>) -> Self {
-        Response { status, content_type, headers: Vec::new(), body: body.into() }
+        Response { status, content_type, headers: Vec::new(), body: Cow::Owned(body.into()) }
     }
     fn text(status: u16, body: &str) -> Self {
         Self::new(status, "text/plain", body)
@@ -86,23 +92,31 @@ const DASHBOARD: &str = include_str!("../../../web/dashboard.html");
 const SETTINGS_PAGE: &str = include_str!("../../../web/settings.html");
 const LOG_PAGE: &str = include_str!("../../../web/log.html");
 
-/// Cache-busting version of the assets, like tools/make_web.py's.
+/// Cache-busting version of the assets, like tools/make_web.py's: hashed
+/// once, piece by piece from flash (the ~170 KB of sources gathered in one
+/// buffer exceeded an ESP32's largest free heap block and restarted it on
+/// the first page load).
 pub fn web_version() -> String {
-    let sources: [(&str, &[u8]); 6] = [
-        ("common.js", COMMON),
-        ("dashboard.js", DASHBOARD_JS),
-        ("settings.js", SETTINGS_JS),
-        ("log.js", LOG_JS),
-        ("style.css", STYLE),
-        ("manifest.webmanifest", MANIFEST),
-    ];
-    let mut all = Vec::new();
-    for (name, data) in sources {
-        all.extend_from_slice(name.as_bytes());
-        all.push(0);
-        all.extend_from_slice(data);
-    }
-    work::to_hex(&bdlminer_core::sha256::sha256(&all)[..8])
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION
+        .get_or_init(|| {
+            let sources: [(&str, &[u8]); 6] = [
+                ("common.js", COMMON),
+                ("dashboard.js", DASHBOARD_JS),
+                ("settings.js", SETTINGS_JS),
+                ("log.js", LOG_JS),
+                ("style.css", STYLE),
+                ("manifest.webmanifest", MANIFEST),
+            ];
+            let mut hash = Sha256::new();
+            for (name, data) in sources {
+                hash.update(name.as_bytes());
+                hash.update(&[0]);
+                hash.update(data);
+            }
+            work::to_hex(&hash.finish()[..8])
+        })
+        .clone()
 }
 
 fn page(app: &App, title: &str, body: &str, script: &str) -> Response {
@@ -118,8 +132,9 @@ fn page(app: &App, title: &str, body: &str, script: &str) -> Response {
     Response::new(200, "text/html; charset=utf-8", html).no_store()
 }
 
-fn asset(mime: &'static str, data: &[u8]) -> Response {
-    Response::new(200, mime, data).header("Cache-Control", "public, max-age=31536000, immutable")
+fn asset(mime: &'static str, data: &'static [u8]) -> Response {
+    Response { status: 200, content_type: mime, headers: Vec::new(), body: Cow::Borrowed(data) }
+        .header("Cache-Control", "public, max-age=31536000, immutable")
 }
 
 const ACCENTS: [&str; 5] = ["#f7931a", "#38d07a", "#3b9cf6", "#a66bf5", "#ec5aa0"];
@@ -142,6 +157,17 @@ fn base64_decode(s: &str) -> Option<Vec<u8>> {
 
 fn own_host(app: &App, req: &Request) -> bool {
     app.rebinding.lock().unwrap().allowed(req.host, &app.hostname, app.clock.millis())
+}
+
+/// The live stream (/api/events) carries everything the miner's own pages
+/// show: only to a request naming the miner itself.
+pub fn events_allowed(app: &App, host: Option<&str>) -> bool {
+    app.rebinding.lock().unwrap().allowed(host, &app.hostname, app.clock.millis())
+}
+
+/// One message of the live stream: the dashboard's readings.
+pub fn event_message(app: &App) -> String {
+    format!("data: {}\n\n", stats(app, false, true))
 }
 
 /// Settings, backups, firmware and the log: from the miner's own pages only,
@@ -255,7 +281,7 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         "limitation_reason": app.watch.limit_reason(&app.miner, app.ota_busy.load(Ordering::Relaxed)),
         "night": app.watch.night(),
         "boot_reason": app.system.boot_reason(),
-        "firmware_trial": false,
+        "firmware_trial": app.firmware_trial.load(Ordering::Relaxed),
         "accent": ACCENTS[s.theme as usize % 5],
         "ip": if owner { app.system.ip() } else { String::new() },
         "ssid": if owner { app.system.ssid() } else { String::new() },
@@ -263,21 +289,37 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         "lang": if s.language == 1 { "fr" } else { "en" },
     });
     let o = j.as_object_mut().unwrap();
+    if owner {
+        if let Some(crash) = app.crashes.json() {
+            o.insert("crash".into(), crash);
+        }
+    }
     if let Some(c) = app.miner.last_block_candidate() {
-        o.insert(
-            "block_candidate".into(),
-            json!({
-                "height": c.height,
-                "coin": c.coin.ticker(),
-                "hash": work::reversed_hex(&c.hash),
-                "status": c.state.name(),
-                "previous_session": c.previous_session,
-                "chain_confirmed": Value::Null,
-                "chain_source": if c.coin == Coin::Btc { "mempool.space" } else { "" },
-                "confirmations": 0,
-                "chain_checked_s": -1,
-            }),
-        );
+        let chain = if c.coin == Coin::Btc { app.block_status.get(&c.hash) } else { None };
+        let valid = chain.as_ref().filter(|s| s.known && s.error == 0);
+        let mut b = json!({
+            "height": c.height,
+            "coin": c.coin.ticker(),
+            "hash": work::reversed_hex(&c.hash),
+            "status": c.state.name(),
+            "previous_session": c.previous_session,
+            "chain_confirmed": valid.map_or(Value::Null, |s| s.in_best_chain.into()),
+            "chain_source": if c.coin == Coin::Btc { "mempool.space" } else { "" },
+            "confirmations": valid.map_or(0, |s| s.confirmations),
+            "chain_checked_s": match &chain {
+                Some(s) if s.checked_ms != 0 => (app.clock.millis().wrapping_sub(s.checked_ms) / 1000) as i64,
+                _ => -1,
+            },
+        });
+        if let Some(s) = &chain {
+            if s.not_found {
+                b["chain_not_found"] = true.into();
+            }
+            if s.error != 0 {
+                b["chain_error"] = s.error.into();
+            }
+        }
+        o.insert("block_candidate".into(), b);
     }
     let (connected_ms, sessions) = app.miner.pool_uptime();
     let backup = app.pool.on_backup();
@@ -314,10 +356,18 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
             .collect();
         o.insert("shares_log".into(), entries.into());
     }
-    o.insert(
-        "pool_view".into(),
-        json!({"updated_s": -1, "supported": false, "hashrate": 0, "best": 0, "shares": 0, "workers": 0}),
-    );
+    let now = app.clock.millis();
+    let age = |updated: u32| if updated == 0 { -1 } else { (now.wrapping_sub(updated) / 1000) as i64 };
+    let pv = app.market.pool_stats(app);
+    let mut view = json!({"updated_s": age(pv.updated_ms), "supported": pv.supported, "hashrate": number(pv.hashrate),
+                          "best": number(pv.best_ever), "shares": number(pv.shares), "workers": pv.workers});
+    if !pv.source.is_empty() {
+        view["source"] = pv.source.into();
+    }
+    if pv.error != 0 {
+        view["error"] = pv.error.into();
+    }
+    o.insert("pool_view".into(), view);
     if history {
         let (points, _) = app.miner.history();
         let rates: Vec<Value> = points
@@ -342,7 +392,7 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         notify["ntfy"] = ns.ntfy.into();
         notify["webhook"] = ns.webhook.into();
     }
-    let mut integrations = json!({"mqtt": "off", "notify": notify});
+    let mut integrations = json!({"mqtt": app.mqtt.name(app), "notify": notify});
     if owner && !s.mqtt_host.is_empty() {
         integrations["mqtt_host"] = format!("{}:{}", s.mqtt_host, s.mqtt_port).into();
     }
@@ -353,10 +403,16 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         Vec::new()
     };
     o.insert("peers".into(), peers.into());
+    let m = app.market.get(app);
+    let now = app.clock.millis();
     o.insert(
         "market".into(),
-        json!({"updated_s": -1, "currency": s.currency, "price": 0, "fees": [0, 0, 0], "hashrate": 0, "mempool_tx": 0,
-               "retarget": {"change": 0, "progress": 0, "blocks": 0}}),
+        json!({"updated_s": if m.updated_ms == 0 { -1 } else { (now.wrapping_sub(m.updated_ms) / 1000) as i64 },
+               "currency": s.currency, "price": number(m.price),
+               "fees": [m.fee_fast, m.fee_half_hour, m.fee_hour], "hashrate": number(m.network_hashrate),
+               "mempool_tx": m.mempool_tx,
+               "retarget": {"change": number(m.retarget_change), "progress": number(m.retarget_progress),
+                            "blocks": m.retarget_blocks}}),
     );
     let bests = app.miner.block_bests();
     let mut blocks = Vec::new();
@@ -367,32 +423,62 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         }
         blocks.push(b);
     }
+    for block in &m.blocks {
+        let mut b = json!({"h": block.height, "t": block.time, "pool": block.pool, "tx": block.txs});
+        if let Some(best) = bests.iter().find(|b| b.height == block.height) {
+            b["best"] = number(best.best);
+        }
+        blocks.push(b);
+    }
     o.insert("blocks_recent".into(), blocks.into());
     let channel = if s.update_channel == 1 { "beta" } else { "stable" };
+    let gu = app.updater.state(app.clock.millis());
+    let release_url = if gu.version.is_empty() {
+        format!("https://github.com/{}/releases", settings::GITHUB_REPO)
+    } else {
+        format!("https://github.com/{}/releases/tag/rust-v{}", settings::GITHUB_REPO, gu.version)
+    };
+    let notes = if gu.installing { format!("{} %", gu.progress) } else { gu.error.clone() };
     o.insert(
         "github_update".into(),
-        json!({"available": false, "mode": s.github_update, "channel": channel, "checked": false, "checking": false,
-               "request_id": 0, "version": "", "installing": false, "progress": 0, "retry_in_s": 0,
-               "supported": app.system.ota_supported(),
-               "release_url": format!("https://github.com/{}/releases/latest", settings::GITHUB_REPO),
-               "error": "", "notes": ""}),
+        json!({"available": gu.available, "mode": s.github_update, "channel": channel, "checked": gu.checked,
+               "checking": gu.checking, "request_id": gu.install_request, "version": gu.version,
+               "installing": gu.installing, "progress": gu.progress, "retry_in_s": gu.retry_seconds,
+               "supported": app.system.ota_supported(), "release_url": release_url,
+               "error": gu.error, "notes": notes}),
     );
     j
 }
 
+/// Written straight into the response: a `Value` tree of 4 x 288 points
+/// took about 30 KB of an ESP32's heap at once, the text about 6 KB.
 fn history(app: &App) -> Response {
+    use std::fmt::Write;
     let (points, revision) = app.miner.history();
-    let field = |f: &dyn Fn(&crate::miner::HistoryPoint) -> Value| -> Vec<Value> { points.iter().map(f).collect() };
-    let body = json!({
-        "boot_id": format!("{:x}", app.boot_id),
-        "interval_s": HISTORY_INTERVAL_S,
-        "revision": revision,
-        "hashrate": field(&|p| if p.coverage_percent != 0 || p.hashrate != 0.0 { (p.hashrate.round() as i64).into() } else { Value::Null }),
-        "temperature_c": field(&|p| if p.temperature_deci_c == i16::MIN { Value::Null } else { number((p.temperature_deci_c as f64 / 10.0 * 10.0).round() / 10.0) }),
-        "power_percent": field(&|p| if p.coverage_percent != 0 { p.power_percent.into() } else { Value::Null }),
-        "coverage_percent": field(&|p| p.coverage_percent.into()),
+    let mut body = String::with_capacity(96 + points.len() * 22);
+    let _ =
+        write!(body, "{{\"boot_id\":\"{:x}\",\"interval_s\":{HISTORY_INTERVAL_S},\"revision\":{revision}", app.boot_id);
+    let mut field = |name: &str, value: &dyn Fn(&crate::miner::HistoryPoint) -> Option<String>| {
+        let _ = write!(body, ",\"{name}\":[");
+        for (i, p) in points.iter().enumerate() {
+            if i > 0 {
+                body.push(',');
+            }
+            body.push_str(value(p).as_deref().unwrap_or("null"));
+        }
+        body.push(']');
+    };
+    field("hashrate", &|p| {
+        (p.coverage_percent != 0 || p.hashrate != 0.0).then(|| (p.hashrate.round() as i64).to_string())
     });
-    Response::json(&body)
+    field("temperature_c", &|p| {
+        (p.temperature_deci_c != i16::MIN)
+            .then(|| number((p.temperature_deci_c as f64 / 10.0 * 10.0).round() / 10.0).to_string())
+    });
+    field("power_percent", &|p| (p.coverage_percent != 0).then(|| p.power_percent.to_string()));
+    field("coverage_percent", &|p| Some(p.coverage_percent.to_string()));
+    body.push('}');
+    Response::new(200, "application/json", body).no_store()
 }
 
 fn diagnostics(app: &App) -> Response {
@@ -676,7 +762,8 @@ pub fn handle(app: &App, req: &Request) -> Response {
             }
             r
         }
-        // Live streams need a long-lived connection: the pages poll instead.
+        // Served by the ESP32's server itself (a long-lived connection);
+        // elsewhere the pages poll instead.
         (Get, "/api/events") => Response::text(503, "Too many live dashboards; polling instead"),
         (Get, "/api/history") => history(app),
         (Get, "/api/diagnostics") => diagnostics(app),
@@ -706,9 +793,73 @@ pub fn handle(app: &App, req: &Request) -> Response {
             app.request_restart("restart requested from the web page");
             Response::text(200, "Restarting\u{2026}")
         }),
+        // Only looks for a newer release, so no password: the installation
+        // asks for it. One requested check per 30 s at most, so that nobody
+        // on the network can keep the miner busy with TLS handshakes.
+        (Post, "/api/github-check") => github_check(app, req),
+        (Post, "/api/github-update") => v(authorized(app, req)).unwrap_or_else(|| {
+            if app.updater.request_install(app) {
+                Response::text(200, "Installing, the miner restarts by itself")
+            } else {
+                Response::text(409, "No update to install")
+            }
+        }),
+        // The firmware upload streams into the other slot: the server reads
+        // it itself (`update_allowed`, then `multipart`).
+        (Post, "/update") => Response::text(400, "No firmware file uploaded"),
+        // The dump itself is streamed by the server (`owner_allowed`).
+        (Get, "/api/coredump") => v(authorized(app, req)).unwrap_or_else(|| Response::text(404, "No crash report")),
+        (Post, "/api/coredump/erase") => v(authorized(app, req)).unwrap_or_else(|| {
+            if app.crashes.erase(app) {
+                Response::text(200, "Crash report erased")
+            } else {
+                Response::text(500, "The crash report could not be erased")
+            }
+        }),
         (Get, "/metrics") => metrics(app),
         _ => Response::text(404, "Not found"),
     }
+}
+
+fn github_check(app: &App, req: &Request) -> Response {
+    static LAST: std::sync::Mutex<Option<u32>> = std::sync::Mutex::new(None);
+    if !own_host(app, req) || !validation::origin_allowed(req.origin, req.host) {
+        return Response::text(403, REFUSED);
+    }
+    if app.settings().github_update == 0 {
+        return Response::text(409, "GitHub updates are disabled in settings");
+    }
+    let now = app.clock.millis();
+    let mut last = LAST.lock().unwrap();
+    if last.is_some_and(|t| now.wrapping_sub(t) < 30_000) {
+        return Response::text(202, "Check requested");
+    }
+    if app.updater.request_check(app) {
+        *last = Some(now);
+        return Response::text(202, "Check requested");
+    }
+    // A check already queued or running answers this request as well.
+    if app.updater.state(now).installing || app.ota_busy.load(Ordering::Relaxed) {
+        Response::text(409, "An update is being installed")
+    } else {
+        Response::text(202, "Check requested")
+    }
+}
+
+/// Settings, backups, firmware, the crash report and the log: from the
+/// miner's own pages, with the password.
+pub fn owner_allowed(app: &App, req: &Request) -> Result<(), Response> {
+    authorized(app, req)
+}
+
+/// Whether a firmware upload (POST /update) may start: from the miner's own
+/// page, with the password, nothing else pending.
+pub fn update_allowed(app: &App, req: &Request) -> Result<(), Response> {
+    authorized(app, req)?;
+    if app.restart_pending() || app.ota_busy.load(Ordering::Relaxed) {
+        return Err(Response::text(409, "Another firmware update or restart is already pending"));
+    }
+    Ok(())
 }
 
 #[cfg(test)]

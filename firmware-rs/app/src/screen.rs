@@ -124,6 +124,12 @@ pub struct Inputs {
     pub uptime: u32,
     /// Show "+1 SHARE" in the header.
     pub share_flash: bool,
+    /// mempool.space readings (`App::market`).
+    pub market: crate::market::MarketData,
+    /// Unix time, when the clock is set (the age of recent blocks).
+    pub unix_time: Option<u32>,
+    /// Your best share while each recent block was the one to find.
+    pub block_bests: Vec<(u32, f64)>,
 }
 
 /// The hash rate graph's samples.
@@ -180,6 +186,33 @@ pub fn rate_text(rate: f64) -> (String, &'static str) {
     (text, unit)
 }
 
+/// "45s", "12min", "3h05", "2d 4h", "1.5 yr" (src/ui.cpp duration()).
+pub fn duration(seconds: f64, language: u8) -> String {
+    if !seconds.is_finite() || seconds < 0.0 {
+        return "-".into();
+    }
+    if seconds < 60.0 {
+        format!("{:.0}s", seconds.floor())
+    } else if seconds < 3600.0 {
+        format!("{:.0}min", (seconds / 60.0).floor())
+    } else if seconds < 86400.0 {
+        format!("{}h{:02}", (seconds / 3600.0) as u32, (seconds / 60.0) as u32 % 60)
+    } else if seconds < 31_557_600.0 {
+        let days = (seconds / 86400.0).floor();
+        let hours = ((seconds / 3600.0) % 24.0).floor();
+        format!("{days:.0}{} {hours:.0}h", if language == 1 { "j" } else { "d" })
+    } else {
+        format!("{} {}", format_si(seconds / 31_557_600.0, 1), if language == 1 { "ans" } else { "yr" })
+    }
+}
+
+fn price_text(price: f64) -> String {
+    if !price.is_finite() || price <= 0.0 {
+        return "-".into();
+    }
+    format!("{price:.0}")
+}
+
 pub fn short_duration(seconds: f64, language: u8) -> String {
     if !seconds.is_finite() || seconds < 0.0 {
         return "-".into();
@@ -206,9 +239,7 @@ fn limit_state(inputs: &Inputs) -> Option<&'static str> {
     }
 }
 
-/// The model of `page` (0..PAGES), as src/ui.cpp builds it. Market data
-/// (price, fees, recent blocks) is not fetched by the Rust firmware: those
-/// readings show "-".
+/// The model of `page` (0..PAGES), as src/ui.cpp builds it.
 pub fn build(page: u32, settings: &Settings, inputs: &Inputs, samples: &Samples) -> Model {
     let lang = settings.language;
     let accent = accent(settings.theme);
@@ -280,7 +311,7 @@ pub fn build(page: u32, settings: &Settings, inputs: &Inputs, samples: &Samples)
             set(0, tr("LOCAL TIME", lang), clock, "", TEXT);
             set(1, "DATE", date, "", TEXT);
             if coin == Coin::Btc {
-                set(2, tr("BTC PRICE", lang), "-".into(), "", accent);
+                set(2, tr("BTC PRICE", lang), price_text(inputs.market.price), "", accent);
             } else {
                 set(2, "CRYPTO", coin.ticker().into(), "", accent);
             }
@@ -289,10 +320,26 @@ pub fn build(page: u32, settings: &Settings, inputs: &Inputs, samples: &Samples)
         2 => {
             title = coin.name().into();
             if coin.bitcoin_data() {
-                set(0, tr("BITCOIN PRICE", lang), "-".into(), &settings.currency, accent);
-                set(1, tr("FEES sat/vB", lang), "-".into(), "", TEXT);
-                set(2, tr("NEXT RETARGET", lang), "-".into(), "", MUTED);
-                set(3, tr("NET HASHRATE", lang), "-".into(), "", TEXT);
+                let m = &inputs.market;
+                set(0, tr("BITCOIN PRICE", lang), price_text(m.price), &settings.currency, accent);
+                let fees = if m.fee_fast > 0 {
+                    format!("{}/{}/{}", m.fee_fast, m.fee_half_hour, m.fee_hour)
+                } else {
+                    "-".into()
+                };
+                set(1, tr("FEES sat/vB", lang), fees, "", TEXT);
+                let (retarget, color) = if m.updated_ms == 0 {
+                    ("-".to_string(), MUTED)
+                } else {
+                    (format!("{:+.2}%", m.retarget_change), if m.retarget_change >= 0.0 { GREEN } else { RED })
+                };
+                set(2, tr("NEXT RETARGET", lang), retarget, "", color);
+                let net = if m.network_hashrate > 0.0 {
+                    format!("{}H/s", format_si(m.network_hashrate, 1))
+                } else {
+                    "-".into()
+                };
+                set(3, tr("NET HASHRATE", lang), net, "", TEXT);
             } else {
                 set(0, tr("BLOCK HEIGHT", lang), height(), "", accent);
                 set(1, tr("NETWORK DIFF", lang), diff_text(stats.network_diff), "", TEXT);
@@ -349,6 +396,19 @@ pub fn build(page: u32, settings: &Settings, inputs: &Inputs, samples: &Samples)
         _ => {
             title = tr("BLOCKS", lang).into();
             set(0, tr("MINING BLOCK", lang), height(), "", accent);
+            for (i, block) in inputs.market.blocks.iter().take(3).enumerate() {
+                let mut detail = match inputs.unix_time {
+                    Some(now) if block.time != 0 => duration(now.saturating_sub(block.time) as f64, lang),
+                    _ => "-".into(),
+                };
+                for &(h, best) in &inputs.block_bests {
+                    if h == block.height {
+                        detail = format!("{detail} / {}", diff_text(best));
+                    }
+                }
+                let pool = if block.pool.is_empty() { "?".to_string() } else { block.pool.clone() };
+                set(i + 1, &block.height.to_string(), pool, &detail, TEXT);
+            }
         }
     }
     model.title = title;

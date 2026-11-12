@@ -33,6 +33,27 @@ impl Clock for SystemClock {
         let t = self.unix_time()? as i64 + self.utc_offset_s as i64;
         Some((t.rem_euclid(86400) / 3600) as u8)
     }
+    fn local_time(&self) -> Option<crate::platform::LocalTime> {
+        let t = self.unix_time()? as i64 + self.utc_offset_s as i64;
+        let days = t.div_euclid(86400);
+        // Civil date from days since 1970 (proleptic Gregorian).
+        let (mut year, mut left) = (1970i64, days);
+        loop {
+            let leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+            let length = if leap { 366 } else { 365 };
+            if left < length {
+                break;
+            }
+            left -= length;
+            year += 1;
+        }
+        Some(crate::platform::LocalTime {
+            year: (year - 1900) as u32,
+            year_day: left as u32,
+            hour: (t.rem_euclid(86400) / 3600) as u8,
+            minute: (t.rem_euclid(3600) / 60) as u8,
+        })
+    }
 }
 
 /// A TCP stream polled every `poll`.
