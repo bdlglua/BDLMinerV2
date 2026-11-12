@@ -657,6 +657,19 @@ mod engine {
         // The xtensa component's HAL.
         fn xthal_get_ccount() -> u32;
         fn esp_rom_get_cpu_ticks_per_us() -> u32;
+        // esp_chip_info.h (not in the bindings).
+        fn esp_chip_info(out: *mut ChipInfo);
+    }
+
+    /// esp_chip_info_t.
+    #[repr(C)]
+    #[allow(dead_code)]
+    struct ChipInfo {
+        model: u32,
+        features: u32,
+        /// Major * 100 + minor.
+        revision: u16,
+        cores: u8,
     }
 
     /// Fastest first (247, 257 and 317 cycles per nonce); the slower ones
@@ -1006,8 +1019,8 @@ mod engine {
         // Before revision 3, a raw DPORT read on one core (the loops read the
         // digest that way) can corrupt APB reads on the other one: WiFi and
         // UART die within seconds, which no self-test can see.
-        let mut chip: esp_idf_svc::sys::esp_chip_info_t = unsafe { core::mem::zeroed() };
-        unsafe { esp_idf_svc::sys::esp_chip_info(&mut chip) };
+        let mut chip = ChipInfo { model: 0, features: 0, revision: 0, cores: 0 };
+        unsafe { esp_chip_info(&mut chip) };
         let revision = chip.revision as u32; // major * 100 + minor
         if revision / 100 < 3 {
             log(&format!(

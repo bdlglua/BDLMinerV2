@@ -1,168 +1,308 @@
 //! The screen and buttons of the boards with a display (feature `display`):
-//! the C++ firmware's renderer (src/ui_view.cpp, built by
-//! components/bdl_ui) draws the pages that `bdlminer_app::screen` builds, on
-//! the panel of the board (M5GFX's detection on M5Stack devices, the C++
-//! firmware's panels on the LilyGO and CYD boards).
+//! the renderer (`bdlminer_app::ui_view`, ported from the C++ firmware's
+//! src/ui_view.cpp) draws the pages that `bdlminer_app::screen` builds, on
+//! the panel of the board (src/lcd.rs; M5GFX's board detection on the
+//! M5Stack image, components/bdl_ui).
 //!
 //! Button A: next page; held 5 s: factory reset. Button B: brightness
 //! 100 / 60 / 30 / 10 / off. On a touch panel, a tap is A and a press of
 //! 1 s is B. Either dismisses a block alert.
 
-use std::ffi::{c_char, CString};
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bdlminer_app::platform::{SystemInfo, CLOCK_SET, FW_VERSION};
 use bdlminer_app::screen::{self, Inputs, Model, Samples, BRIGHTNESS_STEPS, PAGES};
+use bdlminer_app::ui_view::{Panel, View};
 use bdlminer_app::watch::Indicators;
 use bdlminer_app::App;
 use bdlminer_core::display_config;
 
 use crate::system::{millis, EspSystem};
 
-#[repr(C)]
-struct CMetric {
-    label: *const c_char,
-    value: *const c_char,
-    detail: *const c_char,
-    color: u32,
+/// A board's display: pixels, backlight and rotation.
+trait Screen: Panel + Send {
+    /// 0..255, 0 = off.
+    fn brightness(&mut self, value: u8);
 }
 
-#[repr(C)]
-struct CPoint {
-    ms: u32,
-    rate: f32,
+#[cfg(not(any(feature = "m5stack", feature = "gamma601")))]
+impl Screen for crate::lcd::Lcd {
+    fn brightness(&mut self, value: u8) {
+        if let Some(b) = &self.backlight {
+            b.set(value);
+        }
+    }
 }
 
-#[repr(C)]
-struct CModel {
-    page: i32,
-    language: u8,
-    accent: u32,
-    status_color: u32,
-    title: *const c_char,
-    status: *const c_char,
-    battery: *const c_char,
-    footer: *const c_char,
-    metrics: [CMetric; 6],
-    points: *const CPoint,
-    point_count: i32,
-    graph_revision: u32,
-}
-
-/// The panel of the board (components/bdl_ui/include/bdl_ui.h).
-#[cfg(any(feature = "m5stickc-plus2", feature = "m5stack"))]
-const PANEL: i32 = 0;
-#[cfg(feature = "lilygo-t-display")]
-const PANEL: i32 = 1;
-#[cfg(any(feature = "lilygo-t-display-s3", feature = "nerdnos"))]
-const PANEL: i32 = 2;
-#[cfg(feature = "cyd")]
-const PANEL: i32 = 3;
 #[cfg(feature = "gamma601")]
-const PANEL: i32 = 4;
-
-extern "C" {
-    fn bdl_ui_begin(panel: i32, rotation: u8, accent: u32, language: u8) -> bool;
-    fn bdl_ui_controls(button_a: *mut i32, button_b: *mut i32, touch: *mut bool);
-    fn bdl_ui_touched() -> bool;
-    #[cfg(feature = "gamma601")]
-    fn bdl_ui_lines(line1: *const c_char, line2: *const c_char, line3: *const c_char);
-    fn bdl_ui_brightness(percent: u8);
-    fn bdl_ui_invalidate();
-    fn bdl_ui_render(model: *const CModel);
-    fn bdl_ui_message(title: *const c_char, line1: *const c_char, line2: *const c_char);
-    fn bdl_ui_portal(title: *const c_char, ssid: *const c_char, password: *const c_char, qr: *const c_char);
-    fn bdl_ui_alert(title: *const c_char, value: *const c_char, line: *const c_char);
+impl Screen for crate::lcd::Ssd1306 {
+    fn brightness(&mut self, value: u8) {
+        self.set_brightness(value);
+    }
 }
 
-/// The renderer is not thread-safe: every call goes through this lock.
-static LOCK: Mutex<bool> = Mutex::new(false);
+/// M5GFX's board detection and panels (components/bdl_ui).
+#[cfg(feature = "m5stack")]
+mod m5 {
+    extern "C" {
+        pub fn bdl_m5_begin(rotation: u8) -> bool;
+        pub fn bdl_m5_width() -> i32;
+        pub fn bdl_m5_height() -> i32;
+        pub fn bdl_m5_push(x: i32, y: i32, w: i32, h: i32, pixels: *const u16);
+        pub fn bdl_m5_fill(x: i32, y: i32, w: i32, h: i32, color: u16);
+        pub fn bdl_m5_controls(button_a: *mut i32, button_b: *mut i32, touch: *mut bool);
+        pub fn bdl_m5_touched() -> bool;
+        pub fn bdl_m5_brightness(value: u8);
+    }
 
-fn c(s: &str) -> CString {
-    CString::new(s.replace('\0', "")).unwrap_or_default()
+    pub struct M5;
+
+    impl bdlminer_app::ui_view::Panel for M5 {
+        fn width(&self) -> i32 {
+            unsafe { bdl_m5_width() }
+        }
+        fn height(&self) -> i32 {
+            unsafe { bdl_m5_height() }
+        }
+        fn push(&mut self, x: i32, y: i32, w: i32, h: i32, pixels: &[u16]) {
+            unsafe { bdl_m5_push(x, y, w, h, pixels.as_ptr()) };
+        }
+        fn fill(&mut self, x: i32, y: i32, w: i32, h: i32, color: u16) {
+            unsafe { bdl_m5_fill(x, y, w, h, color) };
+        }
+    }
+
+    impl super::Screen for M5 {
+        fn brightness(&mut self, value: u8) {
+            unsafe { bdl_m5_brightness(value) };
+        }
+    }
+}
+
+/// The panel of the board, started at `rotation`.
+fn open(rotation: u8) -> Option<Box<dyn Screen>> {
+    #[cfg(feature = "m5stack")]
+    return unsafe { m5::bdl_m5_begin(rotation) }.then(|| Box::new(m5::M5) as Box<dyn Screen>);
+    #[cfg(feature = "gamma601")]
+    return crate::lcd::Ssd1306::new(0, 47, 48, rotation).map(|p| Box::new(p) as Box<dyn Screen>);
+    #[cfg(not(any(feature = "m5stack", feature = "gamma601")))]
+    {
+        use crate::lcd::{Backlight, Bus, Lcd, Spec, ILI9341_INIT, ST7789_INIT};
+        use esp_idf_svc::sys::*;
+        // ST7789 135x240 (M5GFX's M5StickC Plus2 configuration and the
+        // C++ firmware's T-Display).
+        #[cfg(any(feature = "m5stickc-plus2", feature = "lilygo-t-display"))]
+        static SPEC: Spec = Spec {
+            panel_width: 135,
+            panel_height: 240,
+            memory_width: 240,
+            memory_height: 320,
+            offset_x: 52,
+            offset_y: 40,
+            invert: true,
+            init: ST7789_INIT,
+        };
+        #[cfg(any(feature = "lilygo-t-display-s3", feature = "nerdnos"))]
+        static SPEC: Spec = Spec {
+            panel_width: 170,
+            panel_height: 320,
+            memory_width: 240,
+            memory_height: 320,
+            offset_x: 35,
+            offset_y: 0,
+            invert: true,
+            init: ST7789_INIT,
+        };
+        #[cfg(feature = "cyd")]
+        static SPEC: Spec = Spec {
+            panel_width: 240,
+            panel_height: 320,
+            memory_width: 240,
+            memory_height: 320,
+            offset_x: 0,
+            offset_y: 0,
+            invert: false,
+            init: ILI9341_INIT,
+        };
+        let _ = (&ILI9341_INIT, &ST7789_INIT);
+        #[cfg(feature = "m5stickc-plus2")]
+        let (bus, rst, bl, read_id) = (
+            Bus::Spi { host: spi_host_device_t_SPI2_HOST, mosi: 15, miso: -1, sclk: 13, cs: 5, dc: 14, hz: 40_000_000 },
+            12,
+            Backlight::new(27, 7, 256, 40),
+            false,
+        );
+        #[cfg(feature = "lilygo-t-display")]
+        let (bus, rst, bl, read_id) = (
+            Bus::Spi { host: spi_host_device_t_SPI3_HOST, mosi: 19, miso: -1, sclk: 18, cs: 5, dc: 16, hz: 40_000_000 },
+            23,
+            Backlight::new(4, 7, 1200, 0),
+            false,
+        );
+        #[cfg(any(feature = "lilygo-t-display-s3", feature = "nerdnos"))]
+        let (bus, rst, bl, read_id) = (
+            Bus::I80 { data: [39, 40, 41, 42, 45, 46, 47, 48], wr: 8, rd: 9, dc: 7, cs: 6, hz: 20_000_000 },
+            5,
+            Backlight::new(38, 7, 1200, 0),
+            false,
+        );
+        #[cfg(feature = "cyd")]
+        let (bus, rst, bl, read_id) = (
+            Bus::Spi { host: spi_host_device_t_SPI2_HOST, mosi: 13, miso: 12, sclk: 14, cs: 15, dc: 2, hz: 40_000_000 },
+            -1,
+            Backlight::new(21, 7, 1200, 0),
+            true,
+        );
+        let mut lcd = Lcd::new(bus, rst, &SPEC, rotation, read_id)?;
+        lcd.backlight = bl;
+        Some(Box::new(lcd))
+    }
+}
+
+/// The board's buttons (GPIO, -1 for none; active low) and whether it has a
+/// touch panel, as in the C++ firmware.
+fn controls() -> (i32, i32, bool) {
+    #[cfg(feature = "m5stack")]
+    {
+        let (mut a, mut b, mut touch) = (-1, -1, false);
+        unsafe { m5::bdl_m5_controls(&mut a, &mut b, &mut touch) };
+        (a, b, touch)
+    }
+    #[cfg(feature = "m5stickc-plus2")]
+    return (37, 39, false);
+    #[cfg(feature = "lilygo-t-display")]
+    return (35, 0, false);
+    #[cfg(any(feature = "lilygo-t-display-s3", feature = "nerdnos"))]
+    return (14, 0, false);
+    #[cfg(feature = "cyd")]
+    return (0, -1, true);
+    #[cfg(feature = "gamma601")]
+    return (0, -1, false);
+}
+
+fn touched() -> bool {
+    #[cfg(feature = "m5stack")]
+    return unsafe { m5::bdl_m5_touched() };
+    #[cfg(feature = "cyd")]
+    return cyd_touch::pressed();
+    #[cfg(not(any(feature = "m5stack", feature = "cyd")))]
+    false
+}
+
+/// XPT2046 resistive touch of the ESP32-2432S028R, on its own pins, as in
+/// the C++ firmware (board.cpp): only "pressed or not", from its pressure
+/// (Z1) measurement, with no calibration and the display's SPI bus left
+/// alone.
+#[cfg(feature = "cyd")]
+mod cyd_touch {
+    use esp_idf_svc::sys::{gpio_get_level, gpio_set_level};
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    const CLK: i32 = 25;
+    const MOSI: i32 = 32;
+    const MISO: i32 = 39;
+    const CS: i32 = 33;
+    static READY: AtomicBool = AtomicBool::new(false);
+
+    fn transfer(command: u8) -> u16 {
+        unsafe {
+            gpio_set_level(CS, 0);
+            for bit in (0..8).rev() {
+                gpio_set_level(MOSI, ((command >> bit) & 1) as u32);
+                gpio_set_level(CLK, 1);
+                gpio_set_level(CLK, 0);
+            }
+            let mut value = 0u16;
+            for _ in 0..16 {
+                gpio_set_level(CLK, 1);
+                value = value << 1 | gpio_get_level(MISO) as u16;
+                gpio_set_level(CLK, 0);
+            }
+            gpio_set_level(CS, 1);
+            (value >> 3) & 0xFFF
+        }
+    }
+
+    pub fn pressed() -> bool {
+        if !READY.swap(true, Ordering::Relaxed) {
+            crate::periph::output(CS, true);
+            crate::periph::output(CLK, false);
+            crate::periph::output(MOSI, false);
+            crate::periph::input(MISO);
+        }
+        transfer(0xB0) > 200 // Z1, 12 bits, pen interrupt left enabled
+    }
+}
+
+/// The renderer and its panel: every call goes through this lock.
+struct Display {
+    screen: Box<dyn Screen>,
+    view: View,
+}
+
+static DISPLAY: Mutex<Option<Display>> = Mutex::new(None);
+
+fn with(f: impl FnOnce(&mut dyn Screen, &mut View)) {
+    if let Some(d) = DISPLAY.lock().unwrap().as_mut() {
+        f(&mut *d.screen, &mut d.view);
+    }
 }
 
 /// Starts the panel at the configured brightness. False without a screen.
 pub fn begin(app: &App) -> bool {
     let s = app.settings();
-    let mut started = LOCK.lock().unwrap();
-    *started = unsafe { bdl_ui_begin(PANEL, s.rotation, screen::accent(s.theme), s.language) };
-    if *started {
-        unsafe { bdl_ui_brightness(app.brightness()) };
+    let mut display = DISPLAY.lock().unwrap();
+    if display.is_none() {
+        match open(s.rotation) {
+            Some(screen) => {
+                *display = Some(Display { screen, view: View::new(screen::accent(s.theme), s.language) });
+            }
+            None => {
+                app.log("[ui] display not found");
+                return false;
+            }
+        }
     }
-    *started
+    let d = display.as_mut().unwrap();
+    d.screen.brightness(percent_to_level(app.brightness()));
+    true
+}
+
+fn percent_to_level(percent: u8) -> u8 {
+    if percent > 100 {
+        255
+    } else {
+        (percent as u32 * 255 / 100) as u8
+    }
 }
 
 pub fn message(title: &str, line1: &str, line2: &str) {
-    let started = LOCK.lock().unwrap();
-    if *started {
-        let (t, a, b) = (c(title), c(line1), c(line2));
-        unsafe { bdl_ui_message(t.as_ptr(), a.as_ptr(), b.as_ptr()) };
-    }
+    with(|panel, view| view.message(panel, title, line1, line2));
 }
 
 /// The setup portal: its network, password and a QR code to join it.
 pub fn portal(app: &App, ssid: &str, password: &str) {
-    let started = LOCK.lock().unwrap();
-    if *started {
-        let lang = app.settings().language;
-        let qr = c(&format!("WIFI:T:WPA;S:{ssid};P:{password};;"));
-        let (t, n, p) = (c(screen::tr("WiFi setup", lang)), c(ssid), c(password));
-        unsafe { bdl_ui_portal(t.as_ptr(), n.as_ptr(), p.as_ptr(), qr.as_ptr()) };
-    }
+    let lang = app.settings().language;
+    let qr = format!("WIFI:T:WPA;S:{ssid};P:{password};;");
+    with(|panel, view| view.portal(panel, screen::tr("WiFi setup", lang), ssid, password, &qr));
 }
 
 fn render(model: &Model) {
-    let started = LOCK.lock().unwrap();
-    if !*started {
-        return;
-    }
-    let texts: Vec<[CString; 3]> = model.metrics.iter().map(|m| [c(&m.label), c(&m.value), c(&m.detail)]).collect();
-    let metrics: [CMetric; 6] = std::array::from_fn(|i| CMetric {
-        label: texts[i][0].as_ptr(),
-        value: texts[i][1].as_ptr(),
-        detail: texts[i][2].as_ptr(),
-        color: model.metrics[i].color,
-    });
-    let points: Vec<CPoint> = model.points.iter().map(|&(ms, rate)| CPoint { ms, rate }).collect();
-    let (title, status, battery, footer) = (c(&model.title), c(&model.status), c(&model.battery), c(&model.footer));
-    let cm = CModel {
-        page: model.page as i32,
-        language: model.language,
-        accent: model.accent,
-        status_color: model.status_color,
-        title: title.as_ptr(),
-        status: status.as_ptr(),
-        battery: battery.as_ptr(),
-        footer: footer.as_ptr(),
-        metrics,
-        points: points.as_ptr(),
-        point_count: points.len() as i32,
-        graph_revision: model.graph_revision,
-    };
-    unsafe { bdl_ui_render(&cm) };
+    with(|panel, view| view.render(panel, model));
 }
 
 fn alert(title: &str, value: &str, line: &str) {
-    let started = LOCK.lock().unwrap();
-    if *started {
-        let (t, v, l) = (c(title), c(value), c(line));
-        unsafe { bdl_ui_alert(t.as_ptr(), v.as_ptr(), l.as_ptr()) };
-    }
+    with(|panel, view| view.alert(panel, title, value, line));
 }
 
 fn set_brightness(percent: u8) {
-    if *LOCK.lock().unwrap() {
-        unsafe { bdl_ui_brightness(percent) };
-    }
+    with(|panel, _| panel.brightness(percent_to_level(percent)));
 }
 
 fn invalidate() {
-    if *LOCK.lock().unwrap() {
-        unsafe { bdl_ui_invalidate() };
-    }
+    with(|_, view| view.invalidate());
 }
 
 /// What the supervision reports to the screen (`App::second_tick`).
@@ -311,8 +451,7 @@ const LONG_PRESS_MS: u32 = 5000;
 
 /// The screen task: buttons every 20 ms, a redraw every second.
 pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
-    let (mut pin_a, mut pin_b, mut has_touch) = (-1, -1, false);
-    unsafe { bdl_ui_controls(&mut pin_a, &mut pin_b, &mut has_touch) };
+    let (pin_a, pin_b, has_touch) = controls();
     let mut a = Button::new(pin_a);
     let mut b = Button::new(pin_b);
     let mut touch = Touch::default();
@@ -331,7 +470,7 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
     loop {
         let now = millis();
         let mut redraw = false;
-        let gesture = if has_touch { touch.update(now, unsafe { bdl_ui_touched() }) } else { 0 };
+        let gesture = if has_touch { touch.update(now, touched()) } else { 0 };
         let mut click_a = gesture == 1;
         let mut click_b = gesture == 2;
         // A: next page on release, factory reset when held 5 s.
@@ -441,7 +580,5 @@ fn gamma_screen(app: &App, system: &EspSystem) {
     let line2 = format!("ASIC {asic} VR {vr} {}rpm", s.rpm);
     let ip = system.ip();
     let line3 = if s.running && !ip.is_empty() { ip } else { s.state() };
-    let _guard = LOCK.lock().unwrap();
-    let (a, b, c3) = (c(&line1), c(&line2), c(&line3));
-    unsafe { bdl_ui_lines(a.as_ptr(), b.as_ptr(), c3.as_ptr()) };
+    with(|panel, view| view.lines(panel, &[&line1, &line2, &line3]));
 }

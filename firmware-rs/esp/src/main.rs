@@ -16,12 +16,14 @@ mod display;
 mod gamma601;
 mod http;
 mod hwsha;
+#[cfg(all(feature = "display", not(feature = "m5stack")))]
+mod lcd;
 #[cfg(feature = "m5stickc-plus2")]
 mod m5stickc;
 #[cfg(feature = "nerdnos")]
 mod nerdnos;
 mod nvs;
-#[cfg(any(feature = "gamma601", feature = "nerdnos"))]
+#[cfg(any(feature = "gamma601", feature = "nerdnos", feature = "display"))]
 mod periph;
 mod portal;
 mod system;

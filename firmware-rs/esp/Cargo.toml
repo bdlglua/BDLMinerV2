@@ -17,7 +17,7 @@ harness = false
 default = []
 # Boards with an M5 IMU near the battery default to a 65 C thermal limit.
 m5 = []
-# A screen and buttons (src/display.rs, components/bdl_ui). One board feature
+# A screen and buttons (src/display.rs, src/lcd.rs). One board feature
 # at most below.
 display = []
 # M5StickC Plus2: power hold on GPIO4, MPU6886 temperature.
@@ -47,7 +47,7 @@ serde_json = "1"
 # handshake only takes a few milliseconds longer.
 secp256k1 = { version = "0.33", default-features = false, features = ["lowmemory"] }
 
-# The C++ firmware's screen renderer on M5GFX (src/display.rs, M5StickC Plus2).
+# M5GFX's board detection and panels for the M5Stack image (src/display.rs).
 [[package.metadata.esp-idf-sys.extra_components]]
 component_dirs = ["components/bdl_ui"]
 

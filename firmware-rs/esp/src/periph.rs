@@ -23,6 +23,13 @@ pub fn output(pin: i32, level: bool) {
     }
 }
 
+/// `pin` as a plain input.
+pub fn input(pin: i32) {
+    let config =
+        gpio_config_t { pin_bit_mask: 1u64 << pin, mode: gpio_mode_t_GPIO_MODE_INPUT, ..unsafe { std::mem::zeroed() } };
+    unsafe { gpio_config(&config) };
+}
+
 pub fn set(pin: i32, level: bool) {
     unsafe { gpio_set_level(pin, level as u32) };
 }

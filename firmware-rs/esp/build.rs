@@ -45,7 +45,7 @@ fn substitute(line: &str, defines: &[(String, String)]) -> String {
     let mut out = String::with_capacity(line.len());
     let mut word = String::new();
     let ident = |c: char| c.is_ascii_alphanumeric() || c == '_';
-    let mut flush = |word: &mut String, out: &mut String| {
+    let flush = |word: &mut String, out: &mut String| {
         match defines.iter().find(|(k, _)| k == word) {
             Some((_, v)) => out.push_str(v),
             None => out.push_str(word),
