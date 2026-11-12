@@ -138,6 +138,15 @@ jobs:
         env:
           MCU: ${{ matrix.mcu }}
         run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      # Which symbols a RISC-V link reaches through a GOT (a .got section
+      # breaks ESP-IDF's flash layout).
+      - name: GOT references
+        if: failure() && matrix.mcu == 'esp32c3'
+        working-directory: firmware-rs/esp
+        run: |
+          for o in target/${{ matrix.target }}/release/deps/bdlminer_esp-*.o; do
+            riscv32-esp-elf-objdump -r "$o" | grep -E 'GOT|TLS' | awk '{print $2, $3}' | sort | uniq -c | sort -rn | head -40
+          done
       # The linker map, to see where a failed link went wrong.
       - name: Linker map
         if: failure()
