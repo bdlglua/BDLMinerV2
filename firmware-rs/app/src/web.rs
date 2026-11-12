@@ -501,22 +501,12 @@ fn diagnostics(app: &App) -> Response {
     }))
 }
 
+/// Written piece by piece: a `Value` tree of the whole answer (a hundred
+/// settings with their schema) took tens of KB of an ESP32's heap at once,
+/// next to the HTTPS tasks, and the M5StickC Plus2 restarted when the
+/// settings page opened.
 fn get_settings(app: &App) -> Response {
     let board = &app.board;
-    let mut schema = Vec::new();
-    for info in settings::table(board).filter(|s| s.key != "uaauto") {
-        let limits = match info.kind {
-            Kind::Number(_) => {
-                let l = settings::limits_for(info, board);
-                json!({"min": l.minimum, "max": l.maximum})
-            }
-            Kind::Decimal => json!({"min": 0}),
-            _ => json!({}),
-        };
-        schema.push(json!([info.key, info.kind.name(), info.group, info.label, limits]));
-    }
-    let mut current = app.settings();
-    current.brightness = app.brightness();
     let mut capabilities = json!({
         "ota": app.system.ota_supported(),
         "firmware_env": board.env,
@@ -530,14 +520,38 @@ fn get_settings(app: &App) -> Response {
     if board.asic() {
         capabilities["asic"] = true.into();
     }
+    let portal = json!({"name": crate::app::portal_ap_name(app.mac), "password": app.portal_password()});
+    let mut out = String::with_capacity(8 * 1024);
+    out.push_str("{\"capabilities\":");
+    out.push_str(&capabilities.to_string());
+    out.push_str(",\"portal\":");
+    out.push_str(&portal.to_string());
+    out.push_str(",\"schema\":[");
+    for (i, info) in settings::table(board).filter(|s| s.key != "uaauto").enumerate() {
+        let limits = match info.kind {
+            Kind::Number(_) => {
+                let l = settings::limits_for(info, board);
+                json!({"min": l.minimum, "max": l.maximum})
+            }
+            Kind::Decimal => json!({"min": 0}),
+            _ => json!({}),
+        };
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str(&json!([info.key, info.kind.name(), info.group, info.label, limits]).to_string());
+    }
+    out.push_str("],\"values\":");
+    {
+        let mut current = app.settings();
+        current.brightness = app.brightness();
+        out.push_str(&Value::Object(settings::values(&current, board, false)).to_string());
+    }
     let live: Vec<&str> = settings::table(board).map(|s| s.key).filter(|k| settings::is_live(k)).collect();
-    Response::json(&json!({
-        "capabilities": capabilities,
-        "portal": {"name": crate::app::portal_ap_name(app.mac), "password": app.portal_password()},
-        "schema": schema,
-        "values": settings::values(&current, board, false),
-        "live": live,
-    }))
+    out.push_str(",\"live\":");
+    out.push_str(&json!(live).to_string());
+    out.push('}');
+    Response::new(200, "application/json", out).no_store()
 }
 
 fn parse_object(body: &[u8]) -> Option<Map<String, Value>> {
