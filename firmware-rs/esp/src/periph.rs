@@ -176,15 +176,19 @@ impl I2c {
     }
 }
 
-/// One ADC1 pin, calibrated millivolts (as Arduino's analogReadMilliVolts).
+/// One ADC1 pin, calibrated millivolts (as Arduino's analogReadMilliVolts),
+/// with the ESP32-S3's curve fitting: the NerdNOS NTC.
+#[cfg(feature = "nerdnos")]
 pub struct Adc {
     unit: adc_oneshot_unit_handle_t,
     channel: adc_channel_t,
     cali: adc_cali_handle_t,
 }
 
+#[cfg(feature = "nerdnos")]
 unsafe impl Send for Adc {}
 
+#[cfg(feature = "nerdnos")]
 impl Adc {
     pub fn new(pin: i32) -> Option<Self> {
         unsafe {
