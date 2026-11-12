@@ -4,11 +4,13 @@
 
 use std::borrow::Cow;
 use std::sync::atomic::Ordering;
+use std::sync::OnceLock;
 
 use serde_json::{json, Map, Value};
 
 use bdlminer_core::coin::Coin;
 use bdlminer_core::pool_agent::NERD_MINER;
+use bdlminer_core::sha256::Sha256;
 use bdlminer_core::share_reason::RejectReason;
 use bdlminer_core::{address, pool_diagnostics, work};
 
@@ -90,23 +92,31 @@ const DASHBOARD: &str = include_str!("../../../web/dashboard.html");
 const SETTINGS_PAGE: &str = include_str!("../../../web/settings.html");
 const LOG_PAGE: &str = include_str!("../../../web/log.html");
 
-/// Cache-busting version of the assets, like tools/make_web.py's.
+/// Cache-busting version of the assets, like tools/make_web.py's: hashed
+/// once, piece by piece from flash (the ~170 KB of sources gathered in one
+/// buffer exceeded an ESP32's largest free heap block and restarted it on
+/// the first page load).
 pub fn web_version() -> String {
-    let sources: [(&str, &[u8]); 6] = [
-        ("common.js", COMMON),
-        ("dashboard.js", DASHBOARD_JS),
-        ("settings.js", SETTINGS_JS),
-        ("log.js", LOG_JS),
-        ("style.css", STYLE),
-        ("manifest.webmanifest", MANIFEST),
-    ];
-    let mut all = Vec::new();
-    for (name, data) in sources {
-        all.extend_from_slice(name.as_bytes());
-        all.push(0);
-        all.extend_from_slice(data);
-    }
-    work::to_hex(&bdlminer_core::sha256::sha256(&all)[..8])
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION
+        .get_or_init(|| {
+            let sources: [(&str, &[u8]); 6] = [
+                ("common.js", COMMON),
+                ("dashboard.js", DASHBOARD_JS),
+                ("settings.js", SETTINGS_JS),
+                ("log.js", LOG_JS),
+                ("style.css", STYLE),
+                ("manifest.webmanifest", MANIFEST),
+            ];
+            let mut hash = Sha256::new();
+            for (name, data) in sources {
+                hash.update(name.as_bytes());
+                hash.update(&[0]);
+                hash.update(data);
+            }
+            work::to_hex(&hash.finish()[..8])
+        })
+        .clone()
 }
 
 fn page(app: &App, title: &str, body: &str, script: &str) -> Response {

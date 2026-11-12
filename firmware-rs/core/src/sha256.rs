@@ -145,6 +145,53 @@ fn put_state(state: &[u32; 8]) -> [u8; 32] {
     out
 }
 
+/// SHA-256 over data given in pieces, without gathering it in one buffer
+/// (an ESP32's heap may not hold the concatenation).
+#[derive(Clone)]
+pub struct Sha256 {
+    state: [u32; 8],
+    block: [u8; 64],
+    used: usize,
+    length: u64,
+}
+
+impl Default for Sha256 {
+    fn default() -> Self {
+        Sha256 { state: IV, block: [0; 64], used: 0, length: 0 }
+    }
+}
+
+impl Sha256 {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn update(&mut self, mut data: &[u8]) {
+        self.length = self.length.wrapping_add(data.len() as u64);
+        while !data.is_empty() {
+            let take = (64 - self.used).min(data.len());
+            self.block[self.used..self.used + take].copy_from_slice(&data[..take]);
+            self.used += take;
+            data = &data[take..];
+            if self.used == 64 {
+                transform(&mut self.state, &self.block);
+                self.used = 0;
+            }
+        }
+    }
+
+    pub fn finish(mut self) -> [u8; 32] {
+        let bits = self.length.wrapping_mul(8);
+        self.update(&[0x80]);
+        while self.used != 56 {
+            self.update(&[0]);
+        }
+        self.block[56..].copy_from_slice(&bits.to_be_bytes());
+        transform(&mut self.state, &self.block);
+        put_state(&self.state)
+    }
+}
+
 /// Plain SHA-256.
 pub fn sha256(data: &[u8]) -> [u8; 32] {
     put_state(&hash_state(data))
@@ -325,6 +372,19 @@ impl MidState {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn incremental_matches_one_shot() {
+        let data: Vec<u8> = (0..300u32).map(|i| (i * 7 + 3) as u8).collect();
+        for len in [0, 1, 55, 56, 63, 64, 65, 119, 120, 128, 300] {
+            for split in [0, 1, len / 3, len] {
+                let mut h = Sha256::new();
+                h.update(&data[..split.min(len)]);
+                h.update(&data[split.min(len)..len]);
+                assert_eq!(h.finish(), sha256(&data[..len]), "len {len} split {split}");
+            }
+        }
+    }
+
     use super::*;
 
     #[test]
