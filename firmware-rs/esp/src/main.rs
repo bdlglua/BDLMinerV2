@@ -44,6 +44,8 @@ fn board_profile() -> BoardProfile {
             "M5StickC Plus2"
         } else if cfg!(esp32s3) {
             "ESP32-S3"
+        } else if cfg!(esp32s2) {
+            "ESP32-S2"
         } else if cfg!(esp32c3) {
             "ESP32-C3"
         } else {
@@ -53,6 +55,8 @@ fn board_profile() -> BoardProfile {
             "m5stickc-plus2-rust"
         } else if cfg!(esp32s3) {
             "esp32s3-rust"
+        } else if cfg!(esp32s2) {
+            "esp32s2-rust"
         } else if cfg!(esp32c3) {
             "esp32c3-rust"
         } else {
@@ -193,7 +197,11 @@ fn main() -> anyhow::Result<()> {
         let app = app.clone();
         hwsha::init(move |line| app.log(line))
     };
-    let cores: &[Core] = if cfg!(any(esp32s2, esp32c3)) { &[Core::Core0] } else { &[Core::Core1, Core::Core0] };
+    // Single-core chips (ESP32-S2, ESP32-C3): one miner, next to WiFi.
+    #[cfg(any(esp32, esp32s3))]
+    let cores: &[Core] = &[Core::Core1, Core::Core0];
+    #[cfg(not(any(esp32, esp32s3)))]
+    let cores: &[Core] = &[Core::Core0];
     for (i, &core) in cores.iter().enumerate() {
         let hardware = caps.hardware && i == 0;
         let kind = if hardware { "hw" } else { "sw" };

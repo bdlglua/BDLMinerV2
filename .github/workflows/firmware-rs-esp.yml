@@ -35,6 +35,18 @@ jobs:
             features: ""
             partitions: min_spiffs.csv
             flash: 4mb
+          - target: xtensa-esp32s2-espidf
+            mcu: esp32s2
+            board: esp32s2
+            features: ""
+            partitions: min_spiffs.csv
+            flash: 4mb
+          - target: riscv32imc-esp-espidf
+            mcu: esp32c3
+            board: esp32c3
+            features: ""
+            partitions: min_spiffs.csv
+            flash: 4mb
     steps:
       - uses: actions/checkout@v7
       - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7.0
@@ -48,8 +60,9 @@ jobs:
           ldproxy: true
       - name: Espressif GCC on PATH
         run: |
-          which xtensa-${{ matrix.mcu }}-elf-gcc
-          xtensa-${{ matrix.mcu }}-elf-gcc --version | head -1
+          gcc=$([ "${{ matrix.mcu }}" = esp32c3 ] && echo riscv32-esp-elf-gcc || echo xtensa-${{ matrix.mcu }}-elf-gcc)
+          which "$gcc"
+          "$gcc" --version | head -1
       - name: Build
         working-directory: firmware-rs/esp
         env:

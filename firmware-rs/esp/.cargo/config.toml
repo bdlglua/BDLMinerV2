@@ -1,6 +1,7 @@
 [build]
 # Original ESP32 (M5StickC Plus2, ESP32 dev boards). Others:
-#   ESP32-S3: --target xtensa-esp32s3-espidf    ESP32-C3: --target riscv32imc-esp-espidf
+#   ESP32-S3: --target xtensa-esp32s3-espidf    ESP32-S2: --target xtensa-esp32s2-espidf
+#   ESP32-C3: --target riscv32imc-esp-espidf
 target = "xtensa-esp32-espidf"
 
 # `-A linker_messages`: ldproxy always prints "[ldproxy] Running ldproxy"
@@ -11,6 +12,11 @@ runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs
 rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
 
 [target.xtensa-esp32s3-espidf]
+linker = "ldproxy"
+runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
+
+[target.xtensa-esp32s2-espidf]
 linker = "ldproxy"
 runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
 rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
@@ -34,4 +40,6 @@ CC_xtensa_esp32_espidf = "xtensa-esp32-elf-gcc"
 CFLAGS_xtensa_esp32_espidf = "-mlongcalls"
 CC_xtensa_esp32s3_espidf = "xtensa-esp32s3-elf-gcc"
 CFLAGS_xtensa_esp32s3_espidf = "-mlongcalls"
+CC_xtensa_esp32s2_espidf = "xtensa-esp32s2-elf-gcc"
+CFLAGS_xtensa_esp32s2_espidf = "-mlongcalls"
 CC_riscv32imc_esp_espidf = "riscv32-esp-elf-gcc"
