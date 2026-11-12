@@ -29,7 +29,7 @@ m5stack = ["display"]
 lilygo-t-display = ["display"]
 lilygo-t-display-s3 = ["display"]
 cyd = ["display"]
-# ASIC boards, mined through the C++ firmware's drivers (components/bdl_asic):
+# ASIC boards, being ported to Rust (src/asic.rs; not built by the workflow yet):
 # Bitaxe Gamma 601 (BM1370, SSD1306 128x32) and NerdNOS (BM1397 on a
 # T-Display-S3).
 gamma601 = ["display"]
@@ -54,11 +54,6 @@ component_dirs = ["components/bdl_hwsha"]
 # The C++ firmware's screen renderer on M5GFX (src/display.rs, M5StickC Plus2).
 [[package.metadata.esp-idf-sys.extra_components]]
 component_dirs = ["components/bdl_ui"]
-
-# The C++ firmware's ASIC drivers (src/asic.rs; empty on chips other than
-# the ESP32-S3).
-[[package.metadata.esp-idf-sys.extra_components]]
-component_dirs = ["components/bdl_asic"]
 
 [build-dependencies]
 embuild = "0.33"
