@@ -6,6 +6,7 @@
 #include <M5GFX.h>
 #include <lgfx/v1/panel/Panel_ST7789.hpp>
 
+#include <cmath>
 #include <memory>
 #include <new>
 #include <string>
@@ -67,6 +68,10 @@ public:
         setPanel(&panel_);
     }
 };
+
+// MPU6886 on the internal I2C bus.
+constexpr int kImuPort = 0;
+constexpr int kImuAddress = 0x68;
 
 StickCPlus2 *lcd = nullptr;
 std::unique_ptr<ui_view::View> view;
@@ -136,6 +141,21 @@ void bdl_ui_portal(const char *title, const char *ssid, const char *password, co
 
 void bdl_ui_alert(const char *title, const char *value, const char *line) {
     if (view) view->alert(title, value, line);
+}
+
+int bdl_imu_begin(void) {
+    if (lgfx::i2c::init(kImuPort, 21, 22).has_error()) return -1;
+    auto id = lgfx::i2c::readRegister8(kImuPort, kImuAddress, 0x75);  // WHO_AM_I
+    if (id.has_error()) return -1;
+    // Out of sleep, internal clock.
+    if (id.value() == 0x19 && lgfx::i2c::writeRegister8(kImuPort, kImuAddress, 0x6B, 0x00).has_error()) return -1;
+    return id.value();
+}
+
+float bdl_imu_temperature(void) {
+    uint8_t raw[2];
+    if (lgfx::i2c::readRegister(kImuPort, kImuAddress, 0x41, raw, 2).has_error()) return NAN;  // TEMP_OUT_H
+    return int16_t(uint16_t(raw[0]) << 8 | raw[1]) / 326.8f + 25.0f;
 }
 
 }  // extern "C"

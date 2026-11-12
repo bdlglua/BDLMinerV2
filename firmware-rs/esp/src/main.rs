@@ -114,7 +114,7 @@ fn main() -> anyhow::Result<()> {
     #[cfg(feature = "m5stickc-plus2")]
     m5stickc::hold_power(peripherals.pins.gpio4);
     #[cfg(feature = "m5stickc-plus2")]
-    let imu = m5stickc::imu(peripherals.i2c0, peripherals.pins.gpio21, peripherals.pins.gpio22);
+    let imu = m5stickc::imu();
     #[cfg(not(feature = "m5stickc-plus2"))]
     let imu = None;
     let sysloop = EspSystemEventLoop::take()?;
