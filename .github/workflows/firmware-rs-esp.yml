@@ -138,6 +138,15 @@ jobs:
         env:
           MCU: ${{ matrix.mcu }}
         run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      # The linker map, to see where a failed link went wrong.
+      - name: Linker map
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linker-map-${{ matrix.board }}
+          path: firmware-rs/esp/target/${{ matrix.target }}/release/build/esp-idf-sys-*/out/build/libespidf.map
+          if-no-files-found: ignore
+          retention-days: 3
       # ESP-IDF aborts at boot ("CONFLICT! driver_ng is not allowed to be
       # used with this old driver") when the legacy I2C driver is linked next
       # to the new one (M5GFX uses the new one).

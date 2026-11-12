@@ -48,7 +48,9 @@ impl Uart {
             parity: uart_parity_t_UART_PARITY_DISABLE,
             stop_bits: uart_stop_bits_t_UART_STOP_BITS_1,
             flow_ctrl: uart_hw_flowcontrol_t_UART_HW_FLOWCTRL_DISABLE,
-            source_clk: soc_periph_uart_clk_src_legacy_t_UART_SCLK_DEFAULT,
+            __bindgen_anon_1: uart_config_t__bindgen_ty_1 {
+                source_clk: soc_periph_uart_clk_src_legacy_t_UART_SCLK_DEFAULT,
+            },
             ..unsafe { std::mem::zeroed() }
         };
         let size = rx_buffer.max(256) as i32;

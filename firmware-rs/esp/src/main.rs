@@ -4,6 +4,8 @@
 //! portal), SNTP, the hardware SHA miner on the last core and a software
 //! miner on the others, the pool task, the dashboard, then the once-a-second
 //! supervision loop.
+// global_asm! of the Xtensa kernels (src/hwsha.rs).
+#![cfg_attr(target_arch = "xtensa", feature(asm_experimental_arch))]
 
 #[cfg(any(feature = "gamma601", feature = "nerdnos"))]
 mod asic;
@@ -30,6 +32,7 @@ use std::thread;
 use std::time::Duration;
 
 use bdlminer_app::app::{App, Platform};
+#[cfg(not(any(feature = "gamma601", feature = "nerdnos")))]
 use bdlminer_app::miner::{run_worker, WorkerOptions};
 use bdlminer_app::notify::HttpClient;
 use bdlminer_app::platform::{BoardKind, BoardProfile, Clock, Storage, SystemInfo};

@@ -11,6 +11,7 @@ pub mod build_time;
 pub mod coin;
 pub mod display_config;
 pub mod fan_control;
+pub mod fill;
 pub mod image_marker;
 pub mod line_buffer;
 pub mod pool_agent;

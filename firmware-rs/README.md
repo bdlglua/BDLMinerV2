@@ -9,7 +9,7 @@ hardware: see [Status](#status).
 | [`core`](core) `bdlminer-core` | Port of `src/core`: SHA-256d kernel with midstate and early rejection, header/merkle building, difficulty and targets, Stratum V1 state machine, Stratum V2 extended channel and Noise_NX (secp256k1 EllSwift + ChaCha20-Poly1305), payout addresses of the six SHA-256d coins, BM1370/BM1397 wire protocols, thermal/fan/safety policies, release versions, image markers | anywhere |
 | [`app`](app) `bdlminer-app` | Port of the hardware-independent firmware: settings table, validation and the two-record store, shared miner state (job board, share queues, block candidates, statistics, history, persistence), pool task with failover/rotation, supervision and alerts, notifications, the dashboard's JSON API and pages (`web/`) | anywhere with `std` |
 | [`host`](host) `bdlminer-host` | The firmware on a PC: software SHA-256d threads, pool sessions, the local dashboard | Linux, macOS, Windows |
-| [`esp`](esp) `bdlminer-esp` | The ESP32 firmware: NVS, WiFi with setup portal, SNTP, pinned mining threads with the C++ firmware's hardware SHA engine and assembly kernels ([`components/bdl_hwsha`](esp/components/bdl_hwsha)), ESP-IDF HTTP server, HTTPS notifications | ESP32, ESP32-S3, ESP32-C3 |
+| [`esp`](esp) `bdlminer-esp` | The ESP32 firmware: NVS, WiFi with setup portal, SNTP, pinned mining threads with the hardware SHA engine and the Xtensa assembly kernels ([`src/hwsha.rs`](esp/src/hwsha.rs)), the BM1370/BM1397 ASIC drivers, ESP-IDF HTTP server, HTTPS notifications | ESP32, ESP32-S3, ESP32-C3 |
 
 Everything portable is in `core` and `app` and is tested on a PC; `esp` only
 binds ESP-IDF services to the traits of `app::platform`, and plugs the
@@ -17,11 +17,12 @@ hardware SHA engine into the mining loop (`app::miner::Engine`).
 
 ## Hardware SHA and assembly
 
-`esp` does not rewrite the hardware SHA code: the ESP-IDF component
-`esp/components/bdl_hwsha` builds the C++ firmware's `src/hw_sha.cpp`,
-`hw_sha_classic.S`, `hw_sha_fill.S` and `sw_sha_prefilter.S` (with
-`src/core/sha256.cpp`, `work.cpp` and `fill.cpp`) unchanged, and
-`hwsha_ffi.cpp` exposes them as C functions to `esp/src/hwsha.rs`. At boot the
+`esp/src/hwsha.rs` is a Rust port of the C++ firmware's `src/hw_sha.cpp`
+(register access, engine locks, kernel selection and self-tests). Its
+Xtensa kernels are the C++ firmware's `hw_sha_classic.S`, `hw_sha_fill.S` and
+`sw_sha_prefilter.S`, assembled with `global_asm!`: `esp/build.rs` does what
+the C preprocessor did for them (their `#define`s and target guard), and the
+data of the idle-cycle hash is `core::fill` (from `src/core/fill.cpp`). At boot the
 same self-tests as the C++ firmware choose what runs:
 
 - the last core: the hardware miner (`hw`, priority 19, alone on its core,
