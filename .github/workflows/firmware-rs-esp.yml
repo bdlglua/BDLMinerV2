@@ -1,9 +1,14 @@
-# Builds the Rust ESP32 firmware (firmware-rs/esp). Manual while that crate
-# has not yet been validated on hardware; see firmware-rs/README.md.
+# Builds the Rust ESP32 firmware (firmware-rs/esp): by hand, or for a Rust
+# release on a rust-v* tag (a GitHub prerelease with one image per board).
+# The C++ firmware's releases (release.yml, v* tags), its installer and its
+# update channels never pick these up: the tag is no `v` version, and a
+# prerelease is never "latest".
 name: Rust ESP32 firmware
 
 on:
   workflow_dispatch:
+  push:
+    tags: ["rust-v*"]
 
 permissions:
   contents: read
@@ -108,6 +113,14 @@ jobs:
       - name: Espressif GCC on PATH
         run: |
           gcc=$([ "${{ matrix.mcu }}" = esp32c3 ] && echo riscv32-esp-elf-gcc || echo xtensa-${{ matrix.mcu }}-elf-gcc)
+          # espup puts the RISC-V GCC next to the toolchain without adding it
+          # to PATH (the Xtensa one is exported).
+          if ! command -v "$gcc" >/dev/null; then
+            found=$(find "$HOME/.rustup" "$HOME/.espressif" -type f -name "$gcc" 2>/dev/null | head -n 1)
+            [ -n "$found" ] || { echo "::error::$gcc not found"; exit 1; }
+            dirname "$found" >> "$GITHUB_PATH"
+            export PATH="$(dirname "$found"):$PATH"
+          fi
           which "$gcc"
           "$gcc" --version | head -1
       - name: Build
@@ -158,3 +171,36 @@ jobs:
             firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
           if-no-files-found: error
           retention-days: 7
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/rust-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bdlminer-esp-*
+          path: artifacts
+      - name: Collect the images
+        run: |
+          version="${GITHUB_REF_NAME#rust-v}"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          mkdir dist
+          for dir in artifacts/bdlminer-esp-*; do
+            board="${dir#artifacts/bdlminer-esp-}"
+            cp "$dir/bdlminer-esp-$board.bin" "dist/BDLMiner-rust-$version-$board.bin"
+          done
+          (cd dist && sha256sum *.bin > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          notes="docs/releases/rust-v$version.md"
+          if [ -f "$notes" ]; then echo "NOTES=$notes" >> "$GITHUB_ENV"; fi
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          name: BDLMiner Rust ${{ env.VERSION }}
+          tag_name: ${{ github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          body_path: ${{ env.NOTES }}
+          files: dist/*
