@@ -17,8 +17,18 @@ harness = false
 default = []
 # Boards with an M5 IMU near the battery default to a 65 C thermal limit.
 m5 = []
+# A screen and buttons (src/display.rs, components/bdl_ui). One board feature
+# at most below.
+display = []
 # M5StickC Plus2: power hold on GPIO4, MPU6886 temperature.
-m5stickc-plus2 = ["m5"]
+m5stickc-plus2 = ["m5", "display"]
+# Other M5Stack devices with a screen (Core/Basic/Gray/Fire, Core2, Tough on
+# the ESP32; CoreS3, AtomS3... on the ESP32-S3), detected by M5GFX.
+m5stack = ["display"]
+# LilyGO TTGO T-Display (ESP32) and T-Display-S3, ESP32-2432S028R (CYD).
+lilygo-t-display = ["display"]
+lilygo-t-display-s3 = ["display"]
+cyd = ["display"]
 
 [dependencies]
 bdlminer-core = { path = "../core" }

@@ -6,7 +6,7 @@
 //! supervision loop.
 
 mod captive;
-#[cfg(feature = "m5stickc-plus2")]
+#[cfg(feature = "display")]
 mod display;
 mod http;
 mod hwsha;
@@ -38,33 +38,42 @@ use esp_idf_svc::wifi::{BlockingWifi, Configuration as Wifi};
 
 use crate::system::{EspClock, EspSystem};
 
+/// The board's name and C++ firmware environment (with "-rust"), as the
+/// dashboard and the update channel know them.
+fn board_identity() -> (&'static str, &'static str) {
+    if cfg!(feature = "m5stickc-plus2") {
+        ("M5StickC Plus2", "m5stickc-plus2-rust")
+    } else if cfg!(all(feature = "m5stack", esp32s3)) {
+        ("M5Stack-S3", "m5stack-s3-rust")
+    } else if cfg!(feature = "m5stack") {
+        ("M5Stack-ESP32", "m5stack-esp32-rust")
+    } else if cfg!(feature = "lilygo-t-display-s3") {
+        ("T-Display-S3", "lilygo-t-display-s3-rust")
+    } else if cfg!(feature = "lilygo-t-display") {
+        ("T-Display", "lilygo-t-display-rust")
+    } else if cfg!(feature = "cyd") {
+        ("CYD-2432S028R", "esp32-2432s028r-rust")
+    } else if cfg!(esp32s3) {
+        ("ESP32-S3", "esp32s3-rust")
+    } else if cfg!(esp32s2) {
+        ("ESP32-S2", "esp32s2-rust")
+    } else if cfg!(esp32c3) {
+        ("ESP32-C3", "esp32c3-rust")
+    } else {
+        ("ESP32", "esp32-rust")
+    }
+}
+
 fn board_profile() -> BoardProfile {
+    let (name, env) = board_identity();
     BoardProfile {
-        name: if cfg!(feature = "m5stickc-plus2") {
-            "M5StickC Plus2"
-        } else if cfg!(esp32s3) {
-            "ESP32-S3"
-        } else if cfg!(esp32s2) {
-            "ESP32-S2"
-        } else if cfg!(esp32c3) {
-            "ESP32-C3"
-        } else {
-            "ESP32"
-        },
-        env: if cfg!(feature = "m5stickc-plus2") {
-            "m5stickc-plus2-rust"
-        } else if cfg!(esp32s3) {
-            "esp32s3-rust"
-        } else if cfg!(esp32s2) {
-            "esp32s2-rust"
-        } else if cfg!(esp32c3) {
-            "esp32c3-rust"
-        } else {
-            "esp32-rust"
-        },
+        name,
+        env,
         kind: BoardKind::Esp32,
         m5: cfg!(feature = "m5"),
-        display_pages: 0,
+        // The screen pages the settings may choose from, as the C++ firmware
+        // reports them.
+        display_pages: if cfg!(feature = "display") { bdlminer_app::screen::PAGES as u8 } else { 0 },
         temperature_sensor: cfg!(any(esp32s2, esp32s3, esp32c3, feature = "m5stickc-plus2")),
     }
 }
@@ -115,6 +124,14 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let peripherals = Peripherals::take()?;
+    // T-Display-S3: GPIO15 keeps the panel powered on battery.
+    #[cfg(feature = "lilygo-t-display-s3")]
+    unsafe {
+        use esp_idf_svc::sys::{gpio_config, gpio_config_t, gpio_mode_t_GPIO_MODE_OUTPUT, gpio_set_level};
+        gpio_set_level(15, 1);
+        gpio_config(&gpio_config_t { pin_bit_mask: 1 << 15, mode: gpio_mode_t_GPIO_MODE_OUTPUT, ..std::mem::zeroed() });
+        gpio_set_level(15, 1);
+    }
     #[cfg(feature = "m5stickc-plus2")]
     m5stickc::hold_power(peripherals.pins.gpio4);
     // Started on USB, the board's screen and IMU are only powered from the
@@ -146,7 +163,7 @@ fn main() -> anyhow::Result<()> {
     EspClock::new(&settings.timezone); // the configured time zone
     app.log_configuration();
     app.log(&format!("[boot] reset reason: {}", espsystem.boot_reason()));
-    #[cfg(feature = "m5stickc-plus2")]
+    #[cfg(feature = "display")]
     if display::begin(&app) {
         let version = format!("v{} (Rust)", bdlminer_app::platform::FW_VERSION);
         display::message("BDLMiner V2", app.board.name, &version);
@@ -179,7 +196,7 @@ fn main() -> anyhow::Result<()> {
             wifi::join(ssid, pass, 15_000, i == 0 && saved.is_some())
         });
     if !joined {
-        #[cfg(feature = "m5stickc-plus2")]
+        #[cfg(feature = "display")]
         display::portal(&app, &bdlminer_app::app::portal_ap_name(app.mac), &app.portal_password());
         portal::run(app.clone(), &mut wifi);
     }
@@ -245,15 +262,14 @@ fn main() -> anyhow::Result<()> {
             thread::sleep(Duration::from_secs(5));
         });
     }
-    #[cfg(feature = "m5stickc-plus2")]
+    #[cfg(feature = "display")]
     let events = {
         let events = display::Events::new(app.brightness());
         let (app, system, ui) = (app.clone(), espsystem.clone(), events.clone());
-        let (a, b) = (peripherals.pins.gpio37, peripherals.pins.gpio39);
-        spawn_pinned(b"ui\0", Core::Core0, 2, 10 * 1024, move || display::run(app, system, ui, a, b));
+        spawn_pinned(b"ui\0", Core::Core0, 2, 10 * 1024, move || display::run(app, system, ui));
         events
     };
-    #[cfg(not(feature = "m5stickc-plus2"))]
+    #[cfg(not(feature = "display"))]
     let events = std::sync::Arc::new(bdlminer_app::watch::NoIndicators);
     let _server = http::start(app.clone())?;
     app.log(&format!("[web] dashboard on http://{ip}/ (http://{}.local/)", app.hostname));

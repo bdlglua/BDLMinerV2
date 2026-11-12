@@ -31,8 +31,25 @@ typedef struct {
     uint32_t graph_revision;
 } bdl_ui_model;
 
-// Starts the M5StickC Plus2 panel. False when it could not be set up.
-bool bdl_ui_begin(uint8_t rotation, uint32_t accent, uint8_t language);
+// The panels: M5GFX's board detection, or the C++ firmware's panels for the
+// third-party boards (src/display_panels.h).
+enum {
+    BDL_PANEL_M5 = 0,
+    BDL_PANEL_T_DISPLAY = 1,
+    BDL_PANEL_T_DISPLAY_S3 = 2,
+    BDL_PANEL_CYD = 3,
+    BDL_PANEL_GAMMA601 = 4,
+};
+
+// Starts the panel. False when it could not be set up.
+bool bdl_ui_begin(int panel, uint8_t rotation, uint32_t accent, uint8_t language);
+// M5GFX's board (lgfx::boards::board_t), 0 when unknown.
+int bdl_ui_board(void);
+// The board's buttons (GPIO, -1 for none; active low) and whether it has a
+// touch panel.
+void bdl_ui_controls(int *button_a, int *button_b, bool *touch);
+// Whether the touch panel is pressed.
+bool bdl_ui_touched(void);
 void bdl_ui_brightness(uint8_t percent);
 void bdl_ui_rotation(uint8_t rotation);
 void bdl_ui_invalidate(void);

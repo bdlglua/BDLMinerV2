@@ -1,9 +1,12 @@
-//! The M5StickC Plus2 screen and buttons (feature `m5stickc-plus2`): the C++
-//! firmware's renderer (src/ui_view.cpp, built by components/bdl_ui) draws
-//! the pages that `bdlminer_app::screen` builds, as on the C++ firmware.
+//! The screen and buttons of the boards with a display (feature `display`):
+//! the C++ firmware's renderer (src/ui_view.cpp, built by
+//! components/bdl_ui) draws the pages that `bdlminer_app::screen` builds, on
+//! the panel of the board (M5GFX's detection on M5Stack devices, the C++
+//! firmware's panels on the LilyGO and CYD boards).
 //!
-//! Button A (front): next page; held 5 s: factory reset. Button B (side):
-//! brightness 100 / 60 / 30 / 10 / off. Either dismisses a block alert.
+//! Button A: next page; held 5 s: factory reset. Button B: brightness
+//! 100 / 60 / 30 / 10 / off. On a touch panel, a tap is A and a press of
+//! 1 s is B. Either dismisses a block alert.
 
 use std::ffi::{c_char, CString};
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
@@ -15,7 +18,6 @@ use bdlminer_app::screen::{self, Inputs, Model, Samples, BRIGHTNESS_STEPS, PAGES
 use bdlminer_app::watch::Indicators;
 use bdlminer_app::App;
 use bdlminer_core::display_config;
-use esp_idf_svc::hal::gpio::{Gpio37, Gpio39, Input, InputPin, PinDriver};
 
 use crate::system::{millis, EspSystem};
 
@@ -49,8 +51,20 @@ struct CModel {
     graph_revision: u32,
 }
 
+/// The panel of the board (components/bdl_ui/include/bdl_ui.h).
+#[cfg(any(feature = "m5stickc-plus2", feature = "m5stack"))]
+const PANEL: i32 = 0;
+#[cfg(feature = "lilygo-t-display")]
+const PANEL: i32 = 1;
+#[cfg(feature = "lilygo-t-display-s3")]
+const PANEL: i32 = 2;
+#[cfg(feature = "cyd")]
+const PANEL: i32 = 3;
+
 extern "C" {
-    fn bdl_ui_begin(rotation: u8, accent: u32, language: u8) -> bool;
+    fn bdl_ui_begin(panel: i32, rotation: u8, accent: u32, language: u8) -> bool;
+    fn bdl_ui_controls(button_a: *mut i32, button_b: *mut i32, touch: *mut bool);
+    fn bdl_ui_touched() -> bool;
     fn bdl_ui_brightness(percent: u8);
     fn bdl_ui_invalidate();
     fn bdl_ui_render(model: *const CModel);
@@ -70,7 +84,7 @@ fn c(s: &str) -> CString {
 pub fn begin(app: &App) -> bool {
     let s = app.settings();
     let mut started = LOCK.lock().unwrap();
-    *started = unsafe { bdl_ui_begin(s.rotation, screen::accent(s.theme), s.language) };
+    *started = unsafe { bdl_ui_begin(PANEL, s.rotation, screen::accent(s.theme), s.language) };
     if *started {
         unsafe { bdl_ui_brightness(app.brightness()) };
     }
@@ -226,30 +240,84 @@ fn inputs(app: &App, system: &EspSystem, events: &Events) -> Inputs {
     }
 }
 
-/// A button wired to ground with an external pull-up (GPIO37 and 39 are
-/// input only).
+/// A button wired to ground (active low). GPIO34-39 of the ESP32 have no
+/// pull-up of their own: the boards carry one.
 struct Button {
-    pin: PinDriver<'static, esp_idf_svc::hal::gpio::AnyInputPin, Input>,
+    pin: i32,
     since: Option<u32>,
 }
 
 impl Button {
+    fn new(pin: i32) -> Option<Self> {
+        use esp_idf_svc::sys::{
+            gpio_config, gpio_config_t, gpio_mode_t_GPIO_MODE_INPUT, gpio_pullup_t_GPIO_PULLUP_ENABLE,
+        };
+        if pin < 0 {
+            return None;
+        }
+        let config = gpio_config_t {
+            pin_bit_mask: 1u64 << pin,
+            mode: gpio_mode_t_GPIO_MODE_INPUT,
+            pull_up_en: gpio_pullup_t_GPIO_PULLUP_ENABLE,
+            ..unsafe { std::mem::zeroed() }
+        };
+        // Input-only pins refuse the pull-up: configure them without it.
+        if unsafe { gpio_config(&config) } != 0 {
+            let plain = gpio_config_t { pull_up_en: 0, ..config };
+            unsafe { gpio_config(&plain) };
+        }
+        Some(Button { pin, since: None })
+    }
     fn pressed(&self) -> bool {
-        self.pin.is_low()
+        unsafe { esp_idf_svc::sys::gpio_get_level(self.pin) == 0 }
+    }
+}
+
+/// Touch panels: a tap (released before 1 s) is button A, a press of 1 s
+/// is button B, as in the C++ firmware.
+#[derive(Default)]
+struct Touch {
+    since: Option<u32>,
+    held: bool,
+}
+
+impl Touch {
+    /// 1: tap, 2: long press (once, while still pressed).
+    fn update(&mut self, now: u32, pressed: bool) -> u8 {
+        match (pressed, self.since) {
+            (true, None) => {
+                self.since = Some(now);
+                self.held = false;
+                0
+            }
+            (true, Some(t)) if !self.held && now.wrapping_sub(t) >= 1000 => {
+                self.held = true;
+                2
+            }
+            (false, Some(t)) => {
+                self.since = None;
+                u8::from(!self.held && now.wrapping_sub(t) >= 30)
+            }
+            _ => 0,
+        }
     }
 }
 
 const LONG_PRESS_MS: u32 = 5000;
 
 /// The screen task: buttons every 20 ms, a redraw every second.
-pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>, a: Gpio37, b: Gpio39) {
-    let input = |pin: esp_idf_svc::hal::gpio::AnyInputPin| PinDriver::input(pin).ok();
-    let (Some(a), Some(b)) = (input(a.downgrade_input()), input(b.downgrade_input())) else {
-        app.log("[ui] buttons unavailable");
-        return;
-    };
-    let mut a = Button { pin: a, since: None };
-    let mut b = Button { pin: b, since: None };
+pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
+    let (mut pin_a, mut pin_b, mut has_touch) = (-1, -1, false);
+    unsafe { bdl_ui_controls(&mut pin_a, &mut pin_b, &mut has_touch) };
+    let mut a = Button::new(pin_a);
+    let mut b = Button::new(pin_b);
+    let mut touch = Touch::default();
+    app.log(&format!(
+        "[ui] controls: button A {}, button B {}, touch {}",
+        if pin_a >= 0 { format!("GPIO{pin_a}") } else { "none".into() },
+        if pin_b >= 0 { format!("GPIO{pin_b}") } else { "none".into() },
+        if has_touch { "yes" } else { "no" }
+    ));
     let mut page = 0u32;
     let mut samples = Samples::default();
     let mut last_render = 0u32;
@@ -259,50 +327,61 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>, a: Gpio37
     loop {
         let now = millis();
         let mut redraw = false;
+        let gesture = if has_touch { touch.update(now, unsafe { bdl_ui_touched() }) } else { 0 };
+        let mut click_a = gesture == 1;
+        let mut click_b = gesture == 2;
         // A: next page on release, factory reset when held 5 s.
-        match (a.pressed(), a.since) {
-            (true, None) => a.since = Some(now),
-            (true, Some(t)) if !reset_fired && now.wrapping_sub(t) >= LONG_PRESS_MS => {
-                reset_fired = true;
-                app.log("[ui] button A held 5 s: factory reset");
-                message("Reset", "", "");
-                app.factory_reset();
-                app.request_restart("factory reset (button)");
-            }
-            (false, Some(_)) => {
-                a.since = None;
-                if !std::mem::take(&mut reset_fired) {
-                    if alert_shown {
-                        alert_shown = false;
-                        events.block.store(0, Ordering::Relaxed);
-                    } else {
-                        page = display_config::next_page(page, PAGES, app.settings().screen_pages);
-                    }
-                    invalidate();
-                    redraw = true;
+        if let Some(a) = a.as_mut() {
+            match (a.pressed(), a.since) {
+                (true, None) => a.since = Some(now),
+                (true, Some(t)) if !reset_fired && now.wrapping_sub(t) >= LONG_PRESS_MS => {
+                    reset_fired = true;
+                    app.log("[ui] button A held 5 s: factory reset");
+                    message("Reset", "", "");
+                    app.factory_reset();
+                    app.request_restart("factory reset (button)");
                 }
+                (false, Some(_)) => {
+                    a.since = None;
+                    click_a |= !std::mem::take(&mut reset_fired);
+                }
+                _ => {}
             }
-            _ => {}
         }
         // B: brightness steps.
-        match (b.pressed(), b.since) {
-            (true, None) => b.since = Some(now),
-            (false, Some(_)) => {
-                b.since = None;
-                if alert_shown {
-                    alert_shown = false;
-                    events.block.store(0, Ordering::Relaxed);
-                } else {
-                    let current = app.brightness();
-                    let i = BRIGHTNESS_STEPS.iter().position(|&s| s == current).map_or(0, |i| i + 1);
-                    let next = BRIGHTNESS_STEPS[i % BRIGHTNESS_STEPS.len()];
-                    app.set_brightness(next);
-                    events.backlight.store(next, Ordering::Relaxed);
+        if let Some(b) = b.as_mut() {
+            match (b.pressed(), b.since) {
+                (true, None) => b.since = Some(now),
+                (false, Some(_)) => {
+                    b.since = None;
+                    click_b = true;
                 }
-                invalidate();
-                redraw = true;
+                _ => {}
             }
-            _ => {}
+        }
+        if click_a {
+            if alert_shown {
+                alert_shown = false;
+                events.block.store(0, Ordering::Relaxed);
+            } else {
+                page = display_config::next_page(page, PAGES, app.settings().screen_pages);
+            }
+            invalidate();
+            redraw = true;
+        }
+        if click_b {
+            if alert_shown {
+                alert_shown = false;
+                events.block.store(0, Ordering::Relaxed);
+            } else {
+                let current = app.brightness();
+                let i = BRIGHTNESS_STEPS.iter().position(|&s| s == current).map_or(0, |i| i + 1);
+                let next = BRIGHTNESS_STEPS[i % BRIGHTNESS_STEPS.len()];
+                app.set_brightness(next);
+                events.backlight.store(next, Ordering::Relaxed);
+            }
+            invalidate();
+            redraw = true;
         }
         let wanted = events.backlight.load(Ordering::Relaxed);
         if wanted != backlight {
