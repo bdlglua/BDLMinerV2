@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use bdlminer_app::settings;
 use bdlminer_app::App;
+use bdlminer_core::coin::Coin;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::Write;
@@ -64,6 +65,29 @@ fn network_list(networks: &[captive::Network]) -> String {
     html
 }
 
+/// The SHA-256d coins, named as on the dashboard's settings page.
+fn coin_options(selected: u8) -> String {
+    Coin::ALL
+        .iter()
+        .map(|c| {
+            let id = c.id();
+            let mark = if id == selected { " selected" } else { "" };
+            format!("<option value='{id}'{mark}>{} ({})</option>", escape(c.name()), c.ticker())
+        })
+        .collect()
+}
+
+/// Stratum V2 is for Bitcoin only.
+fn protocol_options(selected: u8, coin: u8) -> String {
+    let v2 = if coin != 0 { " disabled" } else { "" };
+    let mark = |p: u8| if p == selected { " selected" } else { "" };
+    format!(
+        "<option value='0'{}>Stratum V1</option><option value='1'{}{v2}>Stratum V2 (encrypted, Bitcoin only)</option>",
+        mark(0),
+        mark(1)
+    )
+}
+
 fn form(app: &App, message: &str, networks: &[captive::Network]) -> String {
     let s = app.settings();
     let field = |name: &str, label: &str, value: &str, kind: &str| {
@@ -74,22 +98,30 @@ fn form(app: &App, message: &str, networks: &[captive::Network]) -> String {
 <title>BDLMiner V2 setup</title><style>body{{font-family:system-ui;background:#0a0d12;color:#e8e8e8;max-width:28rem;margin:auto;padding:1rem}}\
 label{{display:block;margin:.6rem 0}}input{{display:block;width:100%;padding:.5rem;margin-top:.2rem;box-sizing:border-box}}\
 button{{padding:.7rem 1.2rem;background:#f7931a;border:0;font-weight:700}}p.m{{color:#f7931a}}a{{color:#f7931a}}\
-button.w{{display:flex;justify-content:space-between;width:100%;margin:.3rem 0;padding:.6rem;background:#1b2230;color:#e8e8e8;font-weight:400;text-align:left}}</style>\
-<script>function pick(b){{var f=document.forms[0];f.ssid.value=b.dataset.s;f.wpass.focus()}}</script></head><body>\
+button.w{{display:flex;justify-content:space-between;width:100%;margin:.3rem 0;padding:.6rem;background:#1b2230;color:#e8e8e8;font-weight:400;text-align:left}}\
+p.h{{color:#9aa3b2;font-size:.85rem;margin:.2rem 0 .6rem}}select{{display:block;width:100%;padding:.5rem;margin-top:.2rem}}</style>\
+<script>function pick(b){{var f=document.forms[0];f.ssid.value=b.dataset.s;f.wpass.focus()}}\
+function coinChanged(){{var f=document.forms[0],btc=f.coin.value==='0',h=f.pool.value.trim().toLowerCase().replace(/^[a-z0-9+]+:\\/\\//,'').split(/[:\\/]/)[0];\
+f.proto.options[1].disabled=!btc;if(!btc)f.proto.value='0';\
+if(!btc&&['public-pool.io','nerdminers.org','nerdminer.io','ckpool.org','ocean.xyz','braiins.com'].some(function(d){{return h===d||h.endsWith('.'+d)}}))\
+{{f.pool.value='';f.pool.placeholder='A pool for this coin';f.pool.focus()}}}}\
+window.addEventListener('load',function(){{if(document.forms[0].coin.value!=='0')document.forms[0].proto.options[1].disabled=true}});</script></head><body>\
 <h1>BDLMiner V2</h1><p class='m'>{}</p>{}<form method='post' action='/save'>{}{}\
-<label>Cryptocurrency (SHA-256d: 0 BTC, 1 BCH, 2 BSV, 3 XEC, 4 DGB, 5 PPC)<input name='coin' type='number' min='0' max='5' value='{}'></label>\
-{}{}{}{}<label>Protocol: 0 Stratum V1, 1 Stratum V2 (Noise)<input name='proto' type='number' min='0' max='1' value='{}'></label>{}\
+<label>Cryptocurrency (SHA-256d)<select name='coin' onchange='coinChanged()'>{}</select></label>\
+<p class='h'>Other coins than Bitcoin need a pool for that coin (public-pool.io, ckpool, Ocean... mine Bitcoin only), \
+its payout address and Stratum V1.</p>\
+{}{}{}{}<label>Protocol<select name='proto'>{}</select></label>{}\
 <button type='submit'>Save and connect</button></form></body></html>",
         escape(message),
         network_list(networks),
         field("ssid", "WiFi network", &wifi::saved_station().map(|w| w.0).unwrap_or_default(), "text"),
         field("wpass", "WiFi password", "", "password"),
-        s.mining_coin,
+        coin_options(s.mining_coin),
         field("pool", "Pool host", &s.pool_host, "text"),
         field("port", "Pool port", &s.pool_port.to_string(), "number"),
         field("addr", "Payout address or pool account (optionally .worker)", &s.btc_address, "text"),
         field("pass", "Pool password", &s.pool_password, "text"),
-        s.pool_protocol,
+        protocol_options(s.pool_protocol, s.mining_coin),
         field("sv2key", "Stratum V2 authority key (required for V2)", &s.pool_authority, "text"),
     )
 }
