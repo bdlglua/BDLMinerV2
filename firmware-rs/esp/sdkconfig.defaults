@@ -14,3 +14,9 @@ CONFIG_ESP_TASK_WDT_TIMEOUT_S=10
 CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1=n
 CONFIG_FREERTOS_HZ=1000
 CONFIG_LWIP_SO_RCVBUF=y
+# The bootloader (the image's, built from this file) does not check the app
+# image at power-on: it starts it about 0.6 s sooner, and the M5StickC Plus2,
+# which turns itself off unless GPIO4 goes high soon after the power button
+# or the USB cable wakes it, holds its power in time. Other resets (software,
+# watchdog, after an update) still check it.
+CONFIG_BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON=y

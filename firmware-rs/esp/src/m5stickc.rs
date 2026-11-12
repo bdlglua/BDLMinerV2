@@ -4,49 +4,56 @@
 
 use std::sync::Mutex;
 
-use esp_idf_svc::hal::delay::TickType;
-use esp_idf_svc::hal::gpio::{Gpio21, Gpio22, Gpio4, PinDriver};
-use esp_idf_svc::hal::i2c::{I2cConfig, I2cDriver, I2C0};
-use esp_idf_svc::hal::units::Hertz;
+use esp_idf_svc::hal::gpio::Gpio4;
 
-/// MPU6886 on the internal I2C bus (SDA 21, SCL 22).
-const MPU6886: u8 = 0x68;
-const WHO_AM_I: u8 = 0x75;
-const PWR_MGMT_1: u8 = 0x6B;
-const TEMP_OUT_H: u8 = 0x41;
+// components/bdl_ui/ui_ffi.cpp: the MPU6886 through M5GFX's I2C driver.
+// esp-idf-hal's I2cDriver uses ESP-IDF's legacy driver, and ESP-IDF aborts
+// at boot ("CONFLICT! driver_ng is not allowed to be used with this old
+// driver") when it is linked next to the new one M5GFX uses.
+extern "C" {
+    fn bdl_imu_begin() -> i32;
+    fn bdl_imu_temperature() -> f32;
+}
 
-/// On battery the board turns itself off unless GPIO4 stays high: call
-/// first thing at boot.
-pub fn hold_power(pin: Gpio4) {
-    match PinDriver::output(pin) {
-        Ok(mut hold) => {
-            let _ = hold.set_high();
-            // Keep the pin driven for as long as the firmware runs.
-            std::mem::forget(hold);
-        }
-        Err(e) => log::error!("power hold: {e:?}"),
+/// Serialises the IMU reads.
+static IMU: Mutex<()> = Mutex::new(());
+
+/// The board turns itself off unless GPIO4 goes high soon after the power
+/// button or the USB cable wakes it: call first thing at boot. The level is
+/// set before the pin becomes an output, and the pin is not reset first
+/// (`PinDriver::output` would), so the hold never dips.
+pub fn hold_power(_pin: Gpio4) {
+    use esp_idf_svc::sys::{gpio_config, gpio_config_t, gpio_mode_t_GPIO_MODE_OUTPUT, gpio_set_level};
+    let config = gpio_config_t {
+        pin_bit_mask: 1 << 4,
+        mode: gpio_mode_t_GPIO_MODE_OUTPUT,
+        // No pull-up or pull-down, no interrupt.
+        ..unsafe { std::mem::zeroed() }
+    };
+    // The output register first: the pin drives high from the moment it
+    // becomes an output.
+    let ok = unsafe { gpio_set_level(4, 1) == 0 && gpio_config(&config) == 0 && gpio_set_level(4, 1) == 0 };
+    if !ok {
+        log::error!("power hold: GPIO4 could not be driven high");
     }
 }
 
 /// The IMU's temperature reader, or `None` when it does not answer.
-pub fn imu(i2c: I2C0, sda: Gpio21, scl: Gpio22) -> Option<Box<dyn Fn() -> f32 + Send + Sync>> {
-    let config = I2cConfig::new().baudrate(Hertz(400_000));
-    let mut bus = I2cDriver::new(i2c, sda, scl, &config).ok()?;
-    let timeout = TickType::new_millis(50).ticks();
-    let mut id = [0u8; 1];
-    bus.write_read(MPU6886, &[WHO_AM_I], &mut id, timeout).ok()?;
-    if id[0] != 0x19 {
-        log::warn!("[board] IMU id {:#04x}, not an MPU6886: no temperature", id[0]);
+pub fn imu() -> Option<Box<dyn Fn() -> f32 + Send + Sync>> {
+    let id = {
+        let _bus = IMU.lock().unwrap();
+        unsafe { bdl_imu_begin() }
+    };
+    if id < 0 {
+        log::warn!("[board] IMU not answering: no temperature");
         return None;
     }
-    // Out of sleep, internal clock.
-    bus.write(MPU6886, &[PWR_MGMT_1, 0x00], timeout).ok()?;
-    let bus = Mutex::new(bus);
-    Some(Box::new(move || {
-        let mut raw = [0u8; 2];
-        match bus.lock().unwrap().write_read(MPU6886, &[TEMP_OUT_H], &mut raw, timeout) {
-            Ok(()) => i16::from_be_bytes(raw) as f32 / 326.8 + 25.0,
-            Err(_) => f32::NAN,
-        }
+    if id != 0x19 {
+        log::warn!("[board] IMU id {id:#04x}, not an MPU6886: no temperature");
+        return None;
+    }
+    Some(Box::new(|| {
+        let _bus = IMU.lock().unwrap();
+        unsafe { bdl_imu_temperature() }
     }))
 }

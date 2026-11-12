@@ -3,20 +3,22 @@
 #   ESP32-S3: --target xtensa-esp32s3-espidf    ESP32-C3: --target riscv32imc-esp-espidf
 target = "xtensa-esp32-espidf"
 
+# `-A linker_messages`: ldproxy always prints "[ldproxy] Running ldproxy"
+# on stderr, which rustc reports as a warning on every build.
 [target.xtensa-esp32-espidf]
 linker = "ldproxy"
 runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
-rustflags = ["--cfg", "espidf_time64"]
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
 
 [target.xtensa-esp32s3-espidf]
 linker = "ldproxy"
 runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
-rustflags = ["--cfg", "espidf_time64"]
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
 
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
 runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
-rustflags = ["--cfg", "espidf_time64"]
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
 
 [unstable]
 build-std = ["std", "panic_abort"]

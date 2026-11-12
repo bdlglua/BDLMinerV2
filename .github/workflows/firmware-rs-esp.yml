@@ -55,6 +55,17 @@ jobs:
         env:
           MCU: ${{ matrix.mcu }}
         run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
+      # ESP-IDF aborts at boot ("CONFLICT! driver_ng is not allowed to be
+      # used with this old driver") when the legacy I2C driver is linked next
+      # to the new one (M5GFX uses the new one).
+      - name: One I2C driver
+        working-directory: firmware-rs/esp
+        run: |
+          symbols=$(nm target/${{ matrix.target }}/release/bdlminer-esp)
+          if grep -q ' t check_i2c_driver_conflict$' <<<"$symbols" && grep -q ' T i2c_acquire_bus_handle$' <<<"$symbols"; then
+            echo "::error::both the legacy and the new I2C driver are linked: the firmware aborts at boot"
+            exit 1
+          fi
       # One image to flash at 0x0 (bootloader, partition table, app), e.g.
       # with https://espressif.github.io/esptool-js/ or
       # `espflash write-bin 0x0 bdlminer-esp-<board>.bin`.
@@ -62,13 +73,23 @@ jobs:
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q libudev-dev
           cargo install espflash@3.3.0 --locked
+      # With ESP-IDF's own bootloader, built from sdkconfig.defaults (it skips
+      # the image check at power-on, so the M5StickC Plus2 holds its power
+      # sooner), instead of the one espflash ships.
       - name: Flashable image
         working-directory: firmware-rs/esp
-        run: >
-          espflash save-image --chip ${{ matrix.mcu }} --merge --flash-size ${{ matrix.flash }}
-          --partition-table ../../partitions/${{ matrix.partitions }}
-          target/${{ matrix.target }}/release/bdlminer-esp
-          target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
+        run: |
+          bootloader=$(ls target/${{ matrix.target }}/release/build/esp-idf-sys-*/out/build/bootloader/bootloader.bin | head -n 1)
+          if [ ! -f "$bootloader" ]; then
+            echo "::error::ESP-IDF bootloader.bin not found"
+            exit 1
+          fi
+          echo "bootloader: $bootloader"
+          espflash save-image --chip ${{ matrix.mcu }} --merge --flash-size ${{ matrix.flash }} \
+            --bootloader "$bootloader" \
+            --partition-table ../../partitions/${{ matrix.partitions }} \
+            target/${{ matrix.target }}/release/bdlminer-esp \
+            target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
       - uses: actions/upload-artifact@v7
         with:
           name: bdlminer-esp-${{ matrix.board }}

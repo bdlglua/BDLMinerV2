@@ -41,6 +41,14 @@ void bdl_ui_message(const char *title, const char *line1, const char *line2);
 void bdl_ui_portal(const char *title, const char *ssid, const char *password, const char *qr);
 void bdl_ui_alert(const char *title, const char *value, const char *line);
 
+// The MPU6886 IMU on the internal bus (SDA 21, SCL 22), read through M5GFX's
+// I2C driver: ESP-IDF aborts at boot when its legacy driver (esp-idf-hal's
+// I2cDriver) is linked next to the new one M5GFX uses.
+// WHO_AM_I (0x19 for an MPU6886), or -1 when the bus or the chip fails.
+int bdl_imu_begin(void);
+// Die temperature in degrees Celsius, NaN on a bus error.
+float bdl_imu_temperature(void);
+
 #ifdef __cplusplus
 }
 #endif

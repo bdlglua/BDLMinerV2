@@ -5,6 +5,7 @@
 //! miner on the others, the pool task, the dashboard, then the once-a-second
 //! supervision loop.
 
+mod captive;
 #[cfg(feature = "m5stickc-plus2")]
 mod display;
 mod http;
@@ -26,7 +27,6 @@ use bdlminer_app::notify::HttpClient;
 use bdlminer_app::platform::{BoardKind, BoardProfile, Clock, Storage, SystemInfo};
 use bdlminer_app::pool;
 use bdlminer_app::std_platform::TcpNetwork;
-use bdlminer_app::watch::NoIndicators;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::cpu::Core;
 use esp_idf_svc::hal::peripherals::Peripherals;
@@ -34,7 +34,7 @@ use esp_idf_svc::hal::task::thread::ThreadSpawnConfiguration;
 use esp_idf_svc::http::client::{Configuration as HttpConfiguration, EspHttpConnection};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sntp::EspSntp;
-use esp_idf_svc::wifi::{BlockingWifi, ClientConfiguration, Configuration as Wifi, EspWifi};
+use esp_idf_svc::wifi::{BlockingWifi, Configuration as Wifi};
 
 use crate::system::{EspClock, EspSystem};
 
@@ -113,8 +113,12 @@ fn main() -> anyhow::Result<()> {
     let peripherals = Peripherals::take()?;
     #[cfg(feature = "m5stickc-plus2")]
     m5stickc::hold_power(peripherals.pins.gpio4);
+    // Started on USB, the board's screen and IMU are only powered from the
+    // moment the hold is on: give them time (an ST7789 needs 120 ms) first.
     #[cfg(feature = "m5stickc-plus2")]
-    let imu = m5stickc::imu(peripherals.i2c0, peripherals.pins.gpio21, peripherals.pins.gpio22);
+    thread::sleep(Duration::from_millis(300));
+    #[cfg(feature = "m5stickc-plus2")]
+    let imu = m5stickc::imu();
     #[cfg(not(feature = "m5stickc-plus2"))]
     let imu = None;
     let sysloop = EspSystemEventLoop::take()?;
@@ -147,17 +151,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     // WiFi: keep the network the driver saved (also the C++ portal's).
-    let mut wifi = BlockingWifi::wrap(EspWifi::new(peripherals.modem, sysloop.clone(), Some(nvs))?, sysloop)?;
+    let mut wifi = BlockingWifi::wrap(wifi::driver(peripherals.modem, sysloop.clone(), nvs)?, sysloop)?;
     let saved = wifi::saved_station();
-    let client = match &saved {
-        Some((ssid, pass)) => ClientConfiguration {
-            ssid: ssid.as_str().try_into().unwrap_or_default(),
-            password: pass.as_str().try_into().unwrap_or_default(),
-            ..Default::default()
-        },
-        None => ClientConfiguration::default(),
-    };
-    wifi.set_configuration(&Wifi::Client(client))?;
+    wifi.set_configuration(&Wifi::Client(wifi::station_config()))?;
     if let Ok(name) = std::ffi::CString::new(app.hostname.clone()) {
         let netif = unsafe { esp_idf_svc::sys::esp_netif_get_handle_from_ifkey(b"WIFI_STA_DEF\0".as_ptr().cast()) };
         if !netif.is_null() {
@@ -250,7 +246,7 @@ fn main() -> anyhow::Result<()> {
         events
     };
     #[cfg(not(feature = "m5stickc-plus2"))]
-    let events = std::sync::Arc::new(NoIndicators);
+    let events = std::sync::Arc::new(bdlminer_app::watch::NoIndicators);
     let _server = http::start(app.clone())?;
     app.log(&format!("[web] dashboard on http://{ip}/ (http://{}.local/)", app.hostname));
 
