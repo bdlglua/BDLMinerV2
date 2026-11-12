@@ -6,9 +6,59 @@ use std::time::Duration;
 
 use bdlminer_app::platform::Network;
 use bdlminer_app::std_platform::{TcpConnection, TcpNetwork};
+use esp_idf_svc::eventloop::EspSystemEventLoop;
+use esp_idf_svc::hal::modem::Modem;
+use esp_idf_svc::ipv4::{self, Ipv4Addr, Mask, RouterConfiguration, Subnet};
+use esp_idf_svc::netif::{EspNetif, NetifConfiguration, NetifStack};
+use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sys::*;
+use esp_idf_svc::wifi::{AuthMethod, ClientConfiguration, EspWifi, WifiDriver};
 
 use crate::system::{millis, random};
+
+/// The setup portal's address: the access point's, its DHCP server's
+/// gateway and DNS server (the C++ firmware's, WiFiManager's default).
+pub const PORTAL_ADDRESS: Ipv4Addr = Ipv4Addr::new(192, 168, 4, 1);
+
+/// The WiFi driver, its access point on 192.168.4.1. esp-idf-svc's default
+/// router is 192.168.71.1 and hands out 8.8.8.8 as DNS server: phones then
+/// never ask the portal's DNS, and the portal does not open by itself.
+pub fn driver(
+    modem: Modem,
+    sysloop: EspSystemEventLoop,
+    nvs: EspDefaultNvsPartition,
+) -> Result<EspWifi<'static>, EspError> {
+    let ap = NetifConfiguration {
+        ip_configuration: Some(ipv4::Configuration::Router(RouterConfiguration {
+            subnet: Subnet { gateway: PORTAL_ADDRESS, mask: Mask(24) },
+            dhcp_enabled: true,
+            dns: Some(PORTAL_ADDRESS),
+            secondary_dns: None,
+        })),
+        ..NetifConfiguration::wifi_default_router()
+    };
+    EspWifi::wrap_all(
+        WifiDriver::new(modem, sysloop, Some(nvs))?,
+        EspNetif::new(NetifStack::Sta)?,
+        EspNetif::new_with_conf(&ap)?,
+    )
+}
+
+/// The station configuration for the saved network, kept as it is: writing
+/// an empty one would erase it from the driver's NVS (the portal used to,
+/// when the network was only out of reach). Open networks and no network
+/// at all ask for no authentication (else the driver warns that an empty
+/// password cannot reach WPA2).
+pub fn station_config() -> ClientConfiguration {
+    let saved = saved_station();
+    let (ssid, password) = saved.as_ref().map(|(s, p)| (s.as_str(), p.as_str())).unwrap_or(("", ""));
+    ClientConfiguration {
+        ssid: ssid.try_into().unwrap_or_default(),
+        password: password.try_into().unwrap_or_default(),
+        auth_method: if password.is_empty() { AuthMethod::None } else { AuthMethod::WPA2Personal },
+        ..Default::default()
+    }
+}
 
 /// SSID and password of the station configuration the driver loaded.
 pub fn saved_station() -> Option<(String, String)> {

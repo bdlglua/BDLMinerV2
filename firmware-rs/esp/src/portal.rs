@@ -11,9 +11,7 @@ use bdlminer_app::App;
 use esp_idf_svc::http::server::{Configuration, EspHttpServer};
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::Write;
-use esp_idf_svc::wifi::{
-    AccessPointConfiguration, AuthMethod, BlockingWifi, ClientConfiguration, Configuration as Wifi, EspWifi,
-};
+use esp_idf_svc::wifi::{AccessPointConfiguration, AuthMethod, BlockingWifi, Configuration as Wifi, EspWifi};
 use serde_json::{Map, Value};
 
 use crate::system::millis;
@@ -124,39 +122,13 @@ fn save(app: &App, body: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Gives the access point 192.168.4.1 (esp-idf-svc's default is
-/// 192.168.71.1), the address the C++ firmware's portal uses and the one the
-/// log and the screen announce.
-fn portal_address() -> Result<(), esp_idf_svc::sys::EspError> {
-    use esp_idf_svc::sys::{
-        esp, esp_ip4_addr_t, esp_netif_dhcps_start, esp_netif_dhcps_stop, esp_netif_get_handle_from_ifkey,
-        esp_netif_ip_info_t, esp_netif_set_ip_info, EspError, ESP_ERR_INVALID_STATE,
-    };
-    let address = |a: [u8; 4]| esp_ip4_addr_t { addr: u32::from_le_bytes(a) };
-    let info = esp_netif_ip_info_t {
-        ip: address([192, 168, 4, 1]),
-        netmask: address([255, 255, 255, 0]),
-        gw: address([192, 168, 4, 1]),
-    };
-    unsafe {
-        let netif = esp_netif_get_handle_from_ifkey(c"WIFI_AP_DEF".as_ptr());
-        if netif.is_null() {
-            return Err(EspError::from_infallible::<ESP_ERR_INVALID_STATE>());
-        }
-        // The DHCP server must be stopped while the address changes; a
-        // server that was not running is fine.
-        let _ = esp_netif_dhcps_stop(netif);
-        esp!(esp_netif_set_ip_info(netif, &info))?;
-        esp!(esp_netif_dhcps_start(netif))
-    }
-}
-
 /// Runs the portal until it is configured or times out; then restarts.
 pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
     let name = bdlminer_app::app::portal_ap_name(app.mac);
     let password = app.portal_password();
     app.log(&format!("[wifi] setup portal: join \"{name}\", then open http://192.168.4.1"));
-    println!("[wifi] setup portal: join \"{name}\" (password {password}), then open http://192.168.4.1");
+    // On the serial console only, not in the log the dashboard shows.
+    println!("[wifi] setup portal password: {password}");
     let ap = AccessPointConfiguration {
         ssid: name.as_str().try_into().unwrap_or_default(),
         password: password.as_str().try_into().unwrap_or_default(),
@@ -165,18 +137,21 @@ pub fn run(app: Arc<App>, wifi: &mut BlockingWifi<EspWifi<'static>>) -> ! {
         max_connections: 4,
         ..Default::default()
     };
-    let started = wifi.set_configuration(&Wifi::Mixed(ClientConfiguration::default(), ap)).and_then(|_| wifi.start());
+    // The station keeps the saved network (an empty configuration would
+    // erase it): the portal also opens when that network is only down.
+    let started = wifi.set_configuration(&Wifi::Mixed(wifi::station_config(), ap)).and_then(|_| wifi.start());
     if let Err(e) = started {
         app.log(&format!("[wifi] portal could not start: {e}"));
     }
-    if let Err(e) = portal_address() {
-        app.log(&format!("[wifi] portal address 192.168.4.1 not set: {e}"));
-    }
     // Every name leads to the portal: phones open it as soon as they join.
-    captive::start_dns([192, 168, 4, 1]);
+    captive::start_dns(wifi::PORTAL_ADDRESS.octets());
     let done = Arc::new(std::sync::atomic::AtomicBool::new(false));
     // Wildcards: "/*" (registered last) catches every other page.
-    let config = Configuration { stack_size: 10 * 1024, uri_match_wildcard: true, ..Default::default() };
+    // Phones open several connections at once (connectivity checks, the
+    // page): 6 sockets, as many as lwIP's 10 leave (3 for the server, 1 for
+    // the DNS).
+    let config =
+        Configuration { stack_size: 10 * 1024, uri_match_wildcard: true, max_open_sockets: 6, ..Default::default() };
     let server = EspHttpServer::new(&config).and_then(|mut server| {
         let page = app.clone();
         server.fn_handler("/", Method::Get, move |req| -> anyhow::Result<()> {

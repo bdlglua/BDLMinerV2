@@ -34,7 +34,7 @@ use esp_idf_svc::hal::task::thread::ThreadSpawnConfiguration;
 use esp_idf_svc::http::client::{Configuration as HttpConfiguration, EspHttpConnection};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::sntp::EspSntp;
-use esp_idf_svc::wifi::{BlockingWifi, ClientConfiguration, Configuration as Wifi, EspWifi};
+use esp_idf_svc::wifi::{BlockingWifi, Configuration as Wifi};
 
 use crate::system::{EspClock, EspSystem};
 
@@ -151,17 +151,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     // WiFi: keep the network the driver saved (also the C++ portal's).
-    let mut wifi = BlockingWifi::wrap(EspWifi::new(peripherals.modem, sysloop.clone(), Some(nvs))?, sysloop)?;
+    let mut wifi = BlockingWifi::wrap(wifi::driver(peripherals.modem, sysloop.clone(), nvs)?, sysloop)?;
     let saved = wifi::saved_station();
-    let client = match &saved {
-        Some((ssid, pass)) => ClientConfiguration {
-            ssid: ssid.as_str().try_into().unwrap_or_default(),
-            password: pass.as_str().try_into().unwrap_or_default(),
-            ..Default::default()
-        },
-        None => ClientConfiguration::default(),
-    };
-    wifi.set_configuration(&Wifi::Client(client))?;
+    wifi.set_configuration(&Wifi::Client(wifi::station_config()))?;
     if let Ok(name) = std::ffi::CString::new(app.hostname.clone()) {
         let netif = unsafe { esp_idf_svc::sys::esp_netif_get_handle_from_ifkey(b"WIFI_STA_DEF\0".as_ptr().cast()) };
         if !netif.is_null() {
