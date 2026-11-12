@@ -1,0 +1,4 @@
+# M5GFX's I2C helpers (lgfx::i2c), which gamma601.cpp uses for the regulator
+# and the fan controller, sharing the bus with the SSD1306.
+dependencies:
+  m5stack/m5gfx: "0.2.35"
