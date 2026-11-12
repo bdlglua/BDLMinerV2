@@ -81,7 +81,9 @@ Then open <http://127.0.0.1:8080/>. Options: `--threads N`, `--http ADDR:PORT`,
 
 ## Build for an ESP32
 
-Install the Xtensa toolchain with [espup](https://github.com/esp-rs/espup),
+Install the Xtensa toolchain with [espup](https://github.com/esp-rs/espup)
+(`espup install --toolchain-version 1.99.0.0`, as CI; the PC workspace
+uses Rust 1.99.1, see `rust-toolchain.toml`),
 plus `ldproxy` and `espflash`, then:
 
 ```bash

@@ -32,6 +32,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: esp-rs/xtensa-toolchain@ec6d36527049a7f4fb2cb0c1a644668c1bb8a2a4 # v1.7.0
         with:
+          # Espressif's fork of Rust 1.99 (no 1.99.1 fork: its fixes are for
+          # x86_64, macOS and UEFI); the host workspace uses 1.99.1.
+          version: 1.99.0.0
           default: true
           buildtargets: ${{ matrix.mcu }}
           ldproxy: true
