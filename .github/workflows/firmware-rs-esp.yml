@@ -143,8 +143,15 @@ jobs:
       - name: GOT references
         if: failure() && matrix.mcu == 'esp32c3'
         working-directory: firmware-rs/esp
+        env:
+          MCU: ${{ matrix.mcu }}
         run: |
-          for o in target/${{ matrix.target }}/release/deps/bdlminer_esp-*.o; do
+          # The LTO object is deleted after a failed link: link again,
+          # keeping it.
+          cargo rustc --release --target ${{ matrix.target }} --features "${{ matrix.features }}" \
+            --bin bdlminer-esp -- -C save-temps 2>&1 | tail -3 || true
+          for o in $(ls -t target/${{ matrix.target }}/release/deps/bdlminer_esp-*.o | head -3); do
+            echo "== $o"
             riscv32-esp-elf-objdump -r "$o" | grep -E 'GOT|TLS' | awk '{print $2, $3}' | sort | uniq -c | sort -rn | head -40
           done
       # The linker map, to see where a failed link went wrong.
