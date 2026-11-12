@@ -10,6 +10,8 @@ publish.workspace = true
 [dependencies]
 bdlminer-core = { workspace = true }
 serde_json = { workspace = true }
+# The setup portal's QR code (ui_view.rs), as LovyanGFX's qrcode() drew it.
+qrcodegen = "1.8"
 
 [dev-dependencies]
 secp256k1 = { workspace = true }
