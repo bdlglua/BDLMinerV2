@@ -35,6 +35,10 @@ jobs:
           default: true
           buildtargets: ${{ matrix.mcu }}
           ldproxy: true
+      - name: Espressif GCC on PATH
+        run: |
+          which xtensa-${{ matrix.mcu }}-elf-gcc
+          xtensa-${{ matrix.mcu }}-elf-gcc --version | head -1
       - name: Build
         working-directory: firmware-rs/esp
         env:

@@ -25,3 +25,11 @@ build-std = ["std", "panic_abort"]
 MCU = "esp32"
 ESP_IDF_VERSION = "v5.3.2"
 ESP_IDF_SDKCONFIG_DEFAULTS = "sdkconfig.defaults"
+# C code of dependencies (secp256k1-sys): Espressif's GCC from espup, which
+# builds little-endian code with long calls. Left to itself, cc picked a
+# compiler that produced big-endian objects the linker refused.
+CC_xtensa_esp32_espidf = "xtensa-esp32-elf-gcc"
+CFLAGS_xtensa_esp32_espidf = "-mlongcalls"
+CC_xtensa_esp32s3_espidf = "xtensa-esp32s3-elf-gcc"
+CFLAGS_xtensa_esp32s3_espidf = "-mlongcalls"
+CC_riscv32imc_esp_espidf = "riscv32-esp-elf-gcc"
