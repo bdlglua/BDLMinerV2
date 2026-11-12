@@ -72,6 +72,20 @@ jobs:
             features: cyd
             partitions: rust_4MB.csv
             flash: 4mb
+          # ASIC boards: the BM1370 and BM1397 drivers in Rust (gamma601.rs,
+          # nerdnos.rs).
+          - target: xtensa-esp32s3-espidf
+            mcu: esp32s3
+            board: bitaxe-gamma-601
+            features: gamma601
+            partitions: default_16MB.csv
+            flash: 16mb
+          - target: xtensa-esp32s3-espidf
+            mcu: esp32s3
+            board: nerdnos
+            features: nerdnos
+            partitions: default_16MB.csv
+            flash: 16mb
           - target: xtensa-esp32s2-espidf
             mcu: esp32s2
             board: esp32s2
@@ -104,7 +118,16 @@ jobs:
           # to PATH (the Xtensa one is exported).
           if ! command -v "$gcc" >/dev/null; then
             found=$(find "$HOME/.rustup" "$HOME/.espressif" -type f -name "$gcc" 2>/dev/null | head -n 1)
-            [ -n "$found" ] || { echo "::error::$gcc not found"; exit 1; }
+            if [ -z "$found" ] && [ "${{ matrix.mcu }}" = esp32c3 ]; then
+              # Not installed by the action: Espressif's own build, the
+              # version ESP-IDF 5.3.2 uses.
+              release=esp-13.2.0_20240530
+              curl -sSfL -o "$RUNNER_TEMP/riscv.tar.xz" \
+                "https://github.com/espressif/crosstool-NG/releases/download/$release/riscv32-esp-elf-13.2.0_20240530-x86_64-linux-gnu.tar.xz"
+              tar -xf "$RUNNER_TEMP/riscv.tar.xz" -C "$HOME"
+              found="$HOME/riscv32-esp-elf/bin/$gcc"
+            fi
+            [ -x "$found" ] || { echo "::error::$gcc not found"; exit 1; }
             dirname "$found" >> "$GITHUB_PATH"
             export PATH="$(dirname "$found"):$PATH"
           fi

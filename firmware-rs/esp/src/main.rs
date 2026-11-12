@@ -10,11 +10,17 @@ mod asic;
 mod captive;
 #[cfg(feature = "display")]
 mod display;
+#[cfg(feature = "gamma601")]
+mod gamma601;
 mod http;
 mod hwsha;
 #[cfg(feature = "m5stickc-plus2")]
 mod m5stickc;
+#[cfg(feature = "nerdnos")]
+mod nerdnos;
 mod nvs;
+#[cfg(any(feature = "gamma601", feature = "nerdnos"))]
+mod periph;
 mod portal;
 mod system;
 mod wifi;
@@ -118,7 +124,13 @@ impl HttpClient for EspHttp {
     }
 }
 
-fn spawn_pinned(name: &'static [u8], core: Core, priority: u8, stack: usize, f: impl FnOnce() + Send + 'static) {
+fn spawn_pinned(
+    name: &'static [u8],
+    core: Core,
+    priority: u8,
+    stack: usize,
+    f: impl FnOnce() + Send + 'static,
+) -> bool {
     let config = ThreadSpawnConfiguration {
         name: Some(name),
         stack_size: stack,
@@ -131,9 +143,11 @@ fn spawn_pinned(name: &'static [u8], core: Core, priority: u8, stack: usize, f: 
     }
     let spawned = thread::Builder::new().stack_size(stack).spawn(f);
     let _ = ThreadSpawnConfiguration::default().set();
-    if spawned.is_err() {
+    let started = spawned.is_ok();
+    if !started {
         log::error!("could not start {}", String::from_utf8_lossy(name));
     }
+    started
 }
 
 fn main() -> anyhow::Result<()> {
@@ -239,7 +253,7 @@ fn main() -> anyhow::Result<()> {
     // gets the last core to itself (WiFi runs on core 0) at priority 19 and
     // software runs on the others, as in the C++ firmware.
     app.miner.load_stats();
-    // ASIC boards: the chip mines, through the C++ firmware's driver.
+    // ASIC boards: the chip mines, through its Rust driver.
     #[cfg(any(feature = "gamma601", feature = "nerdnos"))]
     if !asic::start(app.clone()) {
         app.log("[miner] ASIC task could not start");

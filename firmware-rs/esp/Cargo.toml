@@ -29,7 +29,7 @@ m5stack = ["display"]
 lilygo-t-display = ["display"]
 lilygo-t-display-s3 = ["display"]
 cyd = ["display"]
-# ASIC boards, being ported to Rust (src/asic.rs; not built by the workflow yet):
+# ASIC boards: Rust drivers (src/gamma601.rs, src/nerdnos.rs):
 # Bitaxe Gamma 601 (BM1370, SSD1306 128x32) and NerdNOS (BM1397 on a
 # T-Display-S3).
 gamma601 = ["display"]
