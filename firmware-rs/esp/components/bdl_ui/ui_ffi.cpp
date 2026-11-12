@@ -1,10 +1,11 @@
-// C functions over ui_view::View (src/ui_view.h) for the Rust firmware, and
-// the M5StickC Plus2 panel: ST7789V2 135x240 on SPI, PWM backlight on GPIO27
-// (as M5GFX configures it for that board).
+// C functions over ui_view::View (src/ui_view.h) for the Rust firmware, on
+// the M5StickC Plus2 panel. M5GFX's board detection sets it up (ST7789V2
+// 135x240 on SPI2, PWM backlight on GPIO27, power hold on GPIO4), exactly as
+// for the C++ firmware through M5Unified.
 #include "bdl_ui.h"
 
 #include <M5GFX.h>
-#include <lgfx/v1/panel/Panel_ST7789.hpp>
+#include <esp_log.h>
 
 #include <cmath>
 #include <memory>
@@ -16,64 +17,11 @@
 
 namespace {
 
-class StickCPlus2 : public lgfx::LGFX_Device {
-    lgfx::Panel_ST7789 panel_;
-    lgfx::Bus_SPI bus_;
-    lgfx::Light_PWM light_;
-
-public:
-    StickCPlus2() {
-        {
-            auto cfg = bus_.config();
-            cfg.spi_host = SPI3_HOST;
-            cfg.spi_mode = 0;
-            cfg.freq_write = 40000000;
-            cfg.freq_read = 16000000;
-            cfg.spi_3wire = true;
-            cfg.use_lock = true;
-            cfg.dma_channel = SPI_DMA_CH_AUTO;
-            cfg.pin_sclk = 13;
-            cfg.pin_mosi = 15;
-            cfg.pin_miso = -1;
-            cfg.pin_dc = 14;
-            bus_.config(cfg);
-            panel_.setBus(&bus_);
-        }
-        {
-            auto cfg = panel_.config();
-            cfg.pin_cs = 5;
-            cfg.pin_rst = 12;
-            cfg.pin_busy = -1;
-            cfg.panel_width = 135;
-            cfg.panel_height = 240;
-            cfg.offset_x = 52;
-            cfg.offset_y = 40;
-            cfg.offset_rotation = 0;
-            cfg.readable = false;
-            cfg.invert = true;
-            cfg.rgb_order = false;
-            cfg.dlen_16bit = false;
-            cfg.bus_shared = false;
-            panel_.config(cfg);
-        }
-        {
-            auto cfg = light_.config();
-            cfg.pin_bl = 27;
-            cfg.invert = false;
-            cfg.freq = 12000;
-            cfg.pwm_channel = 7;
-            light_.config(cfg);
-            panel_.setLight(&light_);
-        }
-        setPanel(&panel_);
-    }
-};
-
 // MPU6886 on the internal I2C bus.
 constexpr int kImuPort = 0;
 constexpr int kImuAddress = 0x68;
 
-StickCPlus2 *lcd = nullptr;
+M5GFX *lcd = nullptr;
 std::unique_ptr<ui_view::View> view;
 
 std::string str(const char *s) { return s ? s : ""; }
@@ -84,8 +32,11 @@ extern "C" {
 
 bool bdl_ui_begin(uint8_t rotation, uint32_t accent, uint8_t language) {
     if (view) return true;
-    lcd = new (std::nothrow) StickCPlus2();
+    lcd = new (std::nothrow) M5GFX();
     if (!lcd || !lcd->init()) return false;
+    if (lcd->getBoard() != lgfx::boards::board_M5StickCPlus2) {
+        ESP_LOGW("ui", "M5GFX detected board %d, not an M5StickC Plus2", int(lcd->getBoard()));
+    }
     lcd->setRotation(rotation);
     view.reset(new (std::nothrow) ui_view::View(lcd, true, accent, language));
     return view != nullptr;
