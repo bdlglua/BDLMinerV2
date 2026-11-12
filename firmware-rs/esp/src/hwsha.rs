@@ -75,8 +75,6 @@ pub struct Capabilities {
     /// Original ESP32: idle-cycle hashing of a second work is correct and
     /// faster.
     pub fill: bool,
-    /// The assembly software prefilter passed its self-test.
-    pub asm: bool,
 }
 
 /// Self-tests the peripheral and the assembly. Call once at boot, before any
@@ -106,7 +104,7 @@ pub fn init(logger: impl Fn(&str) + Send + Sync + 'static) -> Capabilities {
         log(&format!("[miner] software SHA: {kernel}"));
     }
     USE_ASM.store(asm, Ordering::Relaxed);
-    Capabilities { hardware, fill, asm }
+    Capabilities { hardware, fill }
 }
 
 /// Around TLS handshakes and HTTPS requests. S2/S3/C3: keeps the mining loop

@@ -26,7 +26,6 @@ use bdlminer_app::notify::HttpClient;
 use bdlminer_app::platform::{BoardKind, BoardProfile, Clock, Storage, SystemInfo};
 use bdlminer_app::pool;
 use bdlminer_app::std_platform::TcpNetwork;
-use bdlminer_app::watch::NoIndicators;
 use esp_idf_svc::eventloop::EspSystemEventLoop;
 use esp_idf_svc::hal::cpu::Core;
 use esp_idf_svc::hal::peripherals::Peripherals;
@@ -250,7 +249,7 @@ fn main() -> anyhow::Result<()> {
         events
     };
     #[cfg(not(feature = "m5stickc-plus2"))]
-    let events = std::sync::Arc::new(NoIndicators);
+    let events = std::sync::Arc::new(bdlminer_app::watch::NoIndicators);
     let _server = http::start(app.clone())?;
     app.log(&format!("[web] dashboard on http://{ip}/ (http://{}.local/)", app.hostname));
 
