@@ -31,9 +31,25 @@ jobs:
         env:
           MCU: ${{ matrix.mcu }}
         run: cargo build --release --target ${{ matrix.target }}
+      # One image to flash at 0x0 (bootloader, partition table, app), e.g.
+      # with https://espressif.github.io/esptool-js/ or
+      # `espflash write-bin 0x0 bdlminer-esp-<mcu>.bin`.
+      - name: Install espflash
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q libudev-dev
+          cargo install espflash@3.3.0 --locked
+      - name: Flashable image
+        working-directory: firmware-rs/esp
+        run: >
+          espflash save-image --chip ${{ matrix.mcu }} --merge --flash-size 4mb
+          --partition-table ../../partitions/min_spiffs.csv
+          target/${{ matrix.target }}/release/bdlminer-esp
+          target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.mcu }}.bin
       - uses: actions/upload-artifact@v7
         with:
           name: bdlminer-esp-${{ matrix.mcu }}
-          path: firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp
+          path: |
+            firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp
+            firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.mcu }}.bin
           if-no-files-found: error
           retention-days: 7
