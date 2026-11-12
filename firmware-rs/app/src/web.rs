@@ -2,6 +2,7 @@
 //! platform turns its requests into a `Request` and sends the `Response`.
 //! The pages and scripts are the ones in web/, as the C++ firmware serves.
 
+use std::borrow::Cow;
 use std::sync::atomic::Ordering;
 
 use serde_json::{json, Map, Value};
@@ -49,12 +50,15 @@ pub struct Response {
     pub status: u16,
     pub content_type: &'static str,
     pub headers: Vec<(&'static str, String)>,
-    pub body: Vec<u8>,
+    /// The embedded pages and scripts are served from flash as they are:
+    /// a copy of a 50 KB script can exceed the largest free block of an
+    /// ESP32's heap, and a failed allocation restarts the firmware.
+    pub body: Cow<'static, [u8]>,
 }
 
 impl Response {
     pub fn new(status: u16, content_type: &'static str, body: impl Into<Vec<u8>>) -> Self {
-        Response { status, content_type, headers: Vec::new(), body: body.into() }
+        Response { status, content_type, headers: Vec::new(), body: Cow::Owned(body.into()) }
     }
     fn text(status: u16, body: &str) -> Self {
         Self::new(status, "text/plain", body)
@@ -118,8 +122,9 @@ fn page(app: &App, title: &str, body: &str, script: &str) -> Response {
     Response::new(200, "text/html; charset=utf-8", html).no_store()
 }
 
-fn asset(mime: &'static str, data: &[u8]) -> Response {
-    Response::new(200, mime, data).header("Cache-Control", "public, max-age=31536000, immutable")
+fn asset(mime: &'static str, data: &'static [u8]) -> Response {
+    Response { status: 200, content_type: mime, headers: Vec::new(), body: Cow::Borrowed(data) }
+        .header("Cache-Control", "public, max-age=31536000, immutable")
 }
 
 const ACCENTS: [&str; 5] = ["#f7931a", "#38d07a", "#3b9cf6", "#a66bf5", "#ec5aa0"];

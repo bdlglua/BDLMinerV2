@@ -75,7 +75,7 @@ fn pages_assets_and_unknown_routes() {
     let app = app_with(|_| {});
     let page = handle(&app, &request(Method::Get, "/", b""));
     assert_eq!(page.status, 200);
-    let html = String::from_utf8(page.body).unwrap();
+    let html = String::from_utf8(page.body.into_owned()).unwrap();
     assert!(html.starts_with("<!doctype html><html lang=\"en\">") && html.contains("/assets/dashboard.js?v="));
     for path in [
         "/assets/style.css",
@@ -164,7 +164,10 @@ fn live_and_restarting_changes() {
     assert!(app.brightness() == 30 && app.settings().mining_power == 60 && !app.restart_pending());
 
     let r = handle(&app, &request(Method::Post, "/api/settings", br#"{"bright":300}"#));
-    assert_eq!((r.status, String::from_utf8(r.body).unwrap().as_str()), (400, "Setting outside its allowed range"));
+    assert_eq!(
+        (r.status, String::from_utf8(r.body.into_owned()).unwrap().as_str()),
+        (400, "Setting outside its allowed range")
+    );
     assert_eq!(handle(&app, &request(Method::Post, "/api/settings", b"[1]")).status, 400);
     assert_eq!(handle(&app, &request(Method::Post, "/api/settings", b"{}")).status, 400);
 
@@ -207,14 +210,17 @@ fn backups_round_trip() {
     assert_eq!(r.status, 409); // a restart is pending
     let fresh = app_with(|_| {});
     let r = handle(&fresh, &request(Method::Post, "/api/backup", bad.as_bytes()));
-    assert_eq!((r.status, String::from_utf8(r.body).unwrap().as_str()), (400, "Unsupported backup version"));
+    assert_eq!(
+        (r.status, String::from_utf8(r.body.into_owned()).unwrap().as_str()),
+        (400, "Unsupported backup version")
+    );
 }
 
 #[test]
 fn metrics_and_diagnostics() {
     let app = app_with(|_| {});
     app.miner.register_engine("sw");
-    let text = String::from_utf8(handle(&app, &request(Method::Get, "/metrics", b"")).body).unwrap();
+    let text = String::from_utf8(handle(&app, &request(Method::Get, "/metrics", b"")).body.into_owned()).unwrap();
     assert!(text.contains("# TYPE bdlminer_hashrate_hps gauge\nbdlminer_hashrate_hps 0\n"));
     assert!(text.contains("bdlminer_engine_hashrate_hps{engine=\"sw\",index=\"0\"} 0"));
     assert!(text.contains("bdlminer_info{board=\"Host\",firmware=\""));
