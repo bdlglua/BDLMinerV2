@@ -6,9 +6,59 @@ use std::sync::Mutex;
 
 use serde_json::json;
 
-/// An HTTP(S) POST; returns the status code.
+/// Where the body of a GET answer goes, chunk by chunk (a firmware image is
+/// larger than the free memory).
+pub trait BodySink {
+    /// Before the first chunk, with the announced length when there is one.
+    fn begin(&mut self, length: Option<u64>) -> Result<(), String> {
+        let _ = length;
+        Ok(())
+    }
+    fn data(&mut self, chunk: &[u8]) -> Result<(), String>;
+}
+
+/// A body kept in memory, refused beyond `limit` bytes.
+pub struct Collect {
+    pub body: Vec<u8>,
+    pub limit: usize,
+}
+
+impl BodySink for Collect {
+    fn begin(&mut self, length: Option<u64>) -> Result<(), String> {
+        match length {
+            Some(n) if n > self.limit as u64 => Err(format!("answer too large ({n} bytes)")),
+            _ => Ok(()),
+        }
+    }
+    fn data(&mut self, chunk: &[u8]) -> Result<(), String> {
+        if self.body.len() + chunk.len() > self.limit {
+            return Err("answer too large".into());
+        }
+        self.body.extend_from_slice(chunk);
+        Ok(())
+    }
+}
+
+/// HTTP(S) requests; each returns the status code.
 pub trait HttpClient: Send + Sync {
     fn post(&self, url: &str, headers: &[(&str, &str)], body: &[u8]) -> Result<u16, String>;
+    /// A GET following redirects; the body of a 200 answer goes to `sink`.
+    fn get(&self, url: &str, headers: &[(&str, &str)], sink: &mut dyn BodySink) -> Result<u16, String> {
+        let _ = (url, headers, sink);
+        Err("HTTPS requests are not available".into())
+    }
+}
+
+/// A GET whose body (at most `limit` bytes) is kept: (status, body).
+pub fn get_body(
+    http: &dyn HttpClient,
+    url: &str,
+    headers: &[(&str, &str)],
+    limit: usize,
+) -> Result<(u16, Vec<u8>), String> {
+    let mut sink = Collect { body: Vec::new(), limit };
+    let status = http.get(url, headers, &mut sink)?;
+    Ok((status, sink.body))
 }
 
 #[derive(Clone, Debug, PartialEq)]

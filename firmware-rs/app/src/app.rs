@@ -29,6 +29,7 @@ pub struct App {
     pub pool_config: PoolConfig,
     pub watch: Watch,
     pub notifier: Notifier,
+    pub updater: crate::update::Updater,
     pub system: Arc<dyn SystemInfo>,
     /// "bdlminer-xxxx": mDNS and DHCP name.
     pub hostname: String,
@@ -116,7 +117,10 @@ impl App {
             },
             move |s| l3.line(c3.millis(), s),
         );
+        let (l4, c4) = (log.clone(), clock.clone());
+        let updater = crate::update::Updater::new(move |s| l4.line(c4.millis(), s));
         Arc::new(App {
+            updater,
             pool_config: pool_config(&values, &p.board),
             watch: Watch::new(&p.board),
             brightness: AtomicU8::new(values.brightness),

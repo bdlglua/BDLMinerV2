@@ -24,11 +24,7 @@ rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
 [target.riscv32imc-esp-espidf]
 linker = "ldproxy"
 runner = "espflash flash --monitor --partition-table ../../partitions/min_spiffs.csv"
-# Static code: the target's default (PIC) reaches ESP-IDF's global
-# variables through a .got section, which ESP-IDF's linker script does not
-# place, and the link fails ("The gap between .flash.rodata and
-# .eh_frame_hdr must not exist").
-rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages", "-C", "relocation-model=static"]
+rustflags = ["--cfg", "espidf_time64", "-A", "linker_messages"]
 
 [unstable]
 build-std = ["std", "panic_abort"]

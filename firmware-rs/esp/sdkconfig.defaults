@@ -28,3 +28,6 @@ CONFIG_BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON=y
 # about 0.67 MH/s instead of the C++ firmware's 1.0. The ESP32-C3 has no
 # 240 MHz setting and keeps its 160.
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+# Firmware updates: a new firmware boots on trial and the bootloader returns
+# to the previous one unless it is confirmed (esp/src/ota.rs).
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y

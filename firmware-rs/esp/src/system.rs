@@ -135,6 +135,9 @@ impl SystemInfo for EspSystem {
             _ => "unavailable",
         }
     }
+    fn ota_supported(&self) -> bool {
+        crate::ota::supported()
+    }
     fn boot_reason(&self) -> String {
         let reason = unsafe { esp_reset_reason() };
         #[allow(non_upper_case_globals)]

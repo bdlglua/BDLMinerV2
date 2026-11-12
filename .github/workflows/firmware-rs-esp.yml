@@ -142,22 +142,6 @@ jobs:
         env:
           MCU: ${{ matrix.mcu }}
         run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
-      # Which symbols a RISC-V link reaches through a GOT (a .got section
-      # breaks ESP-IDF's flash layout).
-      - name: GOT references
-        if: failure() && matrix.mcu == 'esp32c3'
-        working-directory: firmware-rs/esp
-        env:
-          MCU: ${{ matrix.mcu }}
-        run: |
-          # The LTO object is deleted after a failed link: link again,
-          # keeping it.
-          cargo rustc --release --target ${{ matrix.target }} --features "${{ matrix.features }}" \
-            --bin bdlminer-esp -- -C save-temps 2>&1 | tail -3 || true
-          for o in $(ls -t target/${{ matrix.target }}/release/deps/bdlminer_esp-*.o | head -3); do
-            echo "== $o"
-            riscv32-esp-elf-objdump -r "$o" | grep -E 'GOT|TLS' | awk '{print $2, $3}' | sort | uniq -c | sort -rn | head -40
-          done
       # The linker map, to see where a failed link went wrong.
       - name: Linker map
         if: failure()
@@ -202,12 +186,21 @@ jobs:
             --partition-table ../../partitions/${{ matrix.partitions }} \
             target/${{ matrix.target }}/release/bdlminer-esp \
             target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
+          # The app image alone, for updates (dashboard upload or GitHub):
+          # <env>-firmware.bin, the env the firmware names itself with.
+          espflash save-image --chip ${{ matrix.mcu }} --flash-size ${{ matrix.flash }} \
+            target/${{ matrix.target }}/release/bdlminer-esp \
+            target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
+          # The updater requires the board and version markers in the image.
+          grep -q --binary-files=text "${{ matrix.board }}-rust" target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
+          grep -q --binary-files=text "BDLMinerV1/" target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
       - uses: actions/upload-artifact@v7
         with:
           name: bdlminer-esp-${{ matrix.board }}
           path: |
             firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp
             firmware-rs/esp/target/${{ matrix.target }}/release/bdlminer-esp-${{ matrix.board }}.bin
+            firmware-rs/esp/target/${{ matrix.target }}/release/${{ matrix.board }}-rust-firmware.bin
           if-no-files-found: error
           retention-days: 7
   release:
@@ -230,13 +223,42 @@ jobs:
           for dir in artifacts/bdlminer-esp-*; do
             board="${dir#artifacts/bdlminer-esp-}"
             cp "$dir/bdlminer-esp-$board.bin" "dist/BDLMiner-rust-$version-$board.bin"
+            cp "$dir/$board-rust-firmware.bin" "dist/$board-rust-firmware.bin"
+            # The anonymous daily usage count downloads this file.
+            printf 'ok' > "dist/ping-$board-rust.txt"
           done
-          (cd dist && sha256sum *.bin > SHA256SUMS.txt && cat SHA256SUMS.txt)
+      # GitHub updates install only images signed by the release key (the
+      # public half is built into the firmware, src/update_key.h).
+      - name: Sign the update images
+        env:
+          KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::warning::RELEASE_SIGNING_KEY is not set: GitHub updates will refuse these images"
+            exit 0
+          fi
+          umask 077
+          key="$RUNNER_TEMP/release-signing-key.pem"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$KEY" > "$key"
+          python3 - "$RUNNER_TEMP/update-public.pem" <<'PY'
+          import re, sys
+          text = open("src/update_key.h").read()
+          lines = re.findall(r'"([^"]*)\\n"', text)
+          open(sys.argv[1], "w").write("\n".join(lines) + "\n")
+          PY
+          openssl pkey -in "$key" -pubout | diff - "$RUNNER_TEMP/update-public.pem"
+          for f in dist/*-rust-firmware.bin; do
+            openssl dgst -sha256 -sign "$key" -out "$f.sig" "$f"
+            openssl dgst -sha256 -verify "$RUNNER_TEMP/update-public.pem" -signature "$f.sig" "$f"
+          done
+      - name: Checksums
+        run: (cd dist && sha256sum *.bin > SHA256SUMS.txt && cat SHA256SUMS.txt)
           notes="docs/releases/rust-v$version.md"
           if [ -f "$notes" ]; then echo "NOTES=$notes" >> "$GITHUB_ENV"; fi
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          name: BDLMiner Rust ${{ env.VERSION }}
+          name: BDLMinerV2-rust-v${{ env.VERSION }}
           tag_name: ${{ github.ref_name }}
           target_commitish: ${{ github.sha }}
           prerelease: true

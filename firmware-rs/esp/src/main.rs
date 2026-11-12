@@ -23,6 +23,7 @@ mod m5stickc;
 #[cfg(feature = "nerdnos")]
 mod nerdnos;
 mod nvs;
+mod ota;
 #[cfg(any(feature = "gamma601", feature = "nerdnos", feature = "display"))]
 mod periph;
 mod portal;
@@ -36,7 +37,7 @@ use std::time::Duration;
 use bdlminer_app::app::{App, Platform};
 #[cfg(not(any(feature = "gamma601", feature = "nerdnos")))]
 use bdlminer_app::miner::{run_worker, WorkerOptions};
-use bdlminer_app::notify::HttpClient;
+use bdlminer_app::notify::{BodySink, HttpClient};
 use bdlminer_app::platform::{BoardKind, BoardProfile, Clock, Storage, SystemInfo};
 use bdlminer_app::pool;
 use bdlminer_app::std_platform::TcpNetwork;
@@ -54,31 +55,45 @@ use crate::system::{EspClock, EspSystem};
 /// The board's name and C++ firmware environment (with "-rust"), as the
 /// dashboard and the update channel know them.
 fn board_identity() -> (&'static str, &'static str) {
-    if cfg!(feature = "gamma601") {
-        ("Bitaxe-Gamma-601", "bitaxe-gamma-601-rust")
-    } else if cfg!(feature = "nerdnos") {
-        ("NerdNOS", "nerdnos-rust")
-    } else if cfg!(feature = "m5stickc-plus2") {
-        ("M5StickC Plus2", "m5stickc-plus2-rust")
-    } else if cfg!(all(feature = "m5stack", esp32s3)) {
-        ("M5Stack-S3", "m5stack-s3-rust")
-    } else if cfg!(feature = "m5stack") {
-        ("M5Stack-ESP32", "m5stack-esp32-rust")
-    } else if cfg!(feature = "lilygo-t-display-s3") {
-        ("T-Display-S3", "lilygo-t-display-s3-rust")
-    } else if cfg!(feature = "lilygo-t-display") {
-        ("T-Display", "lilygo-t-display-rust")
-    } else if cfg!(feature = "cyd") {
-        ("CYD-2432S028R", "esp32-2432s028r-rust")
-    } else if cfg!(esp32s3) {
-        ("ESP32-S3", "esp32s3-rust")
+    // The environment with a NUL: GitHub updates require "<env>\0" in the
+    // downloaded image (the C++ firmware's board marker). Only this board's
+    // string is compiled in, so an image never names another board.
+    #[cfg(feature = "gamma601")]
+    const ID: (&str, &str) = ("Bitaxe-Gamma-601", "bitaxe-gamma-601-rust\0");
+    #[cfg(feature = "nerdnos")]
+    const ID: (&str, &str) = ("NerdNOS", "nerdnos-rust\0");
+    #[cfg(feature = "m5stickc-plus2")]
+    const ID: (&str, &str) = ("M5StickC Plus2", "m5stickc-plus2-rust\0");
+    #[cfg(all(feature = "m5stack", esp32s3))]
+    const ID: (&str, &str) = ("M5Stack-S3", "m5stack-s3-rust\0");
+    #[cfg(all(feature = "m5stack", not(esp32s3)))]
+    const ID: (&str, &str) = ("M5Stack-ESP32", "m5stack-esp32-rust\0");
+    #[cfg(feature = "lilygo-t-display-s3")]
+    const ID: (&str, &str) = ("T-Display-S3", "lilygo-t-display-s3-rust\0");
+    #[cfg(feature = "lilygo-t-display")]
+    const ID: (&str, &str) = ("T-Display", "lilygo-t-display-rust\0");
+    #[cfg(feature = "cyd")]
+    const ID: (&str, &str) = ("CYD-2432S028R", "esp32-2432s028r-rust\0");
+    #[cfg(not(any(
+        feature = "gamma601",
+        feature = "nerdnos",
+        feature = "m5stickc-plus2",
+        feature = "m5stack",
+        feature = "lilygo-t-display-s3",
+        feature = "lilygo-t-display",
+        feature = "cyd"
+    )))]
+    const ID: (&str, &str) = if cfg!(esp32s3) {
+        ("ESP32-S3", "esp32s3-rust\0")
     } else if cfg!(esp32s2) {
-        ("ESP32-S2", "esp32s2-rust")
+        ("ESP32-S2", "esp32s2-rust\0")
     } else if cfg!(esp32c3) {
-        ("ESP32-C3", "esp32c3-rust")
+        ("ESP32-C3", "esp32c3-rust\0")
     } else {
-        ("ESP32", "esp32-rust")
-    }
+        ("ESP32", "esp32-rust\0")
+    };
+    let env: &'static str = std::hint::black_box(ID.1);
+    (ID.0, env.trim_end_matches('\0'))
 }
 
 fn board_profile() -> BoardProfile {
@@ -126,6 +141,68 @@ impl HttpClient for EspHttp {
         conn.write_all(body).map_err(|e| e.to_string())?;
         conn.initiate_response().map_err(|e| e.to_string())?;
         Ok(conn.status())
+    }
+
+    /// GitHub sends release files to another host with a link that is only
+    /// valid for a few minutes (refused with the non-standard 618, or 403,
+    /// 404, 410): a refused link is not retried as is, the whole chain is
+    /// asked again for a fresh one.
+    fn get(&self, url: &str, headers: &[(&str, &str)], sink: &mut dyn BodySink) -> Result<u16, String> {
+        let _hold = hwsha::Hold::new();
+        let config = HttpConfiguration {
+            timeout: Some(Duration::from_secs(20)),
+            // GitHub's redirect links (signed tokens) exceed the default 512 bytes.
+            buffer_size: Some(4096),
+            buffer_size_tx: Some(1024),
+            crt_bundle_attach: Some(esp_idf_svc::sys::esp_crt_bundle_attach),
+            ..Default::default()
+        };
+        for attempt in 1..=3 {
+            let mut url = url.to_owned();
+            let mut redirected = false;
+            let mut hops = 0;
+            loop {
+                hops += 1;
+                if hops > 5 {
+                    return Err("too many redirects".into());
+                }
+                if !url.starts_with("https://") {
+                    return Err("refused a non-HTTPS link".into());
+                }
+                let mut conn = EspHttpConnection::new(&config).map_err(|e| e.to_string())?;
+                conn.initiate_request(esp_idf_svc::http::Method::Get, &url, headers).map_err(|e| e.to_string())?;
+                conn.initiate_response().map_err(|e| e.to_string())?;
+                let status = conn.status();
+                if (300..400).contains(&status) {
+                    if let Some(location) = conn.header("Location") {
+                        url = location.to_owned();
+                        redirected = true;
+                        continue;
+                    }
+                }
+                if status == 200 {
+                    let length = conn.header("Content-Length").and_then(|l| l.trim().parse::<u64>().ok());
+                    sink.begin(length)?;
+                    let mut buf = [0u8; 2048];
+                    loop {
+                        let n = conn.read(&mut buf).map_err(|e| e.to_string())?;
+                        if n == 0 {
+                            break;
+                        }
+                        sink.data(&buf[..n])?;
+                    }
+                    return Ok(200);
+                }
+                let refused = redirected && matches!(status, 618 | 403 | 404 | 410);
+                if !refused || attempt == 3 {
+                    return Ok(status);
+                }
+                log::info!("download link refused (HTTP {status}); asking GitHub for a fresh one");
+                thread::sleep(Duration::from_secs(2));
+                break;
+            }
+        }
+        Err("download link refused".into())
     }
 }
 
@@ -207,6 +284,7 @@ fn main() -> anyhow::Result<()> {
     EspClock::new(&settings.timezone); // the configured time zone
     app.log_configuration();
     app.log(&format!("[boot] reset reason: {}", espsystem.boot_reason()));
+    ota::begin_trial(&app);
     #[cfg(feature = "display")]
     if display::begin(&app) {
         let version = format!("v{} (Rust)", bdlminer_app::platform::FW_VERSION);
@@ -314,11 +392,15 @@ fn main() -> anyhow::Result<()> {
     {
         let app = app.clone();
         // Notifications and the anonymous statistics report share one HTTPS task.
-        spawn_pinned(b"notify\0", Core::Core0, 1, 12 * 1024, move || {
+        // Notifications, the anonymous statistics report and GitHub updates
+        // share one HTTPS task (one TLS connection at a time).
+        spawn_pinned(b"notify\0", Core::Core0, 1, 16 * 1024, move || {
             let mut share = bdlminer_app::share::Share::default();
+            let firmware = ota::EspFirmware { app: app.clone() };
             loop {
                 app.notifier.poll(&EspHttp);
                 share.poll(&app, &EspHttp, wifi::link_up());
+                app.updater.poll(&app, &EspHttp, &firmware, wifi::link_up());
                 thread::sleep(Duration::from_secs(5));
             }
         });
@@ -343,6 +425,7 @@ fn main() -> anyhow::Result<()> {
         if now.wrapping_sub(last_tick) >= 1000 {
             last_tick = now;
             app.second_tick(&*events);
+            ota::poll_trial(&app);
             // Gamma: frequency, voltage and fan as the settings now say.
             #[cfg(feature = "gamma601")]
             asic::apply_settings(&app);

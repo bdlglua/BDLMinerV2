@@ -84,8 +84,7 @@ impl Share {
             .then(|| app.pool_config.endpoint(app.pool.on_backup()).host.clone());
         let body = body(rate, &stats_board(app.board.env), s.coin(), host.as_deref());
         // Transport compatibility marker; the displayed/Stratum identity is BDLMinerV2.
-        let agent = format!("BDLMinerV1/{FW_VERSION}");
-        let headers = [("User-Agent", agent.as_str()), ("Content-Type", "application/json")];
+        let headers = [("User-Agent", crate::platform::transport_agent()), ("Content-Type", "application/json")];
         match http.post(STATS_URL, &headers, body.as_bytes()) {
             Ok(code) if (200..300).contains(&code) => app.log(&format!("[share] hashrate shared ({rate:.3e} H/s)")),
             Ok(code) => app.log(&format!("[share] hashrate not shared: HTTP {code}")),

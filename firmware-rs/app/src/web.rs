@@ -384,13 +384,20 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
     }
     o.insert("blocks_recent".into(), blocks.into());
     let channel = if s.update_channel == 1 { "beta" } else { "stable" };
+    let gu = app.updater.state(app.clock.millis());
+    let release_url = if gu.version.is_empty() {
+        format!("https://github.com/{}/releases", settings::GITHUB_REPO)
+    } else {
+        format!("https://github.com/{}/releases/tag/rust-v{}", settings::GITHUB_REPO, gu.version)
+    };
+    let notes = if gu.installing { format!("{} %", gu.progress) } else { gu.error.clone() };
     o.insert(
         "github_update".into(),
-        json!({"available": false, "mode": s.github_update, "channel": channel, "checked": false, "checking": false,
-               "request_id": 0, "version": "", "installing": false, "progress": 0, "retry_in_s": 0,
-               "supported": app.system.ota_supported(),
-               "release_url": format!("https://github.com/{}/releases/latest", settings::GITHUB_REPO),
-               "error": "", "notes": ""}),
+        json!({"available": gu.available, "mode": s.github_update, "channel": channel, "checked": gu.checked,
+               "checking": gu.checking, "request_id": gu.install_request, "version": gu.version,
+               "installing": gu.installing, "progress": gu.progress, "retry_in_s": gu.retry_seconds,
+               "supported": app.system.ota_supported(), "release_url": release_url,
+               "error": gu.error, "notes": notes}),
     );
     j
 }
@@ -737,9 +744,58 @@ pub fn handle(app: &App, req: &Request) -> Response {
             app.request_restart("restart requested from the web page");
             Response::text(200, "Restarting\u{2026}")
         }),
+        // Only looks for a newer release, so no password: the installation
+        // asks for it. One requested check per 30 s at most, so that nobody
+        // on the network can keep the miner busy with TLS handshakes.
+        (Post, "/api/github-check") => github_check(app, req),
+        (Post, "/api/github-update") => v(authorized(app, req)).unwrap_or_else(|| {
+            if app.updater.request_install(app) {
+                Response::text(200, "Installing, the miner restarts by itself")
+            } else {
+                Response::text(409, "No update to install")
+            }
+        }),
+        // The firmware upload streams into the other slot: the server reads
+        // it itself (`update_allowed`, then `multipart`).
+        (Post, "/update") => Response::text(400, "No firmware file uploaded"),
         (Get, "/metrics") => metrics(app),
         _ => Response::text(404, "Not found"),
     }
+}
+
+fn github_check(app: &App, req: &Request) -> Response {
+    static LAST: std::sync::Mutex<Option<u32>> = std::sync::Mutex::new(None);
+    if !own_host(app, req) || !validation::origin_allowed(req.origin, req.host) {
+        return Response::text(403, REFUSED);
+    }
+    if app.settings().github_update == 0 {
+        return Response::text(409, "GitHub updates are disabled in settings");
+    }
+    let now = app.clock.millis();
+    let mut last = LAST.lock().unwrap();
+    if last.is_some_and(|t| now.wrapping_sub(t) < 30_000) {
+        return Response::text(202, "Check requested");
+    }
+    if app.updater.request_check(app) {
+        *last = Some(now);
+        return Response::text(202, "Check requested");
+    }
+    // A check already queued or running answers this request as well.
+    if app.updater.state(now).installing || app.ota_busy.load(Ordering::Relaxed) {
+        Response::text(409, "An update is being installed")
+    } else {
+        Response::text(202, "Check requested")
+    }
+}
+
+/// Whether a firmware upload (POST /update) may start: from the miner's own
+/// page, with the password, nothing else pending.
+pub fn update_allowed(app: &App, req: &Request) -> Result<(), Response> {
+    authorized(app, req)?;
+    if app.restart_pending() || app.ota_busy.load(Ordering::Relaxed) {
+        return Err(Response::text(409, "Another firmware update or restart is already pending"));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
