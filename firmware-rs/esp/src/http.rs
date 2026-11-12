@@ -1,15 +1,23 @@
 //! The ESP-IDF HTTP server in front of the portable web handler.
 
-use std::sync::atomic::Ordering;
-use std::sync::Arc;
+use std::ffi::CStr;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use bdlminer_app::multipart::{self, Event};
 use bdlminer_app::update::FirmwareWriter;
 use bdlminer_app::web::{self, Method, Request};
 use bdlminer_app::App;
+use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer};
 use esp_idf_svc::http::Method as HttpMethod;
 use esp_idf_svc::io::{Read, Write};
+use esp_idf_svc::sys::{
+    esp_err_t, http_method_HTTP_GET, httpd_register_uri_handler, httpd_req_async_handler_begin,
+    httpd_req_async_handler_complete, httpd_req_get_hdr_value_len, httpd_req_get_hdr_value_str, httpd_req_t,
+    httpd_resp_send, httpd_resp_send_chunk, httpd_resp_set_hdr, httpd_resp_set_status, httpd_resp_set_type,
+    httpd_uri_t, ESP_FAIL, ESP_OK,
+};
 
 use crate::ota;
 
@@ -25,6 +33,41 @@ fn serve(
     let host = req.header("Host").map(str::to_owned);
     let origin = req.header("Origin").map(str::to_owned);
     let authorization = req.header("Authorization").map(str::to_owned);
+    if method == Method::Get && path == "/api/coredump" && app.crashes.present() {
+        let request = Request {
+            method,
+            path,
+            query,
+            host: host.as_deref(),
+            origin: origin.as_deref(),
+            authorization: authorization.as_deref(),
+            body: &[],
+        };
+        // The crash report is a memory image, which can hold passwords.
+        if let Err(refused) = web::owner_allowed(app, &request) {
+            return reply(req, &refused);
+        }
+        let size = app.crashes.size();
+        let length = size.to_string();
+        let headers = [
+            ("Content-Type", "application/octet-stream"),
+            ("Content-Disposition", "attachment; filename=\"bdlminer-coredump.elf\""),
+            ("Cache-Control", "no-store"),
+            ("Content-Length", length.as_str()),
+        ];
+        let mut response = req.into_response(200, None, &headers)?;
+        let mut chunk = [0u8; 1024];
+        let mut offset = 0;
+        while offset < size {
+            let n = chunk.len().min(size - offset);
+            if !app.crashes.read(offset, &mut chunk[..n]) {
+                break;
+            }
+            response.write_all(&chunk[..n])?;
+            offset += n;
+        }
+        return Ok(());
+    }
     if method == Method::Post && path == "/update" {
         let content_type = req.header("Content-Type").unwrap_or("").to_owned();
         let request = Request {
@@ -186,14 +229,103 @@ fn upload(
     }
 }
 
+/// Live dashboards (/api/events): requests handed over by the server
+/// (httpd_req_async_handler_begin), written to every 2 s by their own task.
+struct Stream(*mut httpd_req_t);
+// The copied request belongs to the events task once handed over.
+unsafe impl Send for Stream {}
+
+const MAX_STREAMS: usize = 2;
+const STREAM_MS: u64 = 2000;
+static STREAMS: Mutex<Vec<Stream>> = Mutex::new(Vec::new());
+static STREAM_DUE: AtomicBool = AtomicBool::new(false);
+static EVENTS_APP: OnceLock<Arc<App>> = OnceLock::new();
+
+unsafe fn send_text(req: *mut httpd_req_t, status: &CStr, text: &str) -> esp_err_t {
+    httpd_resp_set_status(req, status.as_ptr());
+    httpd_resp_set_type(req, c"text/plain".as_ptr());
+    httpd_resp_send(req, text.as_ptr().cast(), text.len() as _)
+}
+
+unsafe extern "C" fn events_handler(req: *mut httpd_req_t) -> esp_err_t {
+    let Some(app) = EVENTS_APP.get() else { return ESP_FAIL };
+    let length = httpd_req_get_hdr_value_len(req, c"Host".as_ptr());
+    let mut host = vec![0u8; length + 1];
+    let host = (length > 0
+        && httpd_req_get_hdr_value_str(req, c"Host".as_ptr(), host.as_mut_ptr().cast(), host.len()) == ESP_OK)
+        .then(|| String::from_utf8_lossy(&host[..length]).into_owned());
+    if !web::events_allowed(app, host.as_deref()) {
+        return send_text(req, c"403 Forbidden", "Refused: open the miner's own page (http://its address/) to do this");
+    }
+    let mut streams = STREAMS.lock().unwrap();
+    if streams.len() >= MAX_STREAMS {
+        return send_text(req, c"503 Service Unavailable", "Too many live dashboards; polling instead");
+    }
+    let mut copy: *mut httpd_req_t = std::ptr::null_mut();
+    if httpd_req_async_handler_begin(req, &mut copy) != ESP_OK {
+        return send_text(req, c"503 Service Unavailable", "Too many live dashboards; polling instead");
+    }
+    httpd_resp_set_type(copy, c"text/event-stream".as_ptr());
+    httpd_resp_set_hdr(copy, c"Cache-Control".as_ptr(), c"no-store".as_ptr());
+    let first = "retry: 5000\n\n";
+    if httpd_resp_send_chunk(copy, first.as_ptr().cast(), first.len() as _) != ESP_OK {
+        httpd_req_async_handler_complete(copy);
+        return ESP_OK;
+    }
+    streams.push(Stream(copy));
+    // A first snapshot right away.
+    STREAM_DUE.store(true, Ordering::Relaxed);
+    ESP_OK
+}
+
+/// Writes the readings to every live dashboard; one that fails is dropped
+/// (its browser reconnects).
+fn push_events(app: &App) {
+    let mut last = std::time::Instant::now();
+    loop {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if !STREAM_DUE.swap(false, Ordering::Relaxed) && last.elapsed().as_millis() < STREAM_MS as u128 {
+            continue;
+        }
+        last = std::time::Instant::now();
+        if STREAMS.lock().unwrap().is_empty() {
+            continue;
+        }
+        let message = web::event_message(app);
+        let mut streams = STREAMS.lock().unwrap();
+        streams.retain(|s| unsafe {
+            let ok = httpd_resp_send_chunk(s.0, message.as_ptr().cast(), message.len() as _) == ESP_OK;
+            if !ok {
+                httpd_req_async_handler_complete(s.0);
+            }
+            ok
+        });
+    }
+}
+
 pub fn start(app: Arc<App>) -> anyhow::Result<EspHttpServer<'static>> {
     let mut server = EspHttpServer::new(&Configuration {
         uri_match_wildcard: true,
         stack_size: 12 * 1024,
-        max_open_sockets: 6,
+        // Two more for the live dashboards.
+        max_open_sockets: 8,
         lru_purge_enable: true,
         ..Default::default()
     })?;
+    // Before the catch-all handlers: the first match serves a request.
+    if EVENTS_APP.set(app.clone()).is_ok() {
+        let uri = httpd_uri_t {
+            uri: c"/api/events".as_ptr(),
+            method: http_method_HTTP_GET as _,
+            handler: Some(events_handler),
+            user_ctx: std::ptr::null_mut(),
+            ..unsafe { std::mem::zeroed() }
+        };
+        if unsafe { httpd_register_uri_handler(server.handle(), &uri) } == ESP_OK {
+            let pusher = app.clone();
+            let _ = std::thread::Builder::new().stack_size(10 * 1024).spawn(move || push_events(&pusher));
+        }
+    }
     let get = app.clone();
     server.fn_handler("/*", HttpMethod::Get, move |req| serve(&get, req, Method::Get))?;
     let post = app;

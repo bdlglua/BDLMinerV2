@@ -426,6 +426,9 @@ fn inputs(app: &App, system: &EspSystem, events: &Events) -> Inputs {
         free_heap: system.free_heap(),
         uptime: app.miner.uptime_seconds(),
         share_flash: until != 0 && (until.wrapping_sub(millis()) as i32) > 0,
+        market: app.market.get(app),
+        unix_time: app.clock.unix_time(),
+        block_bests: app.miner.block_bests().iter().map(|b| (b.height, b.best)).collect(),
     }
 }
 

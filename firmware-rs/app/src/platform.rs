@@ -11,9 +11,24 @@ pub trait Clock: Send + Sync {
     fn unix_time(&self) -> Option<u32>;
     /// Local hour 0..23 in the configured time zone, when the clock was set.
     fn local_hour(&self) -> Option<u8>;
+    /// Local date and time, when the clock was set.
+    fn local_time(&self) -> Option<LocalTime> {
+        None
+    }
     fn sleep(&self, d: Duration) {
         std::thread::sleep(d);
     }
+}
+
+/// A local date and time (`struct tm`'s fields).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LocalTime {
+    /// Years since 1900.
+    pub year: u32,
+    /// 0..365.
+    pub year_day: u32,
+    pub hour: u8,
+    pub minute: u8,
 }
 
 /// A source of cryptographically secure random bytes.

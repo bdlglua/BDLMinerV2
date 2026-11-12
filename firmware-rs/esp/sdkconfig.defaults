@@ -31,3 +31,11 @@ CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 # Firmware updates: a new firmware boots on trial and the bootloader returns
 # to the previous one unless it is confirmed (esp/src/ota.rs).
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+# Crash reports: a core dump in the coredump partition at a crash or panic,
+# summarised at the next boot and offered at /api/coredump (esp/src/crash.rs).
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+CONFIG_ESP_COREDUMP_CHECKSUM_CRC32=y
+# The dashboard's server (8 sockets, two of them live dashboards), the pool,
+# MQTT and the HTTPS requests, at once.
+CONFIG_LWIP_MAX_SOCKETS=16

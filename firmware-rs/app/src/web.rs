@@ -159,6 +159,17 @@ fn own_host(app: &App, req: &Request) -> bool {
     app.rebinding.lock().unwrap().allowed(req.host, &app.hostname, app.clock.millis())
 }
 
+/// The live stream (/api/events) carries everything the miner's own pages
+/// show: only to a request naming the miner itself.
+pub fn events_allowed(app: &App, host: Option<&str>) -> bool {
+    app.rebinding.lock().unwrap().allowed(host, &app.hostname, app.clock.millis())
+}
+
+/// One message of the live stream: the dashboard's readings.
+pub fn event_message(app: &App) -> String {
+    format!("data: {}\n\n", stats(app, false, true))
+}
+
 /// Settings, backups, firmware and the log: from the miner's own pages only,
 /// then with the web password when one is set.
 fn authorized(app: &App, req: &Request) -> Result<(), Response> {
@@ -270,7 +281,7 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         "limitation_reason": app.watch.limit_reason(&app.miner, app.ota_busy.load(Ordering::Relaxed)),
         "night": app.watch.night(),
         "boot_reason": app.system.boot_reason(),
-        "firmware_trial": false,
+        "firmware_trial": app.firmware_trial.load(Ordering::Relaxed),
         "accent": ACCENTS[s.theme as usize % 5],
         "ip": if owner { app.system.ip() } else { String::new() },
         "ssid": if owner { app.system.ssid() } else { String::new() },
@@ -278,21 +289,37 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         "lang": if s.language == 1 { "fr" } else { "en" },
     });
     let o = j.as_object_mut().unwrap();
+    if owner {
+        if let Some(crash) = app.crashes.json() {
+            o.insert("crash".into(), crash);
+        }
+    }
     if let Some(c) = app.miner.last_block_candidate() {
-        o.insert(
-            "block_candidate".into(),
-            json!({
-                "height": c.height,
-                "coin": c.coin.ticker(),
-                "hash": work::reversed_hex(&c.hash),
-                "status": c.state.name(),
-                "previous_session": c.previous_session,
-                "chain_confirmed": Value::Null,
-                "chain_source": if c.coin == Coin::Btc { "mempool.space" } else { "" },
-                "confirmations": 0,
-                "chain_checked_s": -1,
-            }),
-        );
+        let chain = if c.coin == Coin::Btc { app.block_status.get(&c.hash) } else { None };
+        let valid = chain.as_ref().filter(|s| s.known && s.error == 0);
+        let mut b = json!({
+            "height": c.height,
+            "coin": c.coin.ticker(),
+            "hash": work::reversed_hex(&c.hash),
+            "status": c.state.name(),
+            "previous_session": c.previous_session,
+            "chain_confirmed": valid.map_or(Value::Null, |s| s.in_best_chain.into()),
+            "chain_source": if c.coin == Coin::Btc { "mempool.space" } else { "" },
+            "confirmations": valid.map_or(0, |s| s.confirmations),
+            "chain_checked_s": match &chain {
+                Some(s) if s.checked_ms != 0 => (app.clock.millis().wrapping_sub(s.checked_ms) / 1000) as i64,
+                _ => -1,
+            },
+        });
+        if let Some(s) = &chain {
+            if s.not_found {
+                b["chain_not_found"] = true.into();
+            }
+            if s.error != 0 {
+                b["chain_error"] = s.error.into();
+            }
+        }
+        o.insert("block_candidate".into(), b);
     }
     let (connected_ms, sessions) = app.miner.pool_uptime();
     let backup = app.pool.on_backup();
@@ -329,10 +356,18 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
             .collect();
         o.insert("shares_log".into(), entries.into());
     }
-    o.insert(
-        "pool_view".into(),
-        json!({"updated_s": -1, "supported": false, "hashrate": 0, "best": 0, "shares": 0, "workers": 0}),
-    );
+    let now = app.clock.millis();
+    let age = |updated: u32| if updated == 0 { -1 } else { (now.wrapping_sub(updated) / 1000) as i64 };
+    let pv = app.market.pool_stats(app);
+    let mut view = json!({"updated_s": age(pv.updated_ms), "supported": pv.supported, "hashrate": number(pv.hashrate),
+                          "best": number(pv.best_ever), "shares": number(pv.shares), "workers": pv.workers});
+    if !pv.source.is_empty() {
+        view["source"] = pv.source.into();
+    }
+    if pv.error != 0 {
+        view["error"] = pv.error.into();
+    }
+    o.insert("pool_view".into(), view);
     if history {
         let (points, _) = app.miner.history();
         let rates: Vec<Value> = points
@@ -357,7 +392,7 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         notify["ntfy"] = ns.ntfy.into();
         notify["webhook"] = ns.webhook.into();
     }
-    let mut integrations = json!({"mqtt": "off", "notify": notify});
+    let mut integrations = json!({"mqtt": app.mqtt.name(app), "notify": notify});
     if owner && !s.mqtt_host.is_empty() {
         integrations["mqtt_host"] = format!("{}:{}", s.mqtt_host, s.mqtt_port).into();
     }
@@ -368,16 +403,29 @@ pub fn stats(app: &App, history: bool, owner: bool) -> Value {
         Vec::new()
     };
     o.insert("peers".into(), peers.into());
+    let m = app.market.get(app);
+    let now = app.clock.millis();
     o.insert(
         "market".into(),
-        json!({"updated_s": -1, "currency": s.currency, "price": 0, "fees": [0, 0, 0], "hashrate": 0, "mempool_tx": 0,
-               "retarget": {"change": 0, "progress": 0, "blocks": 0}}),
+        json!({"updated_s": if m.updated_ms == 0 { -1 } else { (now.wrapping_sub(m.updated_ms) / 1000) as i64 },
+               "currency": s.currency, "price": number(m.price),
+               "fees": [m.fee_fast, m.fee_half_hour, m.fee_hour], "hashrate": number(m.network_hashrate),
+               "mempool_tx": m.mempool_tx,
+               "retarget": {"change": number(m.retarget_change), "progress": number(m.retarget_progress),
+                            "blocks": m.retarget_blocks}}),
     );
     let bests = app.miner.block_bests();
     let mut blocks = Vec::new();
     if stats.block_height != 0 {
         let mut b = json!({"h": stats.block_height, "mining": true});
         if let Some(best) = bests.iter().find(|b| b.height == stats.block_height) {
+            b["best"] = number(best.best);
+        }
+        blocks.push(b);
+    }
+    for block in &m.blocks {
+        let mut b = json!({"h": block.height, "t": block.time, "pool": block.pool, "tx": block.txs});
+        if let Some(best) = bests.iter().find(|b| b.height == block.height) {
             b["best"] = number(best.best);
         }
         blocks.push(b);
@@ -714,7 +762,8 @@ pub fn handle(app: &App, req: &Request) -> Response {
             }
             r
         }
-        // Live streams need a long-lived connection: the pages poll instead.
+        // Served by the ESP32's server itself (a long-lived connection);
+        // elsewhere the pages poll instead.
         (Get, "/api/events") => Response::text(503, "Too many live dashboards; polling instead"),
         (Get, "/api/history") => history(app),
         (Get, "/api/diagnostics") => diagnostics(app),
@@ -758,6 +807,15 @@ pub fn handle(app: &App, req: &Request) -> Response {
         // The firmware upload streams into the other slot: the server reads
         // it itself (`update_allowed`, then `multipart`).
         (Post, "/update") => Response::text(400, "No firmware file uploaded"),
+        // The dump itself is streamed by the server (`owner_allowed`).
+        (Get, "/api/coredump") => v(authorized(app, req)).unwrap_or_else(|| Response::text(404, "No crash report")),
+        (Post, "/api/coredump/erase") => v(authorized(app, req)).unwrap_or_else(|| {
+            if app.crashes.erase(app) {
+                Response::text(200, "Crash report erased")
+            } else {
+                Response::text(500, "The crash report could not be erased")
+            }
+        }),
         (Get, "/metrics") => metrics(app),
         _ => Response::text(404, "Not found"),
     }
@@ -786,6 +844,12 @@ fn github_check(app: &App, req: &Request) -> Response {
     } else {
         Response::text(202, "Check requested")
     }
+}
+
+/// Settings, backups, firmware, the crash report and the log: from the
+/// miner's own pages, with the password.
+pub fn owner_allowed(app: &App, req: &Request) -> Result<(), Response> {
+    authorized(app, req)
 }
 
 /// Whether a firmware upload (POST /update) may start: from the miner's own

@@ -52,6 +52,17 @@ impl Clock for EspClock {
         unsafe { localtime_r(&now, &mut tm) };
         Some(tm.tm_hour as u8)
     }
+    fn local_time(&self) -> Option<bdlminer_app::platform::LocalTime> {
+        let now = self.unix_time()? as time_t;
+        let mut tm: tm = unsafe { std::mem::zeroed() };
+        unsafe { localtime_r(&now, &mut tm) };
+        Some(bdlminer_app::platform::LocalTime {
+            year: tm.tm_year as u32,
+            year_day: tm.tm_yday as u32,
+            hour: tm.tm_hour as u8,
+            minute: tm.tm_min as u8,
+        })
+    }
 }
 
 pub struct EspSystem {

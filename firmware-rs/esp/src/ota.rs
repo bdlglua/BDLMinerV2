@@ -125,6 +125,7 @@ pub fn begin_trial(app: &App) {
         && state == esp_ota_img_states_t_ESP_OTA_IMG_PENDING_VERIFY
     {
         PENDING.store(true, Ordering::Relaxed);
+        app.firmware_trial.store(true, Ordering::Relaxed);
         app.log(&format!(
             "[update] firmware {} on trial: confirmed after {} minutes of mining, else the previous one returns",
             bdlminer_app::platform::FW_VERSION,
@@ -219,6 +220,7 @@ pub fn confirm(app: &App, why: &str) {
         return;
     }
     if unsafe { esp_ota_mark_app_valid_cancel_rollback() } == ESP_OK {
+        app.firmware_trial.store(false, Ordering::Relaxed);
         app.log(&format!("[update] firmware {} confirmed ({why})", bdlminer_app::platform::FW_VERSION));
         let mut store = app.storage.lock().unwrap();
         for key in ["ver", "failver", "fails", "cuts", "cut"] {

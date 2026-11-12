@@ -10,6 +10,7 @@
 #[cfg(any(feature = "gamma601", feature = "nerdnos"))]
 mod asic;
 mod captive;
+mod crash;
 #[cfg(feature = "display")]
 mod display;
 #[cfg(feature = "gamma601")]
@@ -166,7 +167,9 @@ impl HttpClient for EspHttp {
                 if hops > 5 {
                     return Err("too many redirects".into());
                 }
-                if !url.starts_with("https://") {
+                // Plain HTTP only for a first address given as such (a pool's
+                // statistics on the local network); never after a redirect.
+                if !url.starts_with("https://") && (redirected || !url.starts_with("http://")) {
                     return Err("refused a non-HTTPS link".into());
                 }
                 let mut conn = EspHttpConnection::new(&config).map_err(|e| e.to_string())?;
@@ -285,6 +288,7 @@ fn main() -> anyhow::Result<()> {
     app.log_configuration();
     app.log(&format!("[boot] reset reason: {}", espsystem.boot_reason()));
     ota::begin_trial(&app);
+    crash::begin(&app);
     #[cfg(feature = "display")]
     if display::begin(&app) {
         let version = format!("v{} (Rust)", bdlminer_app::platform::FW_VERSION);
@@ -379,6 +383,17 @@ fn main() -> anyhow::Result<()> {
             }
         }
     }
+    // MQTT for Home Assistant, when a broker is set.
+    if !settings.mqtt_host.is_empty() {
+        let (app, networks) = (app.clone(), networks.clone());
+        spawn_pinned(b"mqtt\0", Core::Core0, 1, 8 * 1024, move || {
+            let net = wifi::EspNetwork {
+                tcp: TcpNetwork { poll: Duration::from_millis(200), random: system::random },
+                networks,
+            };
+            bdlminer_app::mqtt::run(&net, &app, &app.mqtt);
+        });
+    }
     {
         let app = app.clone();
         spawn_pinned(b"stratum\0", Core::Core0, 3, 20 * 1024, move || {
@@ -396,11 +411,15 @@ fn main() -> anyhow::Result<()> {
         // share one HTTPS task (one TLS connection at a time).
         spawn_pinned(b"notify\0", Core::Core0, 1, 16 * 1024, move || {
             let mut share = bdlminer_app::share::Share::default();
+            let mut remote = bdlminer_app::remote::Remote::default();
             let firmware = ota::EspFirmware { app: app.clone() };
             loop {
                 app.notifier.poll(&EspHttp);
                 share.poll(&app, &EspHttp, wifi::link_up());
                 app.updater.poll(&app, &EspHttp, &firmware, wifi::link_up());
+                app.market.poll(&app, &EspHttp, wifi::link_up());
+                remote.poll(&app, &EspHttp, wifi::link_up());
+                app.block_status.poll(&app, &EspHttp, wifi::link_up());
                 thread::sleep(Duration::from_secs(5));
             }
         });
@@ -415,6 +434,22 @@ fn main() -> anyhow::Result<()> {
     #[cfg(not(feature = "display"))]
     let events = std::sync::Arc::new(bdlminer_app::watch::NoIndicators);
     let _server = http::start(app.clone())?;
+    // http://<host name>.local/ on the local network.
+    let _mdns = match esp_idf_svc::mdns::EspMdns::take() {
+        Ok(mut mdns) => {
+            let ok = mdns.set_hostname(&app.hostname).is_ok()
+                && mdns.set_instance_name(format!("BDLMiner {}", app.board.name)).is_ok()
+                && mdns.add_service(None, "_http", "_tcp", 80, &[]).is_ok();
+            if !ok {
+                app.log("[web] mDNS could not announce the dashboard");
+            }
+            Some(mdns)
+        }
+        Err(e) => {
+            app.log(&format!("[web] mDNS unavailable: {e}"));
+            None
+        }
+    };
     app.log(&format!("[web] dashboard on http://{ip}/ (http://{}.local/)", app.hostname));
 
     let mut last_tick = clock.millis();
