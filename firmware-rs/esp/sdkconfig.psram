@@ -1,0 +1,13 @@
+# PSRAM (M5StickC Plus2: 2 MB on its ESP32-PICO-V3-02), as the C++ firmware's
+# [psram] section: without it the board ran short of internal RAM for TLS
+# (updates, market data, notifications). Allocations above 4 KB may go to
+# PSRAM; smaller ones and thread stacks stay internal. A board without PSRAM
+# still boots.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
+CONFIG_SPIRAM_BOOT_INIT=y
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+# Revision 3 chips (the PICO-V3-02) need no PSRAM cache workaround, which the
+# Rust code is not compiled with.
+CONFIG_ESP32_REV_MIN_3=y

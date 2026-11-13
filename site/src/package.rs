@@ -37,6 +37,22 @@ pub const BOARDS: &[(&str, &str)] = &[
         "NerdNOS: BM1397 board on a T-Display-S3 (experimental; 5V 2A USB)",
     ),
 ];
+/// The Rust firmware's beta (firmware-rs, `rust-v*` prereleases): its image
+/// names, the installer's board names and their chips.
+const RUST_BOARDS: &[(&str, &str, &str)] = &[
+    ("m5stickc-plus2", "m5stickc-plus2", "esp32"),
+    ("m5stack-esp32", "m5stack-esp32", "esp32"),
+    ("m5stack-s3", "m5stack-s3", "esp32s3"),
+    ("lilygo-t-display", "lilygo-t-display", "esp32"),
+    ("lilygo-t-display-s3", "lilygo-t-display-s3", "esp32s3"),
+    ("esp32-2432s028r", "esp32-2432s028r", "esp32"),
+    ("esp32", "esp32-headless", "esp32"),
+    ("esp32s3", "esp32s3-headless", "esp32s3"),
+    ("esp32s2", "esp32s2-headless", "esp32s2"),
+    ("esp32c3", "esp32c3-headless", "esp32c3"),
+    ("bitaxe-gamma-601", "bitaxe-gamma-601", "esp32s3"),
+    ("nerdnos", "nerdnos", "esp32s3"),
+];
 pub fn root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap()
 }
@@ -278,6 +294,17 @@ pub fn pages(output: &Path, version: &str, boards: &Value, content: &Value) -> i
             .replace("__BOARDS__", &script_json(boards))
             .replace("__VERSION__", version)
             .replace("__SITE_DATA__", &script_json(&data));
+        if content["channel"] == "rust" {
+            html = html
+                .replace(
+                    &format!("releases/tag/v{version}"),
+                    &format!("releases/tag/rust-v{version}"),
+                )
+                .replace(
+                    "<p class=\"lead\" data-t=\"installLead\">",
+                    "<p class=\"route-note\" data-t=\"rustFlashNote\">Rust firmware beta: experimental, not tested on every board. Settings are kept; flash the stable firmware to go back.</p><p class=\"lead\" data-t=\"installLead\">",
+                );
+        }
         for (name, digest) in &fingerprints {
             html = html.replace(
                 &format!("\"assets/{name}\""),
@@ -392,7 +419,7 @@ pub fn installer(
         fs::write(output.join(&file), image)?;
         json_file(
             &output.join(format!("manifest-{env}.json")),
-            &json!({"name":format!("BDLMiner V2 - {name}"),"version":version,"new_install_prompt_erase":true,"builds":[{"chipFamily":family,"parts":[{"path":file,"offset":0,"sha256":digest}]}]}),
+            &json!({"name":if channel == "rust" { format!("BDLMiner V2 Rust beta - {name}") } else { format!("BDLMiner V2 - {name}") },"version":version,"new_install_prompt_erase":true,"builds":[{"chipFamily":family,"parts":[{"path":file,"offset":0,"sha256":digest}]}]}),
         )?;
         boards.push(json!({"env":env,"name":name}));
     }
@@ -442,6 +469,34 @@ fn select(releases: &[Value], stable: bool) -> Option<&Value> {
         })
         .max_by(|(a, _), (b, _)| a.cmp_precedence(b))
         .map(|(_, release)| release)
+}
+/// The newest published Rust firmware release (`rust-v<version>`).
+fn select_rust(releases: &[Value]) -> Option<&Value> {
+    releases
+        .iter()
+        .filter(|r| r["draft"] != true)
+        .filter_map(|r| {
+            let tag = r["tag_name"].as_str()?.strip_prefix("rust-")?;
+            Some((parse_version(tag).ok()?, r))
+        })
+        .max_by(|(a, _), (b, _)| a.cmp_precedence(b))
+        .map(|(_, release)| release)
+}
+/// The Rust release's full images (`BDLMiner-rust-<version>-<board>.bin`)
+/// as the installer reads a release: `<env>-factory.bin` and boards.json.
+fn prepare_rust(folder: &Path, version: &str) -> io::Result<()> {
+    let mut boards = serde_json::Map::new();
+    for (board, env, chip) in RUST_BOARDS {
+        let image = folder.join(format!("BDLMiner-rust-{version}-{board}.bin"));
+        if image.is_file() {
+            fs::rename(image, folder.join(format!("{env}-factory.bin")))?;
+            boards.insert((*env).into(), (*chip).into());
+        }
+    }
+    if boards.is_empty() {
+        return Err(invalid("No Rust firmware images in the release"));
+    }
+    json_file(&folder.join("boards.json"), &Value::Object(boards))
 }
 fn encoded(value: &str) -> String {
     const SET: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC
@@ -510,21 +565,31 @@ fn validate_manifest(
     Ok(())
 }
 fn download(repository: &str, tag: &str, folder: &Path) -> io::Result<()> {
+    gh_download(
+        repository,
+        tag,
+        folder,
+        &["*-factory.bin", "boards.json", "update.json"],
+    )
+}
+fn download_rust(repository: &str, tag: &str, folder: &Path) -> io::Result<()> {
+    gh_download(repository, tag, folder, &["BDLMiner-rust-*.bin"])?;
+    let version = tag
+        .strip_prefix("rust-v")
+        .ok_or_else(|| invalid("Not a Rust release"))?;
+    prepare_rust(folder, version)
+}
+fn gh_download(repository: &str, tag: &str, folder: &Path, patterns: &[&str]) -> io::Result<()> {
     let transient_error = regex::Regex::new(r"\bHTTP 5\d\d\b").unwrap();
     for attempt in 0..4 {
-        let result = Command::new("gh")
+        let mut command = Command::new("gh");
+        command
             .args(["release", "download", tag, "--repo", repository, "--dir"])
-            .arg(folder)
-            .args([
-                "--pattern",
-                "*-factory.bin",
-                "--pattern",
-                "boards.json",
-                "--pattern",
-                "update.json",
-                "--clobber",
-            ])
-            .output()?;
+            .arg(folder);
+        for pattern in patterns {
+            command.args(["--pattern", pattern]);
+        }
+        let result = command.arg("--clobber").output()?;
         if result.status.success() {
             return Ok(());
         }
@@ -562,19 +627,38 @@ pub fn channels(repository: &str, output: &Path) -> io::Result<()> {
         .map(serde_json::from_str::<Value>)
         .collect::<Result<Vec<_>, _>>()
         .map_err(invalid_json)?;
-    assemble_channels(&releases, repository, output, download)
+    assemble_channels(&releases, repository, output, download, download_rust)
 }
 fn assemble_channels(
     releases: &[Value],
     repository: &str,
     output: &Path,
     download: impl Fn(&str, &str, &Path) -> io::Result<()>,
+    download_rust: impl Fn(&str, &str, &Path) -> io::Result<()>,
 ) -> io::Result<()> {
     let stable =
         select(releases, true).ok_or_else(|| invalid("A published stable release is required"))?;
     let beta = select(releases, false).unwrap_or(stable);
     let temp = tempfile::Builder::new().prefix("bdl-channels-").tempdir()?;
-    let channels = json!({"stable":{"version":stable["tag_name"].as_str().unwrap().trim_start_matches('v'),"published_at":stable["published_at"]},"beta":{"version":beta["tag_name"].as_str().unwrap().trim_start_matches('v'),"published_at":beta["published_at"]}});
+    let mut channels = json!({"stable":{"version":stable["tag_name"].as_str().unwrap().trim_start_matches('v'),"published_at":stable["published_at"]},"beta":{"version":beta["tag_name"].as_str().unwrap().trim_start_matches('v'),"published_at":beta["published_at"]}});
+    // The Rust firmware's beta, its own installer under rust/. Optional: a
+    // missing or unreadable Rust release never holds up the stable site.
+    let rust = select_rust(releases).and_then(|release| {
+        let tag = release["tag_name"].as_str().unwrap();
+        let version = tag.trim_start_matches("rust-v");
+        let folder = temp.path().join("rust").join(version);
+        match fs::create_dir_all(&folder).and_then(|_| download_rust(repository, tag, &folder)) {
+            Ok(()) => {
+                channels["rust"] =
+                    json!({"version":version,"published_at":release["published_at"]});
+                Some(folder)
+            }
+            Err(error) => {
+                eprintln!("Rust firmware beta {tag} left out: {error}");
+                None
+            }
+        }
+    });
     let mut tags = HashSet::new();
     for item in [stable, beta] {
         let tag = item["tag_name"].as_str().unwrap();
@@ -614,6 +698,9 @@ fn assemble_channels(
             "beta",
             &channels,
         )?;
+        if let Some(folder) = &rust {
+            installer(folder, &staged.join("rust"), "rust", &channels)?;
+        }
         fs::create_dir_all(staged.join("updates"))?;
         for channel in ["stable", "beta"] {
             fs::copy(
@@ -626,8 +713,8 @@ fn assemble_channels(
         Ok(())
     })?;
     println!(
-        "Published stable {} and opt-in beta {}",
-        channels["stable"]["version"], channels["beta"]["version"]
+        "Published stable {}, opt-in beta {} and Rust beta {}",
+        channels["stable"]["version"], channels["beta"]["version"], channels["rust"]["version"]
     );
     Ok(())
 }
@@ -830,6 +917,7 @@ mod tests {
             "bdlglua/BDLMinerV2",
             &temp.path().join("site"),
             |repo, tag, dir| fixture(tag, dir, repo),
+            |_, _, _| Err(invalid("no Rust release in this test")),
         )
         .unwrap();
         let out = temp.path().join("site");
@@ -854,6 +942,61 @@ mod tests {
         assert!(demo.contains("wasm-unsafe-eval"));
         assert!(demo.contains("connect-src &#39;self&#39;") || demo.contains("connect-src 'self'"));
         assert!(!out.join("demo/miner/dashboard.js").exists());
+    }
+    #[test]
+    fn rust_beta_gets_its_own_installer_and_never_blocks_the_site() {
+        let temp = tempfile::tempdir().unwrap();
+        let releases = json!([{"tag_name":"v2.9.0"},{"tag_name":"rust-v2.6.1-beta.1","prerelease":true},{"tag_name":"rust-v2.6.1-beta.2","draft":true}]);
+        assert_eq!(
+            select_rust(releases.as_array().unwrap()).unwrap()["tag_name"],
+            "rust-v2.6.1-beta.1"
+        );
+        assert_eq!(
+            select(releases.as_array().unwrap(), false).unwrap()["tag_name"],
+            "v2.9.0"
+        );
+        assemble_channels(
+            releases.as_array().unwrap(),
+            "bdlglua/BDLMinerV2",
+            &temp.path().join("site"),
+            |repo, tag, dir| fixture(tag, dir, repo),
+            |_, tag, dir| {
+                assert_eq!(tag, "rust-v2.6.1-beta.1");
+                for board in ["bitaxe-gamma-601", "esp32"] {
+                    fs::write(
+                        dir.join(format!("BDLMiner-rust-2.6.1-beta.1-{board}.bin")),
+                        b"fixture: never flash",
+                    )?;
+                }
+                prepare_rust(dir, "2.6.1-beta.1")
+            },
+        )
+        .unwrap();
+        let out = temp.path().join("site");
+        let gamma = read_json(&out.join("rust/manifest-bitaxe-gamma-601.json")).unwrap();
+        assert_eq!(gamma["version"], "2.6.1-beta.1");
+        assert!(gamma["name"].as_str().unwrap().contains("Rust beta"));
+        assert!(out.join("rust/esp32-headless-factory.bin").exists());
+        let flash = fs::read_to_string(out.join("rust/flash.html")).unwrap();
+        assert!(flash.contains("releases/tag/rust-v2.6.1-beta.1"));
+        assert!(flash.contains("rustFlashNote"));
+        assert!(!fs::read_to_string(out.join("flash.html"))
+            .unwrap()
+            .contains("rustFlashNote"));
+        assert!(fs::read_to_string(out.join("releases.html"))
+            .unwrap()
+            .contains("2.6.1-beta.1"));
+        // A failing Rust download leaves the stable and beta site as it was.
+        let without = temp.path().join("without");
+        assemble_channels(
+            releases.as_array().unwrap(),
+            "bdlglua/BDLMinerV2",
+            &without,
+            |repo, tag, dir| fixture(tag, dir, repo),
+            |_, _, _| Err(invalid("download failed")),
+        )
+        .unwrap();
+        assert!(without.join("flash.html").exists() && !without.join("rust").exists());
     }
     #[test]
     fn repository_rename_alias_is_exact_and_only_for_archived_releases() {
@@ -887,6 +1030,7 @@ mod tests {
             "bdlglua/BDLMinerV2",
             &temp.path().join("site"),
             |_, tag, dir| fixture(tag, dir, "bdlglua/BDLMinerV1"),
+            |_, _, _| Err(invalid("no Rust release in this test")),
         )
         .unwrap();
         assert_eq!(

@@ -55,6 +55,7 @@
     "boardsLead": "Firmware disponible et hashrate mesuré.",
     "installTitle": "Flasher ta carte",
     "installLead": "Aucun logiciel à installer : Chrome ou Edge sur un ordinateur flashe la carte par USB.",
+    "rustFlashNote": "Bêta du firmware Rust : expérimentale, pas testée sur toutes les cartes. Les réglages sont conservés ; reflashe le firmware stable pour revenir.",
     "board": "Ta carte",
     "install": "Flasher",
     "unsupported": "Ce navigateur ne peut pas installer : utilise Chrome ou Edge sur un ordinateur.",

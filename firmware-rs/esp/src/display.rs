@@ -25,6 +25,8 @@ use crate::system::{millis, EspSystem};
 trait Screen: Panel + Send {
     /// 0..255, 0 = off.
     fn brightness(&mut self, value: u8);
+    /// 0..3, as LovyanGFX's setRotation.
+    fn rotate(&mut self, rotation: u8);
 }
 
 #[cfg(not(any(feature = "m5stack", feature = "gamma601")))]
@@ -34,6 +36,9 @@ impl Screen for crate::lcd::Lcd {
             b.set(value);
         }
     }
+    fn rotate(&mut self, rotation: u8) {
+        self.set_rotation(rotation);
+    }
 }
 
 #[cfg(feature = "gamma601")]
@@ -41,6 +46,9 @@ impl Screen for crate::lcd::Ssd1306 {
     /// As the C++ firmware: the OLED only sleeps (0) or wakes.
     fn brightness(&mut self, value: u8) {
         self.sleep(value == 0);
+    }
+    fn rotate(&mut self, rotation: u8) {
+        self.set_rotation(rotation);
     }
 }
 
@@ -63,6 +71,7 @@ mod m5 {
         pub fn bdl_m5_touched() -> bool;
         pub fn bdl_m5_brightness(value: u8);
         pub fn bdl_m5_board() -> i32;
+        pub fn bdl_m5_rotation(rotation: u8);
     }
 
     pub struct M5;
@@ -85,6 +94,9 @@ mod m5 {
     impl super::Screen for M5 {
         fn brightness(&mut self, value: u8) {
             unsafe { bdl_m5_brightness(value) };
+        }
+        fn rotate(&mut self, rotation: u8) {
+            unsafe { bdl_m5_rotation(rotation) };
         }
     }
 }
@@ -188,6 +200,24 @@ fn controls() -> (i32, i32, bool) {
     return (0, -1, true);
     #[cfg(feature = "gamma601")]
     return (0, -1, false);
+}
+
+/// A third button that also steps the brightness (the M5StickC Plus2's
+/// power button, as M5Unified's BtnPWR in the C++ firmware), -1 for none.
+fn power_button() -> i32 {
+    if cfg!(feature = "m5stickc-plus2") {
+        35
+    } else {
+        -1
+    }
+}
+
+/// Gravity along the screen's width at rotation 0, for auto-rotation.
+fn accel_x() -> Option<f32> {
+    #[cfg(feature = "m5stickc-plus2")]
+    return crate::m5stickc::accel_x();
+    #[cfg(not(feature = "m5stickc-plus2"))]
+    None
 }
 
 fn touched() -> bool {
@@ -381,6 +411,10 @@ impl Indicators for Events {
     fn beep(&self) {
         crate::beeper::beep();
     }
+    #[cfg(feature = "m5stickc-plus2")]
+    fn flash_led(&self, on: bool) {
+        crate::m5stickc::led(on);
+    }
     fn set_backlight(&self, percent: u8) {
         self.backlight.store(percent, Ordering::Relaxed);
     }
@@ -426,6 +460,9 @@ fn inputs(app: &App, system: &EspSystem, events: &Events) -> Inputs {
         temperature: system.temperature(),
         limit: app.watch.limit_reason(&app.miner, app.ota_busy.load(Ordering::Relaxed)),
         power_percent: app.miner.power_percent(),
+        #[cfg(feature = "m5stickc-plus2")]
+        battery: crate::m5stickc::battery_level(),
+        #[cfg(not(feature = "m5stickc-plus2"))]
         battery: -1,
         clock: local_clock(s.language),
         pool_host: app.pool_config.endpoint(on_backup).host.clone(),
@@ -512,6 +549,7 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
     let (pin_a, pin_b, has_touch) = controls();
     let mut a = Button::new(pin_a);
     let mut b = Button::new(pin_b);
+    let mut power = Button::new(power_button());
     let mut touch = Touch::default();
     app.log(&format!(
         "[ui] controls: button A {}, button B {}, touch {}",
@@ -525,9 +563,49 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
     let mut backlight = events.backlight.load(Ordering::Relaxed);
     let mut alert_shown = false;
     let mut reset_fired = false;
+    let mut rotation = app.settings().rotation & 3;
+    // When the page was last changed (pages cycle every `cycle` seconds).
+    let mut page_since = millis();
+    // Rotation and cycling read the settings 4 times a second, not 50.
+    let mut last_check = 0u32;
     loop {
         let now = millis();
         let mut redraw = false;
+        let changed = app.settings_changed.swap(false, Ordering::Relaxed);
+        if changed || now.wrapping_sub(last_check) >= 250 {
+            last_check = now;
+            let s = app.settings();
+            // The configured rotation, or landscape either way up from the
+            // gravity along the screen's width (C++ watch.cpp's autoRotate).
+            let mut wanted = s.rotation & 3;
+            if s.auto_rotate {
+                wanted = match accel_x() {
+                    Some(x) if x > 0.5 && rotation & 1 == 1 => 3,
+                    Some(x) if x < -0.5 && rotation & 1 == 1 => 1,
+                    _ if changed => wanted,
+                    _ => rotation,
+                };
+            }
+            if wanted != rotation {
+                rotation = wanted;
+                with(|screen, view| {
+                    screen.rotate(wanted);
+                    view.invalidate();
+                });
+                redraw = true;
+            }
+            if changed {
+                page_since = now;
+                invalidate();
+                redraw = true;
+            }
+            if s.cycle_seconds > 0 && !alert_shown && now.wrapping_sub(page_since) >= s.cycle_seconds as u32 * 1000 {
+                page = display_config::next_page(page, UI_PAGES, s.screen_pages);
+                page_since = now;
+                invalidate();
+                redraw = true;
+            }
+        }
         let gesture = if has_touch { touch.update(now, touched()) } else { 0 };
         let mut click_a = gesture == 1;
         let mut click_b = gesture == 2;
@@ -549,12 +627,12 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
                 _ => {}
             }
         }
-        // B: brightness steps.
-        if let Some(b) = b.as_mut() {
-            match (b.pressed(), b.since) {
-                (true, None) => b.since = Some(now),
+        // B (and the power button): brightness steps.
+        for button in [b.as_mut(), power.as_mut()].into_iter().flatten() {
+            match (button.pressed(), button.since) {
+                (true, None) => button.since = Some(now),
                 (false, Some(_)) => {
-                    b.since = None;
+                    button.since = None;
                     click_b = true;
                 }
                 _ => {}
@@ -566,6 +644,7 @@ pub fn run(app: Arc<App>, system: Arc<EspSystem>, events: Arc<Events>) {
                 events.block.store(0, Ordering::Relaxed);
             } else {
                 page = display_config::next_page(page, UI_PAGES, app.settings().screen_pages);
+                page_since = now;
             }
             invalidate();
             redraw = true;

@@ -41,6 +41,8 @@ jobs:
             # 8 MB of flash: the C++ firmware's layout (NVS at the same place).
             partitions: default_8MB.csv
             flash: 8mb
+            # Its 2 MB of PSRAM (esp/sdkconfig.psram).
+            sdkconfig: sdkconfig.defaults;sdkconfig.psram
           - target: xtensa-esp32s3-espidf
             mcu: esp32s3
             board: esp32s3
@@ -148,6 +150,7 @@ jobs:
         working-directory: firmware-rs/esp
         env:
           MCU: ${{ matrix.mcu }}
+          ESP_IDF_SDKCONFIG_DEFAULTS: ${{ matrix.sdkconfig || 'sdkconfig.defaults' }}
         run: cargo build --release --target ${{ matrix.target }} --features "${{ matrix.features }}"
       # The linker map, to see where a failed link went wrong.
       - name: Linker map
@@ -217,6 +220,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Starts the site workflow: miner.bdl-pool.com/rust/ installs this release.
+      actions: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -283,3 +288,10 @@ jobs:
           make_latest: false
           body_path: ${{ env.NOTES }}
           files: dist/*
+      # A release made with the workflow's token starts no other workflow by
+      # itself: the site, which offers the newest Rust beta under rust/, is
+      # rebuilt from main explicitly.
+      - name: Publish on the website
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run site.yml --repo "$GITHUB_REPOSITORY" --ref main

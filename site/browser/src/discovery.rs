@@ -308,31 +308,26 @@ fn news() {
     let content = ui::data();
     let stable = &content["channels"]["stable"];
     let beta = &content["channels"]["beta"];
+    let rust = &content["channels"]["rust"];
     let same = stable["version"] == beta["version"];
-    let is_beta = content["channel"] == "beta";
+    // Each channel's installer is a folder of its own: stable at the root,
+    // beta/ and rust/ below it.
+    let here = content["channel"].as_str().unwrap_or("stable");
+    let path = |channel: &str| match (here, channel) {
+        (a, b) if a == b => "./flash.html".to_string(),
+        ("stable", c) => format!("{c}/flash.html"),
+        (_, "stable") => "../flash.html".to_string(),
+        (_, c) => format!("../{c}/flash.html"),
+    };
     let mut out = heading("newsKicker", "newsTitle", "betaNote") + "<div class=\"release-grid\">";
-    for (channel, item, path, class) in [
-        (
-            "stable",
-            stable,
-            if is_beta {
-                "../flash.html"
-            } else {
-                "./flash.html"
-            },
-            "release-card stable",
-        ),
-        (
-            "beta",
-            beta,
-            if is_beta {
-                "./flash.html"
-            } else {
-                "beta/flash.html"
-            },
-            "release-card",
-        ),
-    ] {
+    let mut cards = vec![
+        ("stable", stable, "release-card stable"),
+        ("beta", beta, "release-card"),
+    ];
+    if rust["version"].is_string() {
+        cards.push(("rust", rust, "release-card"));
+    }
+    for (channel, item, class) in cards {
         let version = string(&item["version"]);
         let date = if item["published_at"].is_string() {
             format!(
@@ -359,12 +354,19 @@ fn news() {
                     .collect::<String>()
             )
         } else {
-            format!(
-                "<p class=\"route-note\">{}</p>",
-                escape(&t(if same { "sameBeta" } else { "betaNote" }))
-            )
+            let note = match channel {
+                "rust" => "rustNote",
+                _ if same => "sameBeta",
+                _ => "betaNote",
+            };
+            format!("<p class=\"route-note\">{}</p>", escape(&t(note)))
         };
-        out+=&format!("<article class=\"{class}\"><span class=\"board-tag{}\">{}</span><h3>BDLMiner {}</h3>{date}{notes}<div class=\"buttons\">{}{}</div></article>",if channel=="stable"{" measured"}else{""},escape(&t(channel)),escape(&version),link(path,&t(if channel=="stable"{"stableInstaller"}else{"betaInstaller"}),if channel=="stable"{"btn"}else{"btn ghost"}),link(&format!("https://github.com/bdlglua/BDLMinerV2/releases/tag/v{}",js_sys::encode_uri_component(&version)),&t("releaseNotes"),"btn ghost"));
+        let (installer, tag) = match channel {
+            "stable" => ("stableInstaller", "v"),
+            "beta" => ("betaInstaller", "v"),
+            _ => ("rustInstaller", "rust-v"),
+        };
+        out+=&format!("<article class=\"{class}\"><span class=\"board-tag{}\">{}</span><h3>BDLMiner {}</h3>{date}{notes}<div class=\"buttons\">{}{}</div></article>",if channel=="stable"{" measured"}else{""},escape(&t(channel)),escape(&version),link(&path(channel),&t(installer),if channel=="stable"{"btn"}else{"btn ghost"}),link(&format!("https://github.com/bdlglua/BDLMinerV2/releases/tag/{tag}{}",js_sys::encode_uri_component(&version)),&t("releaseNotes"),"btn ghost"));
     }
     out += "</div>";
     html("discovery-news", &out);

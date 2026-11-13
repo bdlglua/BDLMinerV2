@@ -12,8 +12,9 @@ Rust.
 
 ## Images
 
-One image per board, to flash at 0x0 over USB (bootloader, partition table
-and application), for example with https://espressif.github.io/esptool-js/ or
+Flash it from the browser at https://miner.bdl-pool.com/rust/flash.html, or
+take the image of the board, to flash at 0x0 over USB (bootloader, partition
+table and application), for example with https://espressif.github.io/esptool-js/ or
 
     espflash write-bin 0x0 BDLMiner-rust-2.6.1-beta.1-<board>.bin
 
