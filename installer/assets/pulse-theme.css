@@ -190,7 +190,7 @@ button, input, select, textarea { font-family: var(--font); }
 .pulse-chart-empty { display: grid; place-items: center; min-height: 300px; margin: 0; color: var(--label); font-size: 14px; text-align: center; }
 .pulse-chart-empty[hidden] { display: none; }
 .ticker-panel { position: relative; margin-top: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.ticker-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding-top: 14px; }
+.ticker-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding-top: 28px; }
 .ticker { position: relative; padding: 21px 22px 20px 30px; background: var(--panel); border: 1px solid var(--border); border-radius: 13px; overflow: hidden; text-decoration: none; }
 .ticker:last-child, .ticker:nth-child(odd) { border-right: 1px solid var(--border); }
 .ticker.active, .ticker:hover { border-color: rgba(0, 255, 136, .3); background: var(--panel2); box-shadow: none; }
