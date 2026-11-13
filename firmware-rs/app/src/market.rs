@@ -257,7 +257,9 @@ impl Default for Market {
             data: Mutex::new(MarketData::default()),
             pool: Mutex::new((PoolStats::default(), false)),
             inner: Mutex::new(Inner {
-                next_market: 0,
+                // A minute after boot: the pool connects first, and the
+                // boot's own allocations settle.
+                next_market: 60_000,
                 // Pool stats once mining for a minute.
                 next_pool: 60_000,
                 retry: RETRY_MS,

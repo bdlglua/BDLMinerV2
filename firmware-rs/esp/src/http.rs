@@ -235,7 +235,8 @@ struct Stream(*mut httpd_req_t);
 // The copied request belongs to the events task once handed over.
 unsafe impl Send for Stream {}
 
-const MAX_STREAMS: usize = 2;
+/// One live dashboard: each holds a socket and a stats answer every 2 s.
+const MAX_STREAMS: usize = 1;
 const STREAM_MS: u64 = 2000;
 static STREAMS: Mutex<Vec<Stream>> = Mutex::new(Vec::new());
 static STREAM_DUE: AtomicBool = AtomicBool::new(false);
@@ -273,6 +274,14 @@ unsafe extern "C" fn events_handler(req: *mut httpd_req_t) -> esp_err_t {
         return ESP_OK;
     }
     streams.push(Stream(copy));
+    // The pushing task starts with the first live dashboard, not at boot.
+    static PUSHER: std::sync::Once = std::sync::Once::new();
+    PUSHER.call_once(|| {
+        let app = app.clone();
+        if std::thread::Builder::new().stack_size(6 * 1024).spawn(move || push_events(&app)).is_err() {
+            log::warn!("[web] live dashboard task could not start");
+        }
+    });
     // A first snapshot right away.
     STREAM_DUE.store(true, Ordering::Relaxed);
     ESP_OK
@@ -307,8 +316,8 @@ pub fn start(app: Arc<App>) -> anyhow::Result<EspHttpServer<'static>> {
     let mut server = EspHttpServer::new(&Configuration {
         uri_match_wildcard: true,
         stack_size: 12 * 1024,
-        // Two more for the live dashboards.
-        max_open_sockets: 8,
+        // One more than the default for the live dashboard.
+        max_open_sockets: 7,
         lru_purge_enable: true,
         ..Default::default()
     })?;
@@ -321,9 +330,8 @@ pub fn start(app: Arc<App>) -> anyhow::Result<EspHttpServer<'static>> {
             user_ctx: std::ptr::null_mut(),
             ..unsafe { std::mem::zeroed() }
         };
-        if unsafe { httpd_register_uri_handler(server.handle(), &uri) } == ESP_OK {
-            let pusher = app.clone();
-            let _ = std::thread::Builder::new().stack_size(10 * 1024).spawn(move || push_events(&pusher));
+        if unsafe { httpd_register_uri_handler(server.handle(), &uri) } != ESP_OK {
+            log::warn!("[web] live dashboard unavailable");
         }
     }
     let get = app.clone();

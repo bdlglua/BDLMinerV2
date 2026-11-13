@@ -171,3 +171,27 @@ impl SystemInfo for EspSystem {
         .into()
     }
 }
+
+/// Free internal RAM (and its largest block) and PSRAM, for the log: the
+/// internal RAM holds the stacks, WiFi, lwIP and DMA buffers, PSRAM only
+/// large heap allocations.
+pub fn memory() -> String {
+    use esp_idf_svc::sys::{
+        heap_caps_get_free_size, heap_caps_get_largest_free_block, heap_caps_get_total_size, MALLOC_CAP_INTERNAL,
+        MALLOC_CAP_SPIRAM,
+    };
+    let (free, block, psram_total, psram_free) = unsafe {
+        (
+            heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+            heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL),
+            heap_caps_get_total_size(MALLOC_CAP_SPIRAM),
+            heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+        )
+    };
+    let psram = if psram_total > 0 {
+        format!("PSRAM {} of {} KB free", psram_free / 1024, psram_total / 1024)
+    } else {
+        "no PSRAM".into()
+    };
+    format!("internal {} KB free (block {} KB), {psram}", free / 1024, block / 1024)
+}
