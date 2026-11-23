@@ -17,9 +17,9 @@
 #include "web.h"
 
 namespace {
-constexpr char kRemoteHost[] = "api.bdl-pool.com";
-constexpr uint16_t kRemotePort = 36018;
-constexpr char kRemoteURL[] = "https://api.bdl-pool.com:36018/api/remote/report";
+constexpr char kRemoteHost[] = "cqbvuzubjkxfsztzfzso.supabase.co";
+constexpr uint16_t kRemotePort = 443;
+constexpr char kRemoteURL[] = "https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-remote-stats/api/remote/report";
 constexpr uint32_t kRemoteEveryMs = 300000;
 uint32_t remoteNext = 60000;
 }
