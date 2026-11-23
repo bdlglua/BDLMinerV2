@@ -789,11 +789,11 @@ pub fn snapshot(output: &Path) -> io::Result<()> {
         match ureq::get(
             "https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/api/summary",
         )
-            .set("User-Agent", "BDLMiner-public-snapshot/2 (Rust)")
-            .set("Accept", "application/json")
-            .set("Cache-Control", "no-cache")
-            .timeout(Duration::from_secs(15))
-            .call()
+        .set("User-Agent", "BDLMiner-public-snapshot/2 (Rust)")
+        .set("Accept", "application/json")
+        .set("Cache-Control", "no-cache")
+        .timeout(Duration::from_secs(15))
+        .call()
         {
             Ok(value) => {
                 response = Some(value);
