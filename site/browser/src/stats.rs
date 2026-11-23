@@ -10,7 +10,8 @@ use std::{
 };
 use wasm_bindgen::{closure::Closure, JsCast};
 use wasm_bindgen_futures::future_to_promise;
-const API: &str = "https://api.bdl-pool.com:36018/api/summary";
+const API: &str =
+    "https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/api/summary";
 const SNAPSHOT: &str =
     "https://raw.githubusercontent.com/bdlglua/BDLMinerV2/public-stats/summary.json";
 thread_local! {static STATE:RefCell<State>=RefCell::new(State::default());}
