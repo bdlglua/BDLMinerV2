@@ -50,7 +50,7 @@ String pool="public-pool.io";const String &netPoolHost(){return pool;}
 struct WiFiClientSecure {};
 const char kExplorerRootCA[]="ROOT";
 unsigned handshakes=0;bool tlsConnectVerified(WiFiClientSecure &,const char *host,const char *root,uint16_t port){
- assert(!strcmp(host,"api.bdl-pool.com"));assert(port==36018);assert(!strcmp(root,"ROOT"));++handshakes;return verified;
+ assert(!strcmp(host,"cqbvuzubjkxfsztzfzso.supabase.co"));assert(port==443);assert(!strcmp(root,"ROOT"));++handshakes;return verified;
 }
 std::vector<std::string> sent,logs;std::map<std::string,std::string> headers;
 void logf(const char *format,...){char b[256];va_list args;va_start(args,format);vsnprintf(b,sizeof(b),format,args);va_end(args);logs.emplace_back(b);}
