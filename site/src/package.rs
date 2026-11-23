@@ -786,7 +786,9 @@ pub fn snapshot(output: &Path) -> io::Result<()> {
         * 1000.0;
     let mut response = None;
     for attempt in 0..2 {
-        match ureq::get("https://api.bdl-pool.com:36018/api/summary")
+        match ureq::get(
+            "https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/api/summary",
+        )
             .set("User-Agent", "BDLMiner-public-snapshot/2 (Rust)")
             .set("Accept", "application/json")
             .set("Cache-Control", "no-cache")
