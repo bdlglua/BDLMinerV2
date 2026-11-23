@@ -1,9 +1,9 @@
 # BDLMiner V2
 
 [![Install BDLMinerV2](https://img.shields.io/badge/INSTALL-BDLMinerV2-f7931a?style=for-the-badge&logo=espressif&logoColor=white)](https://miner.bdl-pool.com/flash.html)
-[![Stable v2.6.1](https://img.shields.io/badge/STABLE-v2.6.1-2ea44f?style=for-the-badge)](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.6.1)
+[![Stable v2.6.4](https://img.shields.io/badge/STABLE-v2.6.4-2ea44f?style=for-the-badge)](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.6.4)
 
-**[Install in your browser (Chrome / Edge)](https://miner.bdl-pool.com/flash.html)** · **[Stable v2.6.1 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.6.1)** · [Installation guide](docs/guide.md#install-a-release-no-build-tools)
+**[Install in your browser (Chrome / Edge)](https://miner.bdl-pool.com/flash.html)** · **[Stable v2.6.4 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.6.4)** · [Installation guide](docs/guide.md#install-a-release-no-build-tools)
 
 Solo SHA-256d mining firmware for ESP32 boards and experimental ASIC boards,
 with a local dashboard and a Linux/Raspberry Pi fleet hub.
@@ -12,7 +12,7 @@ with a local dashboard and a Linux/Raspberry Pi fleet hub.
 [Website](https://miner.bdl-pool.com/) ·
 [Interactive demos](https://miner.bdl-pool.com/demo.html) ·
 [Statistics](https://miner.bdl-pool.com/stats.html) ·
-**[Stable v2.6.1](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.6.1)**
+**[Stable v2.6.4](https://github.com/bdlglua/BDLMinerV2/releases/tag/v2.6.4)**
 
 Mine **BTC, BCH, BSV, eCash (XEC), DigiByte SHA-256d (DGB) or Peercoin (PPC, PoW)** with a matching
 pool and payout address or account. BTC supports Stratum V1 and native Stratum V2.
@@ -65,7 +65,7 @@ Both projects make solo Bitcoin mining approachable on small ESP32 devices. Choo
 
 ## Install and update
 
-**Recommended: [Install BDLMinerV2 stable v2.6.1 with the Web Flasher](https://miner.bdl-pool.com/flash.html).** Do not use older v1.x releases for a new V2 installation.
+**Recommended: [Install BDLMinerV2 stable v2.6.4 with the Web Flasher](https://miner.bdl-pool.com/flash.html).** Do not use older v1.x releases for a new V2 installation.
 
 
 1. Open the **[Flasher](https://miner.bdl-pool.com/flash.html)** in Chrome or Edge
@@ -106,7 +106,7 @@ Solo mining is educational: a payout requires finding a valid block.
 - [My miners remotely](https://miner.bdl-pool.com/remote.html) · [Setup](docs/remote-access.md) / [Français](docs/remote-access.fr.md)
 - [Troubleshooting FAQ](https://miner.bdl-pool.com/faq.html) · [Shares explained](docs/guide.md#pool-shares-and-local-records)
 - [Coin and pool setup](docs/mining-coins.md)
-- [Stable v2.6.1 release notes](docs/releases/v2.6.1.md) / [Français](docs/releases/v2.6.1.fr.md) · [All releases](https://github.com/bdlglua/BDLMinerV2/releases)
+- [Stable v2.6.4 release notes](docs/releases/v2.6.4.md) / [Français](docs/releases/v2.6.4.fr.md) · [All releases](https://github.com/bdlglua/BDLMinerV2/releases)
 - [Build from source](docs/development.md) · [Contribute](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ### Pools for ESP32
@@ -128,6 +128,20 @@ Hashrate and public pool-group sharing are enabled by default; both can be disab
 in Network settings, and saved disabled choices are kept. Reports include board,
 version and coin, but no payout address, worker, private hostname or miner identifier.
 [Data, controls and retention](docs/anonymous-statistics.md#anonymous-hashrate-sharing).
+
+### Private miner monitoring (My miners)
+
+**My miners** is optional and separate from anonymous public statistics. Firmware
+v2.6.4 sends private telemetry directly to a dedicated Supabase Edge Function
+over HTTPS. Address-based access and 64-character private keys are supported;
+the raw address/key is not stored. Private readings and history are retained
+for seven days.
+
+Firmware v2.6.3 already sends public anonymous statistics to Supabase but still
+uses the retired private-monitoring endpoint. Firmware older than v2.6.3 also
+uses the retired public-statistics endpoint. There is no legacy relay: update
+to **v2.6.4** to use both current statistics services. Bitcoin pool and Stratum
+connections are separate and are unchanged by this migration.
 
 ## Community and license
 
