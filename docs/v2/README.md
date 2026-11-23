@@ -1,7 +1,9 @@
 # BDLMiner V2
 
-The stable firmware version is **2.6.1**. See the release notes in
-[English](../releases/v2.6.1.md) or [French](../releases/v2.6.1.fr.md).
+The current stable firmware version is **2.6.4**. See the release notes in
+[English](../releases/v2.6.4.md) or [French](../releases/v2.6.4.fr.md).
+The 2.6.4 release completes the public and private statistics migration to Supabase;
+no separate statistics VPS or relay is required.
 The seven V2 features were developed on `v2/development`; the owner-operated
 acceptance results below identify the beta versions actually measured.
 The [previous stable V1 release](https://github.com/bdlglua/BDLMinerV2/releases/tag/v1.9.15)
@@ -9,7 +11,7 @@ remains available.
 
 ## M5 / Gamma test kit
 
-Download the [2.6.1 Linux kit](https://github.com/bdlglua/BDLMinerV2/releases/download/v2.6.1/BDLMiner-2.6.1-Linux-kit.zip)
+Download the [2.6.4 Linux kit](https://github.com/bdlglua/BDLMinerV2/releases/download/v2.6.4/BDLMiner-2.6.4-Linux-kit.zip)
 and extract the complete ZIP. It contains the optional fleet hub, host tools,
 M5StickC Plus2 and Gamma 601
 firmware/factory images, their checksums and the read-only
@@ -87,7 +89,7 @@ pending actual board availability.
 
 Extract the new kit into a separate directory, retaining configuration/settings
 backups. The readiness launcher expects the firmware version of the extracted
-kit (2.6.1 for the current stable kit). A card running an older version reports
+kit (2.6.4 for the current stable kit). A card running an older version reports
 `review` until its update completes.
 Stop the old hub before starting the new one
 on port 8787. Use only `*-firmware.bin` through the local dashboard; factory images
@@ -145,7 +147,11 @@ interrupted read.
 
 [Remote monitoring](../remote-access.md) lets each board send its readings
 directly to the cloud; from 2.5.4 you open them with your payout address (a private
-key from 2.3.0 still works). No local computer or hub is needed. Monitoring is opt-in; the optional local fleet hub below remains available.
+key from 2.3.0 still works). Starting with firmware 2.6.4, private reports use
+the current Supabase backend directly. Firmware 2.6.3 still uses the retired
+private endpoint and must be updated for current remote monitoring. No local
+statistics server, computer or hub is needed. Monitoring is opt-in; the optional
+local fleet hub below remains available.
 
 ## Fleet dashboard on Linux / Raspberry Pi
 
