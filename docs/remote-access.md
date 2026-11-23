@@ -1,13 +1,10 @@
 # Remote monitoring
 
-[Français](remote-access.fr.md)
-
 View your miners from a phone or another network at
 **[My miners](https://miner.bdl-pool.com/remote.html)**.
-The boards send readings directly over verified HTTPS: no computer, Raspberry Pi,
-VPN, port forwarding or local hub needs to stay running. The miners need Wi-Fi
-with Internet access and **BDLMiner 2.5.4 or newer** (2.3.0 with a private key,
-see below).
+The boards send readings directly to Supabase over verified HTTPS: no computer,
+Raspberry Pi, VPS, VPN, port forwarding or local hub needs to stay running.
+The miners need Wi-Fi with Internet access and **BDLMiner 2.6.4 or newer**.
 
 ## Set up
 
@@ -75,36 +72,43 @@ miner. Those operations stay on the local miner page.
   requires a restart; the enable/disable switch applies immediately.
 - Reports use CA and hostname verification, with no insecure fallback and no
   redirects. A failed report waits for the next attempt; it does not restart the
-  miner or stop mining. The public statistics retain their existing behavior.
-- The self-hosted service isolates each address or key in its own SQLite
-  database named by a SHA-256 digest. The hosting operator can access stored
-  readings; this is not end-to-end encryption. Server-wide admission limits
-  protect the service behind the TCP relay, which does not preserve client IPs.
-- Current website requests and newly built firmware use the server directly.
-  Installed older firmware still uses a compatibility Worker: it forwards new
-  reports to the server but remains subject to its request allowance. Updating
-  those boards removes that dependency. Public chart history was imported;
-  private history on the new service starts with the newly received reports.
+  miner or stop mining.
+- Supabase stores a SHA-256 digest of the access space identifier, not the payout
+  address or private key. Private reports and seven-day readings are stored in
+  separate tables with RLS enabled and no direct anonymous table access. The
+  Edge Function validates the address/key authorization before using its
+  server-side database client. Project administrators and the hosting provider
+  may be able to access stored telemetry; this is not end-to-end encryption.
+- The private endpoint is separate from anonymous public statistics. Neither
+  private names nor miner identifiers are included in the public aggregate.
+  Private history from the former self-hosted service is not imported; history
+  starts with the first report received by Supabase.
+- Older firmware still pointed at `api.bdl-pool.com:36018` cannot send to the
+  Supabase endpoint. Update those miners to **2.6.4 or newer**; there is no VPS
+  compatibility relay in the new architecture.
 - To stop sending, disable monitoring on each miner. Existing readings expire
   after seven days. With a key, **Manage my private data → Erase data and revoke
   key** removes them immediately and permanently revokes the key.
 
 A space supports **32 miners**. The backend accepts at most one report per miner
-per minute; the firmware normally sends one every five minutes. A temporary
-admission limit also bounds requests from one Internet address.
+per minute; the firmware normally sends one every five minutes. Global limits
+bound API requests and report volume.
 
 ## API
 
-On `https://api.bdl-pool.com:36018`, with
-`Authorization: Address <payout-address>` or `Authorization: Bearer <private-key>`:
+The private API base is
+`https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-remote-stats`,
+with `Authorization: Address <payout-address>` or
+`Authorization: Bearer <private-key>`:
 
 - `GET /api/remote`: your latest readings and their age.
 - `GET /api/remote/history?miner=<id>&hours=24`: up to about 480 chart buckets;
   `hours` accepts `1`, `6`, `24` or `168`.
 - `DELETE /api/remote` (key only): erase the space and permanently revoke its key.
+- `POST /api/remote/report`: used by paired miners only.
 
 These endpoints require authorization even when public statistics are open and use
-`Cache-Control: no-store`. Browser reads are allowed only from the GitHub Pages
-viewer origin (and the legacy service origin); no credentials are sent
-automatically. `POST /api/remote/report` is used only by miners and is strictly
-separated from the anonymous `/report` endpoint.
+`Cache-Control: no-store`. Browser reads are restricted by the Edge Function to
+the production viewer and the GitHub Pages viewer origins; no credentials are sent
+automatically. Private reports are kept separate from the anonymous
+`bdl-public-stats` function.

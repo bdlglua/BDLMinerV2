@@ -181,7 +181,7 @@
     "period": "Période",
     "updated": "mis à jour il y a {s} s",
     "now": "maintenant",
-    "statsMore": "Données brutes : <a href=\"https://api.bdl-pool.com:36018/api/summary\">JSON</a>.",
+    "statsMore": "Données brutes : <a href=\"https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/api/summary\">JSON</a>.",
     "lotteryTitle": "Le minage solo est un loisir, pas un revenu.",
     "lottery": "À la vitesse d’un ESP32, trouver un bloc est extrêmement improbable.",
     "communityTitle": "Communauté",

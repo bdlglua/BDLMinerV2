@@ -11,7 +11,7 @@ use crate::platform::{native_user_agent, FW_VERSION};
 use bdlminer_core::coin::public_pool_group;
 use bdlminer_core::remote_data;
 
-pub const REMOTE_URL: &str = "https://api.bdl-pool.com:36018/api/remote/report";
+pub const REMOTE_URL: &str = "https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-remote-stats/api/remote/report";
 const EVERY_MS: u32 = 300_000;
 const WAIT_MS: u32 = 60_000;
 const MIN_HEAP: u32 = 54 * 1024;

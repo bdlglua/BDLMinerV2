@@ -68,8 +68,8 @@ void sharePoll();
 tests = r'''
 int main() {
     char endpoint[254]; uint16_t endpointPort;
-    assert(shareEndpoint("https://api.bdl-pool.com:36018/report", endpoint, sizeof(endpoint), endpointPort));
-    assert(!strcmp(endpoint,"api.bdl-pool.com") && endpointPort==36018);
+    assert(shareEndpoint("https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/report", endpoint, sizeof(endpoint), endpointPort));
+    assert(!strcmp(endpoint,"cqbvuzubjkxfsztzfzso.supabase.co") && endpointPort==443);
     assert(shareEndpoint("https://stats.example/report", endpoint, sizeof(endpoint), endpointPort) && endpointPort==443);
     for(const char *bad:{"http://stats.example/report","https:///report","https://user:pass@stats.example/report",
                         "https://stats.example:0/report","https://stats.example:65536/report","https://stats.example:/report",
@@ -157,10 +157,10 @@ int main() {
     assert(posted.size() == 9); // pool sharing cannot bypass the main opt-out
     settings.shareHashrate = true; settings.sharePool = false; stats.poolConnected = true; sharePoll();
     assert(posted.size() == 10 && posted.back().find("pool") == std::string::npos);
-    statsUrl="https://api.bdl-pool.com:36018/report";
+    statsUrl="https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/report";
     nowMs += kEveryMs; sharePoll();
-    assert(hosts.back()=="api.bdl-pool.com" && ports.back()==36018);
-    const auto count=posted.size();statsUrl="http://api.bdl-pool.com:36018/report";
+    assert(hosts.back()=="cqbvuzubjkxfsztzfzso.supabase.co" && ports.back()==443);
+    const auto count=posted.size();statsUrl="http://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/report";
     nowMs += kEveryMs;sharePoll();assert(posted.size()==count);
     puts("share: OK (verified HTTPS on default and explicit ports)");
 }

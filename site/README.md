@@ -3,7 +3,7 @@
 `site/src/` builds all eleven public pages, the USB installer, stable/beta release
 channels, isolated demos and anonymous statistics snapshots. `site/browser/src/`
 implements the browser application in Rust compiled to WebAssembly: languages,
-navigation, Canvas charts, statistics, private viewer, chat and Web Serial.
+navigation, Canvas charts, public statistics, private miner viewer, chat and Web Serial.
 HTML templates and CSS remain the presentation formats. The only published
 JavaScript is generated `wasm-bindgen` bindings and a generated module loader.
 
@@ -47,6 +47,9 @@ only same-origin resources, blocking access to real LAN miners. Firmware and its
 local UI are separate from the public websites. `stats-wasm/` remains an
 independent numerical benchmark; it is not a second application runtime.
 
-The native APIs live in the `bdl-pool/services`, `BDLMiner-stats` and
-`BDLMiner-chat` repositories. Deploying static WASM does not restart these services;
-see each repository's activation and rollback procedure.
+Public anonymous statistics and private miner telemetry are served by separate
+Supabase Edge Functions and RLS-protected Postgres tables. The website and new
+firmware call Supabase directly; no BDLMiner statistics VPS, SQLite collector,
+Caddy relay or Cloudflare compatibility Worker is required. The Bitcoin mining
+pool/Stratum API is a separate service and is not part of this statistics
+migration. The chat backend remains in its own repository.
