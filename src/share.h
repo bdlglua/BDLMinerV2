@@ -8,7 +8,7 @@
 #include <stddef.h>
 
 #ifndef STATS_URL
-#define STATS_URL "https://api.bdl-pool.com:36018/report"
+#define STATS_URL "https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/report"
 #endif
 
 // Sends the report when it is due. Called every few seconds by the market
