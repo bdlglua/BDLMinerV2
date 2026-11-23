@@ -69,6 +69,10 @@ const CMD_RAMWR: u8 = 0x2C;
 const CMD_MADCTL: u8 = 0x36;
 const CMD_IDMOFF: u8 = 0x38;
 const CMD_COLMOD: u8 = 0x3A;
+/// ST7789 LCM control: its bits XOR the ones of MADCTL (and of INVON).
+const CMD_LCMCTRL: u8 = 0xC0;
+/// XBGR only: no orientation bit (XMY, XMX, XMH, XMV, XGS) turned over.
+const LCMCTRL_ST7789_CYD: u8 = 0x20;
 /// In an init list: the argument count is followed by a delay (ms).
 const DELAY: u8 = 0x80;
 
@@ -256,15 +260,18 @@ impl Lcd {
             delay_ms(64);
         }
         let mut invert = spec.invert;
+        let mut st7789 = false;
         if read_id {
             if let Some(id) = read_display_id(&bus) {
+                log::info!("[ui] display ID {:02X}{:02X}{:02X}", id[0], id[1], id[2]);
                 // The CYD with two USB ports carries an ST7789 instead of
                 // the ILI9341: the same commands drive it, but its colours
                 // come out inverted. Its ID (RDDID, 04h: 85 85 52) tells
                 // them apart.
                 if id[0] == 0x85 && id[2] == 0x52 {
                     invert = !invert;
-                    log::warn!("[ui] ST7789 display (CYD with two USB ports): colours inverted");
+                    st7789 = true;
+                    log::warn!("[ui] ST7789 display (CYD with two USB ports): colours inverted, LCMCTRL 20h");
                 }
             }
         }
@@ -296,6 +303,13 @@ impl Lcd {
                 delay_ms(if ms == 255 { 500 } else { ms as u32 });
                 list = &list[1..];
             }
+        }
+        if st7789 {
+            // The ILI9341 list wrote 0x23 to C0h, which an ST7789 reads as
+            // LCMCTRL (XOR of the MADCTL bits: 0x20 XBGR, 0x02 XMV, 0x01 XGS):
+            // XMV turned landscape into portrait and XGS reversed the gate
+            // scan. Keep XBGR, which makes up for MAD_BGR, and drop the rest.
+            lcd.command(CMD_LCMCTRL, &[LCMCTRL_ST7789_CYD]);
         }
         lcd.command(if invert { CMD_INVON } else { CMD_INVOFF }, &[]);
         lcd.set_rotation(rotation);
