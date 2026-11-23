@@ -157,10 +157,10 @@ int main() {
     assert(posted.size() == 9); // pool sharing cannot bypass the main opt-out
     settings.shareHashrate = true; settings.sharePool = false; stats.poolConnected = true; sharePoll();
     assert(posted.size() == 10 && posted.back().find("pool") == std::string::npos);
-    statsUrl="https://api.bdl-pool.com:36018/report";
+    statsUrl="https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/report";
     nowMs += kEveryMs; sharePoll();
-    assert(hosts.back()=="api.bdl-pool.com" && ports.back()==443);
-    const auto count=posted.size();statsUrl="http://api.bdl-pool.com:36018/report";
+    assert(hosts.back()=="cqbvuzubjkxfsztzfzso.supabase.co" && ports.back()==443);
+    const auto count=posted.size();statsUrl="http://cqbvuzubjkxfsztzfzso.supabase.co:36018/report";
     nowMs += kEveryMs;sharePoll();assert(posted.size()==count);
     puts("share: OK (verified HTTPS on default and explicit ports)");
 }
