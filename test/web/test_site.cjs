@@ -347,11 +347,11 @@ async function main(){
   // "My miners" is a site page: shared navigation, site language and theme, and
   // readings fetched from the statistics service by payout address only.
   await page.setViewportSize({width:1440,height:1000});
-  const remoteAPI='https://api.bdl-pool.com:36018',remoteCalls=[],now=Date.now();
+  const remoteAPI='https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-remote-stats',remoteCalls=[],now=Date.now();
   const remoteMiner={id:'0123456789abcdef',name:'M5 bureau',board:'m5stickc-plus2',v:'2.5.4',coin:'BTC',online:true,age_s:42,hashrate:1.2e6,temp_c:47.5,accepted:12,rejected:1,uptime_s:7200,power_percent:100,best:4096,pool_connected:true,pool:'public-pool.io'};
   await page.route(remoteAPI+'/api/remote**',async route=>{
    const request=route.request(),target=new URL(request.url());remoteCalls.push({path:target.pathname,auth:request.headers().authorization,referer:request.headers().referer});
-   if(target.pathname==='/api/remote/history')return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({interval_ms:300000,window_start:now-86400000,window_end:now,
+   if(target.pathname.endsWith('/api/remote/history'))return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({interval_ms:300000,window_start:now-86400000,window_end:now,
     points:[0,1,2,3].map(i=>({t:now-(4-i)*300000,rate:1.1e6+i*5e4,temp:46+i/2,samples:1,boot:'aabbccdd'})),
     summary:{average:1.2e6,minimum:1.1e6,maximum:1.25e6,variation_percent:4,temperature_average:46.8,temperature_maximum:47.5,reports:4,restarts:0,first_at:now-1200000,last_at:now-300000}})});
    return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify({hashrate:1.2e6,recorded_at:now,miners:[remoteMiner]})});
