@@ -4,7 +4,7 @@ Ouvre **[Mes mineurs](https://miner.bdl-pool.com/remote.html)** depuis
 ton téléphone, même hors du Wi-Fi de la maison. Les cartes envoient directement
 leurs mesures vers Supabase en HTTPS vérifié. Aucun PC, Raspberry Pi, VPS ou
 relais local à laisser allumé, aucun VPN ni port de la box à ouvrir. Chaque carte
-doit utiliser **BDLMiner 2.6.3 ou ultérieur** et avoir accès à Internet.
+doit utiliser **BDLMiner 2.6.4 ou ultérieur** et avoir accès à Internet.
 
 ## Configuration
 
@@ -83,7 +83,7 @@ historique privé du service auto-hébergé n'est pas importé ; le nouvel histo
 commence au premier relevé reçu par Supabase.
 
 Les anciens firmwares qui envoient encore vers `api.bdl-pool.com:36018` ne
-peuvent pas atteindre le nouveau service. Mets-les à jour vers **BDLMiner 2.6.3
+peuvent pas atteindre le nouveau service. Mets-les à jour vers **BDLMiner 2.6.4
 ou ultérieur**. La nouvelle architecture ne dépend plus d'un VPS ou d'une
 passerelle de compatibilité.
 
