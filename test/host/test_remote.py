@@ -57,7 +57,7 @@ void logf(const char *format,...){char b[256];va_list args;va_start(args,format)
 struct HTTPClient {
  void setTimeout(int){}
  void setFollowRedirects(int mode){assert(mode==HTTPC_DISABLE_FOLLOW_REDIRECTS);}
- bool begin(WiFiClientSecure &,const char *url){assert(!strcmp(url,"https://api.bdl-pool.com:36018/api/remote/report"));return true;}
+ bool begin(WiFiClientSecure &,const char *url){assert(!strcmp(url,"https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-remote-stats/api/remote/report"));return true;}
  void setUserAgent(const char *v){assert(!strcmp(v,DEFAULT_USER_AGENT));}
  void addHeader(const char *name,const String &value){headers[name]=value;}
  int POST(uint8_t *data,size_t size){sent.emplace_back((char*)data,size);return 204;}
