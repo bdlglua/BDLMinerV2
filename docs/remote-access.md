@@ -4,7 +4,7 @@ View your miners from a phone or another network at
 **[My miners](https://miner.bdl-pool.com/remote.html)**.
 The boards send readings directly to Supabase over verified HTTPS: no computer,
 Raspberry Pi, VPS, VPN, port forwarding or local hub needs to stay running.
-The miners need Wi-Fi with Internet access and **BDLMiner 2.6.3 or newer**.
+The miners need Wi-Fi with Internet access and **BDLMiner 2.6.4 or newer**.
 
 ## Set up
 
@@ -84,7 +84,7 @@ miner. Those operations stay on the local miner page.
   Private history from the former self-hosted service is not imported; history
   starts with the first report received by Supabase.
 - Older firmware still pointed at `api.bdl-pool.com:36018` cannot send to the
-  Supabase endpoint. Update those miners to **2.6.3 or newer**; there is no VPS
+  Supabase endpoint. Update those miners to **2.6.4 or newer**; there is no VPS
   compatibility relay in the new architecture.
 - To stop sending, disable monitoring on each miner. Existing readings expire
   after seven days. With a key, **Manage my private data → Erase data and revoke
