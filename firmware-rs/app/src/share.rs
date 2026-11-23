@@ -11,7 +11,7 @@ use crate::notify::HttpClient;
 use crate::platform::FW_VERSION;
 use bdlminer_core::coin::{public_pool_group, Coin};
 
-pub const STATS_URL: &str = "https://api.bdl-pool.com:36018/report";
+pub const STATS_URL: &str = "https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/report";
 
 /// The first report waits for a settled hashrate once mining has started; then
 /// one every 5 minutes. A failed report is not retried sooner: the next one comes.
