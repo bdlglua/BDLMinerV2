@@ -23,7 +23,7 @@ async function main(){
    if(seedDeferred)await new Promise(resolve=>{releaseSeed=resolve});
    return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(publicSeed)});
   });
-  await page.route('https://api.bdl-pool.com:36018/api/summary',async route=>{
+  await page.route('https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/api/summary',async route=>{
    summaryCalls++;
    if(statsResponse==='pending')await new Promise(resolve=>{releaseSummary=resolve});
    return route.fulfill({status:statsResponse==='error'?503:200,contentType:'application/json',body:JSON.stringify(statsResponse==='invalid'?{error:'invalid'}:communityStats)});
