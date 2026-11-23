@@ -12,7 +12,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 from firmware_image import ENV_CHIPS
 def build_installer(release, output, channel, channels):
-    command = [os.environ.get('CARGO', 'cargo'), 'run', '--quiet', '--locked', '--manifest-path',
+# Reuse the optimized site binary built by the CI/release workflow. A fresh debug-profile
+# build here can exceed test_site.cjs's fixture-start timeout on a cold release runner.
+    command = [os.environ.get('CARGO', 'cargo'), 'run', '--quiet', '--locked', '--release', '--manifest-path',
                str(ROOT/'site/Cargo.toml'), '--', 'installer', release, output,
                '--reuse-browser', '--channel', channel]
     metadata = Path(release)/'channels.json'
