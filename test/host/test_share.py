@@ -160,7 +160,7 @@ int main() {
     statsUrl="https://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/report";
     nowMs += kEveryMs; sharePoll();
     assert(hosts.back()=="cqbvuzubjkxfsztzfzso.supabase.co" && ports.back()==443);
-    const auto count=posted.size();statsUrl="http://cqbvuzubjkxfsztzfzso.supabase.co:36018/report";
+    const auto count=posted.size();statsUrl="http://cqbvuzubjkxfsztzfzso.supabase.co/functions/v1/bdl-public-stats/report";
     nowMs += kEveryMs;sharePoll();assert(posted.size()==count);
     puts("share: OK (verified HTTPS on default and explicit ports)");
 }
