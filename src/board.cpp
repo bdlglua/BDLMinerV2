@@ -183,9 +183,20 @@ void begin() {
     // same commands drive it, but its colours come out inverted. Its ID (RDDID,
     // 04h: 85 85 52) tells them apart.
     uint32_t id = lcd.getPanel()->readCommand(0x04, 0, 3);
+    logf("[board] display ID %06X\n", (unsigned)(id & 0xFFFFFF));
     if ((id & 0xFF) == 0x85 && (id >> 16 & 0xFF) == 0x52) {
         lcd.invertDisplay(true);
-        logf("[board] ST7789 display (CYD with two USB ports): colours inverted\n");
+        // The ILI9341 sequence writes 0x23 to register C0h, which an ST7789
+        // reads as LCMCTRL: its bits XOR the MADCTL ones (0x20 XBGR, 0x02 XMV,
+        // 0x01 XGS). XMV turns the landscape rotation into a portrait one and
+        // XGS reverses the gate scan: the picture came out turned, offset and
+        // scrambled. Keep XBGR (it makes up for the BGR bit of the ILI9341
+        // MADCTL) and drop the two orientation bits.
+        lcd.startWrite();
+        lcd.writeCommand(0xC0);
+        lcd.writeData(0x20);
+        lcd.endWrite();
+        logf("[board] ST7789 display (CYD with two USB ports): colours inverted, LCMCTRL 20h\n");
     }
 #endif
 #ifdef BOARD_GAMMA601

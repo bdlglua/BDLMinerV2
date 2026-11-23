@@ -207,7 +207,10 @@ and physical-device throughput still require hardware/network validation.
 | Reset (5 s) | A | right button | BOOT | BOOT |
 
 The CYD with two USB ports carries an ST7789 display instead of the ILI9341: since
-1.9.10 the firmware recognises it at boot and inverts its colours.
+1.9.10 the firmware recognises it at boot and inverts its colours. From 2.6.2 it also
+corrects the panel's LCM control register, so the picture is no longer turned, offset
+and scrambled on that board. The boot log shows the panel ID (`display ID 858552` for
+the ST7789).
 
 Touch screens (CYD, M5Stack Core2 / CoreS3): a tap shows the next screen, a press of
 one second changes the brightness.
